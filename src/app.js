@@ -11,7 +11,6 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-
 // middlewares - Configure CORS for production
 app.use(
   cors({
@@ -42,7 +41,6 @@ app.use(
   })
 );
 
-
 // For Vercel, serve static files from Public directory
 app.use(express.static("public"));
 
@@ -53,12 +51,12 @@ app.get('/', (req, res) => {
   res.json({ message: 'Talent Bridge API is running!' });
 });
 
-// Add 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ message: 'Route not found' });
-});
-
 // Creating User Api 
 app.use('/api/v1/users' , userRouter ) 
+
+// Add 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ message: 'Route does not exists' });
+});
 
 export { app };

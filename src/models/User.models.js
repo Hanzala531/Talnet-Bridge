@@ -29,8 +29,8 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["learner", "training_provider", "employer", "admin"],
-      required: true,
+      enum: ["user","learner", "training_provider", "employer", "admin"],
+      default : "user"
     },
 
     onboardingStage: {

@@ -1,0 +1,186 @@
+import { extractTextFromImage } from '../utils/ocr.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { ApiError } from '../utils/ApiError.js';
+import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import { successResponse } from '../utils/ApiResponse.js';
+import fs from 'fs/promises';
+
+// Main OCR extraction controller
+const testOcrExtraction = asyncHandler(async (req, res) => {
+    if (!req.files?.front?.[0]?.path || !req.files?.back?.[0]?.path) {
+        throw new ApiError(400, "Please upload both front and back CNIC images");
+    }
+
+    const frontImagePath = req.files.front[0].path;
+    const backImagePath = req.files.back[0].path;
+
+    try {
+        // 1️⃣ Extract text from both images
+        const [frontTextRaw, backTextRaw] = await Promise.all([
+            extractTextFromImage(frontImagePath),
+            extractTextFromImage(backImagePath)
+        ]);
+
+        const cleanedFrontText = cleanupText(frontTextRaw);
+        const cleanedBackText = cleanupText(backTextRaw);
+        const combinedText = `${cleanedFrontText} ${cleanedBackText}`;
+
+        // 2️⃣ Upload images to Cloudinary
+        const [frontCloudinary, backCloudinary] = await Promise.all([
+            uploadOnCloudinary(frontImagePath),
+            uploadOnCloudinary(backImagePath)
+        ]);
+
+        if (!frontCloudinary?.url || !backCloudinary?.url) {
+            throw new ApiError(400, "Error while uploading images to Cloudinary");
+        }
+
+        // 3️⃣ Extract parsed data
+        const parsedData = {
+            raw: {
+                front: cleanedFrontText,
+                back: cleanedBackText
+            },
+            parsed: {
+                cnicNumber: extractCNICNumber(combinedText),
+                name: extractName(cleanedFrontText),
+                dateOfIssue: extractDateOfIssue(combinedText) || extractDateOfIssue(cleanedFrontText),
+                dateOfExpiry: extractDateOfExpiry(combinedText) || extractDateOfExpiry(cleanedFrontText)
+            },
+            images: {
+                front: frontCloudinary.url,
+                back: backCloudinary.url
+            }
+        };
+
+        // 4️⃣ Validate extracted data
+        parsedData.validation = validateExtractedData(parsedData.parsed);
+
+        // 5️⃣ Clean up temp files
+        await Promise.all([
+            fs.unlink(frontImagePath).catch(() => {}),
+            fs.unlink(backImagePath).catch(() => {})
+        ]);
+
+        return res.json(successResponse(parsedData, "OCR extraction completed successfully"));
+    } catch (error) {
+        console.error("OCR Test Error:", error);
+
+        // Cleanup even if error
+        await Promise.all([
+            fs.unlink(frontImagePath).catch(() => {}),
+            fs.unlink(backImagePath).catch(() => {})
+        ]);
+
+        throw new ApiError(500, "Failed to process images");
+    }
+});
+
+/* ---------------- Helper Functions ---------------- */
+
+// OCR-tolerant CNIC number extraction
+function extractCNICNumber(text) {
+    const normalized = text.replace(/[Oo]/g, '0');
+    const match = normalized.match(/(\d{5})[-\s]?(\d{7})[-\s]?(\d)/);
+    return match ? `${match[1]}-${match[2]}-${match[3]}` : null;
+}
+
+// Name extraction
+function extractName(text) {
+    const lines = text.split(/\s+/);
+    const nameKeywords = ["father", "gender", "identity", "number", "date"];
+    const cardIndex = lines.findIndex(word => /card/i.test(word));
+
+    if (cardIndex >= 0 && cardIndex + 1 < lines.length) {
+        let possibleName = [];
+        for (let i = cardIndex + 1; i < lines.length; i++) {
+            if (nameKeywords.some(k => new RegExp(k, "i").test(lines[i]))) break;
+            possibleName.push(lines[i]);
+        }
+        const name = possibleName.join(" ").trim();
+        if (/^[A-Za-z\s]+$/.test(name) && name.split(" ").length >= 2) return name;
+    }
+    return null;
+}
+
+// Date extraction with better tolerance for OCR text
+function extractDateOfIssue(text) {
+    return extractDateByLabel(text, /(date\s*of\s*)?issue/i);
+}
+function extractDateOfExpiry(text) {
+    return extractDateByLabel(text, /(date\s*of\s*)?expir/i);
+}
+function extractDateByLabel(text, labelRegex) {
+    const matches = text.match(/(\d{2})[.\-/](\d{2})[.\-/](\d{4})/g);
+    if (!matches) return null;
+
+    const lowerText = text.toLowerCase();
+    for (let date of matches) {
+        const normalizedDate = date.replace(/[.\-/]/g, '.');
+        const idx = lowerText.indexOf(normalizedDate);
+        if (idx !== -1 && lowerText.substr(Math.max(0, idx - 20), 40).match(labelRegex)) {
+            return date.replace(/[./]/g, '-');
+        }
+    }
+    return null;
+}
+
+// Cleanup OCR text
+function cleanupText(text) {
+    return text
+        .replace(/\s+/g, ' ')
+        .replace(/[|]/g, ' ')
+        .replace(/[^\x20-\x7E]/g, ' ')
+        .trim();
+}
+
+// Validate extracted data
+function validateExtractedData(data) {
+    const { cnicNumber, name, dateOfIssue, dateOfExpiry } = data;
+    const cnicValid = cnicNumber && /^\d{5}-\d{7}-\d$/.test(cnicNumber);
+    const nameValid = name && name.length >= 3 && /^[A-Za-z\s]+$/.test(name);
+    const dateFormat = /^\d{2}-\d{2}-\d{4}$/;
+    const datesValid = {
+        issue: !dateOfIssue || (dateFormat.test(dateOfIssue) && isValidDate(dateOfIssue)),
+        expiry: !dateOfExpiry || (dateFormat.test(dateOfExpiry) && isValidDate(dateOfExpiry))
+    };
+    return {
+        isValid: cnicValid && nameValid && datesValid.issue && datesValid.expiry,
+        cnicValid,
+        nameValid,
+        dates: datesValid
+    };
+}
+
+function isValidDate(dateStr) {
+    const [d, m, y] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return date.getDate() === d && date.getMonth() === m - 1 && date.getFullYear() === y;
+}
+
+export { testOcrExtraction };
+
+
+
+
+// utils/ocr.js
+import Tesseract from "tesseract.js";
+
+/**
+ * Extracts text from an image using OCR
+ * @param {string} imagePath - Local file path or image URL
+ * @param {string} lang - Language code (default: 'eng')
+ * @returns {Promise<string>} - Extracted text
+ */
+export async function extractTextFromImage(imagePath, lang = "eng") {
+  try {
+    const { data: { text } } = await Tesseract.recognize(imagePath, lang);
+    return text.trim();
+  } catch (error) {
+    console.error("OCR Error:", error);
+    throw new Error("Failed to extract text from image");
+  }
+}
+
+
+
