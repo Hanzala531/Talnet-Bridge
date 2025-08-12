@@ -1,0 +1,32 @@
+{
+  "name": "talent-bridge",
+  "version": "1.0.0",
+  "description": "This is basically a plattform designed that provides authentic learning material to student and solves the problem of talent hunting for industries ",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "test": "dev",
+    "dev": "nodemon -r dotenv/config --experimental-json-modules ./src/server.js"
+  },
+  "author": "hanzalaTahir",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.7.0",
+    "cookie-parser": "^1.4.7",
+    "cookieparser": "^0.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.0.1",
+    "ioredis": "^5.7.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.18.0",
+    "mongoose": "^8.17.1",
+    "multer": "^2.0.2",
+    "nodemon": "^3.1.10",
+    "rate-limit-redis": "^4.2.1",
+    "socket.io": "^4.8.1",
+    "stripe": "^18.4.0"
+  }
+}
