@@ -64,16 +64,27 @@ const swaggerUiOptions = {
   }
 };
 
-// Function to set up Swagger routes
 function setupSwagger(app) {
-  // Serve swagger.json
+  // Serve raw OpenAPI JSON
   app.get('/swagger.json', (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(swaggerSpec);
   });
 
-  // Serve Swagger UI
-  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
+  // Serve Swagger UI with assets correctly resolved
+  app.use(
+    '/docs',
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+      explorer: true,
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: 'Talent Bridge API Documentation',
+      swaggerOptions: {
+        url: '/swagger.json' // ✅ Direct single URL avoids relative asset path issues
+      }
+    })
+  );
 }
+
 
 export { swaggerSpec, swaggerUi, swaggerUiOptions, setupSwagger };
