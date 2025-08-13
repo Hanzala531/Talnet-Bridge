@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 import userRouter from "./routes/user.routes.js";
 import limiter from "./middlewares/rateLimit.middlewares.js";
 import swaggerUi from 'swagger-ui-express';
-import swaggerSpec from './swagger.js';
+import swaggerSpec from '../swagger.js';
 // Get directory name for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
