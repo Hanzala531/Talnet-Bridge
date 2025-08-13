@@ -7,8 +7,7 @@ import userRouter from "./routes/user.routes.js";
 import limiter from "./middlewares/rateLimit.middlewares.js";
 
 // Swagger imports
-import { swaggerSpec } from "../swagger.js";
-import swaggerUi from "swagger-ui-express";
+import { setupSwagger } from "../swagger.js";
 
 // Get directory name for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -57,25 +56,7 @@ app.use(express.static("public"));
 app.use(cookieparser());
 
 // ---------- Swagger Docs ---------- //
-// Serve OpenAPI JSON
-app.get('/swagger.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
-});
-
-// Serve Swagger UI (all assets from swagger-ui-express)
-app.use(
-  '/docs',
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec, {
-    explorer: true,
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'Talent Bridge API Documentation',
-    swaggerOptions: {
-      url: '/swagger.json', // Absolute path avoids asset issues
-    },
-  })
-);
+setupSwagger(app); // Adds /docs and /swagger.json routes
 
 // ---------- Routes ---------- //
 

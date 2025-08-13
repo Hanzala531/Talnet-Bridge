@@ -71,19 +71,35 @@ function setupSwagger(app) {
     res.send(swaggerSpec);
   });
 
-  // Serve Swagger UI with assets correctly resolved
-  app.use(
-    '/docs',
-    swaggerUi.serve,
-    swaggerUi.setup(swaggerSpec, {
-      explorer: true,
-      customCss: '.swagger-ui .topbar { display: none }',
-      customSiteTitle: 'Talent Bridge API Documentation',
-      swaggerOptions: {
-        url: '/swagger.json' // ✅ Direct single URL avoids relative asset path issues
-      }
-    })
-  );
+  // Serve CDN-based Swagger UI HTML to avoid asset issues on Vercel
+  app.get('/docs', (_req, res) => {
+    const html = `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Talent Bridge API Documentation</title>
+      <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css" />
+      <style>.swagger-ui .topbar { display: none }</style>
+    </head>
+    <body>
+      <div id="swagger-ui"></div>
+      <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+      <script>
+        window.onload = function () {
+          SwaggerUIBundle({
+            url: '/swagger.json',
+            dom_id: '#swagger-ui',
+            presets: [SwaggerUIBundle.presets.apis],
+            layout: 'BaseLayout',
+          });
+        };
+      </script>
+    </body>
+    </html>`;
+    res.setHeader('Content-Type', 'text/html');
+    res.status(200).send(html);
+  });
 }
 
 
