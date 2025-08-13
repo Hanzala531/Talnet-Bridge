@@ -51,6 +51,12 @@ app.use(cookieparser());
 // Swagger API docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Serve OpenAPI JSON for static Swagger UI or external tools
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
 // Add before export
 app.get('/', (req, res) => {
   res.status(200).json({
