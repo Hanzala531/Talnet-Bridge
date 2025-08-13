@@ -166,27 +166,7 @@ const studentSchema = new mongoose.Schema({
     certificates: [certificateSchema],
 
     // Educational Background
-    education: [{
-        institution: {
-            type: String,
-            required: true
-        },
-        degree: {
-            type: String,
-            required: true
-        },
-        fieldOfStudy: String,
-        grade: String,
-        startDate: {
-            type: Date,
-            required: true
-        },
-        endDate: Date,
-        isCurrentlyStudying: {
-            type: Boolean,
-            default: false
-        }
-    }],
+    education: [educationSchema],
 
     // Professional Preferences
     jobPreferences: {

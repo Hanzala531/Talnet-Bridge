@@ -1,5 +1,5 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { User } from "../models/User.models.js";
+import { User } from "../models/contents/User.models.js";
 import { badRequest, notFound, internalServer } from "../utils/ApiError.js";
 import { successResponse, createdResponse } from "../utils/ApiResponse.js";
 

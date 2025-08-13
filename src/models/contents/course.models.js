@@ -74,11 +74,54 @@ const courseSchema = new mongoose.Schema({
         }
     },
     
-    // Enrollment Information
-    enrollments:{
-        type : mongoose.Schema.Types.ObjectId,
-        ref : enrollments
-    }
+    // Training Provider Reference
+    trainingProvider: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "TrainingInstitute",
+        // required: true
+    },
+    
+    // // Course Category
+    // category: {
+    //     type: String,
+    //     required: true,
+    //     // enum: ["Technology", "Healthcare", "Business", "Arts", "Science", "Engineering", "Other"]
+    // },
+    
+    // Course Status
+    status: {
+        type: String,
+        enum: ["draft", "pending_approval", "approved", "rejected"],
+        default: "draft"
+    },
+    
+    // Enrollment Limits
+    maxEnrollments: {
+        type: Number,
+        default: 50
+    },
+    
+    currentEnrollments: {
+        type: Number,
+        default: 0
+    },
+    
+    // // Prerequisites
+    // prerequisites: [{
+    //     type: String,
+    //     trim: true
+    // }],
+    
+    // // Course Materials
+    // materials: [{
+    //     title: String,
+    //     type: {
+    //         type: String,
+    //         enum: ["video", "document", "quiz", "assignment"]
+    //     },
+    //     url: String,
+    //     duration: Number // in minutes
+    // }]
 
     // Timestamps
 }, {

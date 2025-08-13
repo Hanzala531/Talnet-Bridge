@@ -4,7 +4,9 @@ import cookieparser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import userRouter from "./routes/user.routes.js";
-import limiter from "./middlewares/rateLimit.middlewares.js"
+import limiter from "./middlewares/rateLimit.middlewares.js";
+import swaggerUi from 'swagger-ui-express';
+import swaggerSpec from './swagger.js';
 // Get directory name for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,6 +47,9 @@ app.use(
 app.use(express.static("public"));
 
 app.use(cookieparser());
+
+// Swagger API docs
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Add before export
 app.get('/', (req, res) => {
