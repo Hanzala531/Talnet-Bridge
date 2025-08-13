@@ -53,7 +53,19 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Add before export
 app.get('/', (req, res) => {
-  res.json({ message: 'Talent Bridge API is running!' });
+  res.status(200).json({
+    message: "Talent Bridge API is  running!",
+    success: true,
+    data: {
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      version: '1.0.0',
+      availableEndpoints: [
+        '/api/v1/users',
+        '/api/v1/api-docs'
+      ]
+    }
+  });
 });
 
 // Creating User Api 

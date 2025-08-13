@@ -19,13 +19,13 @@ const jobSchema = new mongoose.Schema(
     },
     employmentType: {
       type: String,
-      enum: ["Full-time", "Part-time", "Internship", "Contract"],
+      enum: ["Full-time", "Part-time", "Internship", "Contract" ],
       required: true,
     },
     salary: {
       min: { type: Number, default: 0 },
       max: { type: Number },
-      currency: { type: String, default: "PKR" },
+      currency: { type: String, default: "usd" },
     },
     jobDescription: {
       type: String,
@@ -38,12 +38,11 @@ const jobSchema = new mongoose.Schema(
         trim: true,
       },
     ],
-    benefits: [
+    benefits: 
       {
         type: String,
         trim: true,
       },
-    ],
     
     // Skills Required
     skillsRequired: [{
@@ -77,35 +76,11 @@ const jobSchema = new mongoose.Schema(
       required: true,
     },
     
-    // Application Tracking
-    applications: [{
-      applicant: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User"
-      },
-      appliedAt: {
-        type: Date,
-        default: Date.now
-      },
-      status: {
-        type: String,
-        enum: ["applied", "reviewed", "shortlisted", "interviewed", "hired", "rejected"],
-        default: "applied"
-      },
-      resumeUrl: String,
-      coverLetter: String
-    }],
-    
     // Job Status
     status: {
       type: String,
       enum: ["draft", "active", "paused", "closed", "filled"],
       default: "draft"
-    },
-    
-    // Application Deadline
-    applicationDeadline: {
-      type: Date
     },
     
     // Job Category
