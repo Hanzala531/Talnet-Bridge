@@ -71,7 +71,7 @@ const updateCourse = asyncHandler(async (req, res) => {
     res.status(200).json({ course, message: "Course updated successfully" });
 });
 
-// Update course status (admin)
+// Update course status
 const updateCourseStatus = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;

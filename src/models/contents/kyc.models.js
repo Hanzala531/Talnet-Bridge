@@ -171,11 +171,6 @@ const kycSchema = new mongoose.Schema({
     toObject: { virtuals: true }
 });
 
-// Indexes
-kycSchema.index({ userId: 1 });
-kycSchema.index({ verificationStatus: 1 });
-kycSchema.index({ 'personalInfo.cnicNumber': 1 });
-
 // Virtual for full name
 kycSchema.virtual('fullName').get(function() {
     return `${this.personalInfo.firstName} ${this.personalInfo.lastName}`;

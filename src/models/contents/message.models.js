@@ -112,10 +112,10 @@ const messageSchema = new mongoose.Schema({
 });
 
 // Indexes
-messageSchema.index({ "participants.user": 1 });
-messageSchema.index({ conversationType: 1 });
-messageSchema.index({ lastActivity: -1 });
-messageSchema.index({ "relatedEntity.entityType": 1, "relatedEntity.entityId": 1 });
+// messageSchema.index({ "participants.user": 1 });
+// messageSchema.index({ conversationType: 1 });
+// messageSchema.index({ lastActivity: -1 });
+// messageSchema.index({ "relatedEntity.entityType": 1, "relatedEntity.entityId": 1 });
 
 // Virtual for unread message count per user
 messageSchema.virtual('unreadCount').get(function() {

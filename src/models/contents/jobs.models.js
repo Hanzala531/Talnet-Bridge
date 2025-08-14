@@ -101,11 +101,5 @@ const jobSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Indexes for better performance
-jobSchema.index({ jobTitle: 1 });
-jobSchema.index({ category: 1 });
-jobSchema.index({ location: 1 });
-jobSchema.index({ status: 1 });
-jobSchema.index({ postedAt: -1 });
 
 export const Job = mongoose.model("Job", jobSchema);

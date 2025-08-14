@@ -128,9 +128,5 @@ const courseSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Indexes for optimized queries
-courseSchema.index({ title: 1 });
-courseSchema.index({ instructor: 1 });
-courseSchema.index({ language: 1 });
 
 export const Course = mongoose.model("Course", courseSchema);

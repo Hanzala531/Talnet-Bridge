@@ -66,9 +66,5 @@ const enrollmentSchema = new mongoose.Schema({
     timestamps: true 
 });
 
-// Compound indexes for efficient querying
-enrollmentSchema.index({ learner: 1, course: 1 }, { unique: true });
-enrollmentSchema.index({ status: 1 });
-enrollmentSchema.index({ enrollmentDate: -1 });
 
 export const Enrollment = mongoose.model("Enrollment", enrollmentSchema);

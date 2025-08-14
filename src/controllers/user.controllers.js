@@ -28,7 +28,7 @@ const generateAccessAndRefreshTokens = async (userid) => {
 // register user  
 const registerUser = asyncHandler(async (req, res) => {
   try {
-    const { fullName, email, phone, password } = req.body;
+    const { fullName, email, phone, role , password } = req.body;
 
     // Check for required fields
     if (!fullName || !email || !phone || !password) {
@@ -58,6 +58,7 @@ const registerUser = asyncHandler(async (req, res) => {
       fullName,
       email,
       phone,
+      role,
       password
     });
 
@@ -75,7 +76,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.log("Error in creating user", error);
-    throw new internalServer("Failed to register user");
+    throw  internalServer("Failed to register user");
   }
 });
 
@@ -98,7 +99,7 @@ const loginUser = asyncHandler(async (req, res) => {
     // Validate password
     const isPasswordValid = await user.isPasswordCorrect(password);
     if (!isPasswordValid) {
-      throw new badRequest("Invalid credentials");
+      throw  badRequest("Invalid credentials");
     }
 
     // Generate tokens
@@ -128,7 +129,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.log("Error in login user", error);
-    throw new internalServer("Failed to login");
+    throw  internalServer("Failed to login");
   }
 });
 
@@ -139,7 +140,7 @@ const logoutUser = asyncHandler(async (req, res) => {
         const userId = req.user?._id;
 
         if (!userId) {
-            throw new badRequest("User not found");
+            throw  badRequest("User not found");
         }
 
         // Remove refresh token from database
@@ -170,7 +171,7 @@ const logoutUser = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.log("Error in logout user", error);
-        throw new internalServer("Failed to logout");
+        throw  internalServer("Failed to logout");
     }
 });
 

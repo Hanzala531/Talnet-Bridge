@@ -211,10 +211,10 @@ const studentSchema = new mongoose.Schema({
     toObject: { virtuals: true }
 });
 
-// Indexes
-studentSchema.index({ "skills.name": 1 });
-studentSchema.index({ "location.city": 1, "location.country": 1 });
-studentSchema.index({ email: 1 });
+// 
+// studentSchema.index({ "skills.name": 1 });
+// studentSchema.index({ "location.city": 1, "location.country": 1 });
+// studentSchema.index({ email: 1 });
 
 // Virtuals
 studentSchema.virtual('fullName').get(function() {
@@ -233,4 +233,4 @@ studentSchema.pre('save', function(next) {
     next();
 });
 
-export const Student = mongoose.model("Student", studentSchema);
+export const Student = mongoose.model("Student", studentSchema);// Indexes

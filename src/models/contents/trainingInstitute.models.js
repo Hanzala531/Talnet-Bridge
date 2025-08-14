@@ -127,10 +127,5 @@ const instituteSchema = new mongoose.Schema({
     toObject: { virtuals: true }
 });
 
-// Indexes
-instituteSchema.index({ name: 1, location: 1 });
-instituteSchema.index({ 'accreditation.status': 1 });
-instituteSchema.index({ status: 1 });
-
 export const TrainingInstitute = mongoose.model("TrainingInstitute", instituteSchema);
 
