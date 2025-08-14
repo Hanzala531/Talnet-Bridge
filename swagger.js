@@ -29,6 +29,20 @@ const options = {
           : 'Development server'
       }
     ],
+    tags: [
+      {
+        name: 'Users',
+        description: 'User authentication and management endpoints'
+      },
+      {
+        name: 'Courses',
+        description: 'Course management and search endpoints'
+      },
+      {
+        name: 'Training Providers',
+        description: 'Training provider/school management endpoints'
+      }
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -60,7 +74,11 @@ const swaggerUiOptions = {
         url: '/swagger.json',
         name: 'Talent Bridge API'
       }
-    ]
+    ],
+    tagsSorter: (a, b) => {
+      const order = ["Users", "Courses", "Training Providers"];
+      return order.indexOf(a) - order.indexOf(b);
+    }
   }
 };
 
@@ -92,6 +110,15 @@ function setupSwagger(app) {
             dom_id: '#swagger-ui',
             presets: [SwaggerUIBundle.presets.apis],
             layout: 'BaseLayout',
+            tagsSorter: function(a, b) {
+              const order = ["Users", "Courses", "Training Providers"];
+              const indexA = order.indexOf(a);
+              const indexB = order.indexOf(b);
+              if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+              if (indexA === -1) return 1;
+              if (indexB === -1) return -1;
+              return indexA - indexB;
+            }
           });
         };
       </script>

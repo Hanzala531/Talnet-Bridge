@@ -4,6 +4,8 @@ import cookieparser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import userRouter from "./routes/user.routes.js";
+import courseRouter from "./routes/courses.routes.js";
+import schoolRouter from "./routes/school.routes.js";
 import limiter from "./middlewares/rateLimit.middlewares.js";
 
 // Swagger imports
@@ -71,6 +73,8 @@ app.get("/", (req, res) => {
       version: "1.0.0",
       availableEndpoints: [
         "/api/v1/users",
+        "/api/v1/courses",
+        "/api/v1/schools",
         "/docs", // Swagger UI
         "/swagger.json", // Raw OpenAPI spec
       ],
@@ -80,6 +84,12 @@ app.get("/", (req, res) => {
 
 // User routes
 app.use("/api/v1/users", userRouter);
+
+// Course routes
+app.use("/api/v1/courses", courseRouter);
+
+// Training provider/school routes
+app.use("/api/v1/schools", schoolRouter);
 
 // 404 handler
 app.use("*", (req, res) => {
