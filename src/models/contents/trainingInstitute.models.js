@@ -2,27 +2,11 @@ import mongoose from "mongoose";
 
 const instituteSchema = new mongoose.Schema({
     // Basic Information
-    name: { 
-        type: String,
-        required: true,
-        trim: true,
-        index: true,
-        maxLength: 100
-    },
-    email: {
-        type: String,
-        required: true,
-        trim: true,
-        lowercase: true,
-        index: true,
-        match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email']
-    },
-    contact: {
-        type: String,
-        required: true,
-        trim: true,
-        match: [/^\d{10,15}$/, 'Please enter a valid phone number']
-    },
+   userId:{
+    type: String,
+    required: true,
+    trim: true
+   },
     about: {
         type: String,
         required: true,
@@ -36,7 +20,6 @@ const instituteSchema = new mongoose.Schema({
     focusAreas: [{
         type: String,
         trim: true,
-        enum: ['Technology', 'Healthcare', 'Business', 'Arts', 'Science', 'Engineering', 'Other']
     }],
     
     // Location Information
@@ -115,11 +98,9 @@ const instituteSchema = new mongoose.Schema({
         default: 'active'
     },
     
-    // Social Links
-    socialLinks: {
-        website: String,
-        linkedin: String,
-        facebook: String
+    courses:{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Course"
     }
 }, {
     timestamps: true,

@@ -32,25 +32,25 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // Check for required fields
     if (!fullName || !email || !phone || !password) {
-      throw new badRequest("All fields are required");
+      throw  badRequest("All fields are required");
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      throw new badRequest("Invalid email format");
+      throw  badRequest("Invalid email format");
     }
 
     // Validate phone number 
     const phoneRegex = /^\d{10,15}$/;
     if (!phoneRegex.test(phone)) {
-      throw new badRequest("Invalid phone number format");
+      throw  badRequest("Invalid phone number format");
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      throw new badRequest("User with this email already exists");
+      throw  badRequest("User with this email already exists");
     }
 
     // Create new user
@@ -87,13 +87,13 @@ const loginUser = asyncHandler(async (req, res) => {
 
     // Check required fields
     if (!email || !password) {
-      throw new badRequest("Email and password are required");
+      throw  badRequest("Email and password are required");
     }
 
     // Find user and select password
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
-      throw new notFound("User not found");
+      throw  notFound("User not found");
     }
 
     // Validate password

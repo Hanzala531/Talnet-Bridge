@@ -5,8 +5,6 @@ export { TrainingInstitute } from './contents/trainingInstitute.models.js';
 export { Course } from './contents/course.models.js';
 export { Enrollment } from './contents/enrollments.models.js';
 export { Job } from './contents/jobs.models.js';
-export { KYC } from './contents/kyc.models.js';
 export { Subscription } from './contents/subscription.models.js';
-export { Accreditation } from './contents/accreditation.models.js';
 export { Message } from './contents/message.models.js';
 export { Notification } from './contents/notification.models.js';

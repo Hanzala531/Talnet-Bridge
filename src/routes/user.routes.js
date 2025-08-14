@@ -27,23 +27,32 @@ const userRouter = express.Router();
  *               - email
  *               - phone
  *               - password
+ *               - role
  *             properties:
  *               fullName:
  *                 type: string
+ *                 example: "test user"
  *               email:
  *                 type: string
+ *                 example: "test@example.com"
  *               phone:
  *                 type: string
+ *                 example: "03001234567"
+ *               role:
+ *                 type: string
+ *                 enum: ["student", "school", "employer"]
+ *                 example: "student"
  *               password:
  *                 type: string
+ *                 example: "SecurePass123!"
  *     responses:
  *       201:
  *         description: User registered successfully
  *       400:
  *         description: Bad request
  */
-userRouter.post('/register', requestLogger, registerUser);
 
+userRouter.post('/register', requestLogger, registerUser);
 /**
  * @swagger
  * /api/v1/users/login:
@@ -62,8 +71,10 @@ userRouter.post('/register', requestLogger, registerUser);
  *             properties:
  *               email:
  *                 type: string
+ *                 example: "hanzala@example.com"
  *               password:
  *                 type: string
+ *                 example: "SecurePass123!"
  *     responses:
  *       200:
  *         description: User logged in successfully
@@ -86,6 +97,8 @@ userRouter.post('/login', requestLogger, loginUser);
  *       401:
  *         description: Unauthorized
  */
+
+
 userRouter.post('/logout', requestLogger, verifyJWT, logoutUser);
 
 

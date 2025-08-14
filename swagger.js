@@ -22,7 +22,7 @@ const options = {
     servers: [
       {
         url: process.env.NODE_ENV === 'production'
-          ? 'https://your-vercel-app.vercel.app' // Change to your Vercel deployment URL
+          ? 'https://talnet-bridge.vercel.app/' // Change to your Vercel deployment URL
           : 'http://localhost:4000',
         description: process.env.NODE_ENV === 'production'
           ? 'Production server'
