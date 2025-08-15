@@ -5,7 +5,11 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "test": "dev",
+    "test": "node tests/runTests.js",
+    "test:auth": "node tests/runTests.js auth",
+    "test:subscription": "node tests/runTests.js subscription",
+    "test:courses": "node tests/runTests.js course",
+    "test:schools": "node tests/runTests.js school",
     "dev": "nodemon -r dotenv/config --experimental-json-modules ./src/server.js"
   },
   "author": "hanzalaTahir",

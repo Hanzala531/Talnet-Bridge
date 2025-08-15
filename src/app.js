@@ -6,6 +6,10 @@ import { fileURLToPath } from "url";
 import userRouter from "./routes/user.routes.js";
 import courseRouter from "./routes/courses.routes.js";
 import schoolRouter from "./routes/school.routes.js";
+import subscriptionRouter from "./routes/subscription.routes.js";
+import paymentRouter from "./routes/payment.routes.js";
+import webhookRouter from "./routes/webhook.routes.js";
+import notificationRouter from "./routes/notification.routes.js";
 import limiter from "./middlewares/rateLimit.middlewares.js";
 
 // Swagger imports
@@ -75,6 +79,10 @@ app.get("/", (req, res) => {
         "/api/v1/users",
         "/api/v1/courses",
         "/api/v1/schools",
+        "/api/v1/subscriptions",
+        "/api/v1/payments",
+        "/api/v1/webhooks",
+        "/api/v1/notifications",
         "/docs", // Swagger UI
         "/swagger.json", // Raw OpenAPI spec
       ],
@@ -90,6 +98,18 @@ app.use("/api/v1/courses", courseRouter);
 
 // Training provider/school routes
 app.use("/api/v1/schools", schoolRouter);
+
+// Subscription routes
+app.use("/api/v1/subscriptions", subscriptionRouter);
+
+// Payment routes
+app.use("/api/v1/payments", paymentRouter);
+
+// Webhook routes (Note: /webhooks/stripe should be before other middleware for raw body parsing)
+app.use("/api/v1/webhooks", webhookRouter);
+
+// Notification routes
+app.use("/api/v1/notifications", notificationRouter);
 
 // 404 handler
 app.use("*", (req, res) => {

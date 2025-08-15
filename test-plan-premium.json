@@ -1,0 +1,16 @@
+{
+  "name": "premium",
+  "displayName": "Premium Plan",
+  "description": "Advanced features for growing training institutes",
+  "price": 49.99,
+  "billingCycle": "monthly", 
+  "features": {
+    "maxCourses": 25,
+    "maxStudents": 250,
+    "supportLevel": "priority",
+    "analyticsAccess": true,
+    "customBranding": true
+  },
+  "stripePriceId": "price_1DEF456newPremium",
+  "stripeProductId": "prod_GHI789newPremium"
+}

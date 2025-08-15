@@ -41,6 +41,26 @@ const options = {
       {
         name: 'Training Providers',
         description: 'Training provider/school management endpoints'
+      },
+      {
+        name: 'Subscription Plans',
+        description: 'Subscription plan management endpoints'
+      },
+      {
+        name: 'Subscriptions',
+        description: 'User subscription management endpoints'
+      },
+      {
+        name: 'Payments',
+        description: 'Payment processing endpoints'
+      },
+      {
+        name: 'Webhooks',
+        description: 'Webhook handling endpoints'
+      },
+      {
+        name: 'Notifications',
+        description: 'User notification management endpoints'
       }
     ],
     components: {
@@ -111,7 +131,7 @@ function setupSwagger(app) {
             presets: [SwaggerUIBundle.presets.apis],
             layout: 'BaseLayout',
             tagsSorter: function(a, b) {
-              const order = ["Users", "Courses", "Training Providers"];
+              const order = ["Users", "Courses", "Training Providers", "Subscription Plans", "Subscriptions", "Payments", "Webhooks", "Notifications"];
               const indexA = order.indexOf(a);
               const indexB = order.indexOf(b);
               if (indexA === -1 && indexB === -1) return a.localeCompare(b);

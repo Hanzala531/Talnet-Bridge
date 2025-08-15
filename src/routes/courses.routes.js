@@ -12,6 +12,7 @@ import {
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
 import { authorizeRoles } from '../middlewares/Role.middlewares.js';
+import { requireActiveSubscription, checkCourseLimit } from '../middlewares/subscription.middlewares.js';
 
 const courseRouter = express.Router();
 
@@ -196,7 +197,7 @@ courseRouter.get('/:id', requestLogger, getCoursesById);
  *       403:
  *         description: Forbidden - Only training providers can create courses
  */
-courseRouter.post('/', requestLogger, verifyJWT, authorizeRoles('school'), createCourse);
+courseRouter.post('/', requestLogger, verifyJWT, authorizeRoles('school'), requireActiveSubscription, checkCourseLimit, createCourse);
 
 /**
  * @swagger
@@ -255,7 +256,7 @@ courseRouter.post('/', requestLogger, verifyJWT, authorizeRoles('school'), creat
  *       403:
  *         description: Forbidden - Can only update own courses
  */
-courseRouter.put('/:id', requestLogger, verifyJWT, authorizeRoles('school'), updateCourse);
+courseRouter.put('/:id', requestLogger, verifyJWT, authorizeRoles('school'), requireActiveSubscription, updateCourse);
 
 /**
  * @swagger
