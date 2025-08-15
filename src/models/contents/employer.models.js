@@ -20,6 +20,11 @@ const employerSchema = new mongoose.Schema({
         type : String,
         required : true,
         trim: true
+    },
+    websiteLink:{
+        type : String,
+        required : true,
+        trim : true
     }
 },
 {

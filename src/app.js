@@ -11,7 +11,8 @@ import paymentRouter from "./routes/payment.routes.js";
 import webhookRouter from "./routes/webhook.routes.js";
 import notificationRouter from "./routes/notification.routes.js";
 import limiter from "./middlewares/rateLimit.middlewares.js";
-
+import employerRouter from "./routes/employer.controllers.js";
+import jobsRouter from "./routes/jobs.routes.js";
 // Swagger imports
 import { setupSwagger } from "../swagger.js";
 
@@ -98,6 +99,12 @@ app.use("/api/v1/courses", courseRouter);
 
 // Training provider/school routes
 app.use("/api/v1/schools", schoolRouter);
+
+// company routes
+app.use("/api/v1/employer", employerRouter);
+
+// jobs routes
+app.use("/api/v1/jobs", jobsRouter);
 
 // Subscription routes
 app.use("/api/v1/subscriptions", subscriptionRouter);

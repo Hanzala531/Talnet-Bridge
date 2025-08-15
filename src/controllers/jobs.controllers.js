@@ -1,81 +1,106 @@
 import { Job } from "../models/index.js";
-import {asyncHandler} from "../utils/asyncHandler.js"
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { badRequest, notFound, internalServer, forbidden } from "../utils/ApiError.js";
+import { successResponse, createdResponse, badRequestResponse } from "../utils/ApiResponse.js";
 
 
-// #add appropriate errors in catch block
-
-// get all jobs
-// get a job by id 
-// create a job
-// update a job
-// contact with school for employer if candidate is getting selected # not for now 
-// delete job post
 
 
 // Get all job posts
 const getAllJobs = asyncHandler(async (req, res) => {
-    const jobs = await Job.find();
-    if (!jobs || jobs.length === 0) {
-        return res.status(404).json({ message: "No jobs found" });
+    try {
+        const jobs = await Job.find().populate({
+            path: 'postedBy',
+            select: 'fullName email role'
+        });
+        if (!jobs || jobs.length === 0) {
+            throw notFound("No jobs found.");
+        }
+        return res.status(200).json(successResponse(jobs, "Jobs fetched successfully."));
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(badRequestResponse(error.message));
     }
-    res.status(200).json({ jobs });
 });
 
 // Get a job by ID
 const getJobById = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const job = await Job.findById(id);
-    if (!job) {
-        return res.status(404).json({ message: "Job not found" });
+    try {
+        const { id } = req.params;
+        if (!id) throw badRequest("Job ID is required.");
+        const job = await Job.findById(id).populate({
+            path: 'postedBy',
+            select: 'fullName email role'
+        });
+        if (!job) throw notFound("Job not found.");
+        return res.status(200).json(successResponse(job, "Job fetched successfully."));
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(badRequestResponse(error.message));
     }
-    res.status(200).json({ job });
 });
 
 // Create a job post
 const createJobPost = asyncHandler(async (req, res) => {
-    const { jobTitle, department, location, employmentType, salary, jobDescription, skillsRequired, benefits, category, applicationDeadline } = req.body;
-    const postedBy = req.user?._id;
-    if (!jobTitle || !department || !location || !employmentType || !jobDescription || !category) {
-        return res.status(400).json({ message: "Missing required fields" });
+    try {
+        const { jobTitle, department, location, employmentType, salary, jobDescription, skillsRequired, benefits, category, applicationDeadline } = req.body;
+        const postedBy = req.user?._id;
+        if (!jobTitle || !department || !location || !employmentType || !jobDescription || !category) {
+            throw badRequest("Missing required fields: jobTitle, department, location, employmentType, jobDescription, category");
+        }
+        const job = await Job.create({
+            jobTitle,
+            department,
+            location,
+            employmentType,
+            salary,
+            jobDescription,
+            skillsRequired,
+            benefits,
+            postedBy,
+            category,
+            applicationDeadline
+        });
+        if (!job) throw internalServer("Failed to create job");
+        return res.status(201).json(createdResponse(job, "Job created successfully."));
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(badRequestResponse(error.message));
     }
-    const job = await Job.create({
-        jobTitle,
-        department,
-        location,
-        employmentType,
-        salary,
-        jobDescription,
-        skillsRequired,
-        benefits,
-        postedBy,
-        category,
-        applicationDeadline
-    });
-    if (!job) {
-        return res.status(500).json({ message: "Failed to create job" });
-    }
-    res.status(201).json({ job, message: "Job created successfully" });
 });
 
 // Update job post
 const updateJobPost = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const updates = req.body;
-    const job = await Job.findByIdAndUpdate(id, updates, { new: true });
-    if (!job) {
-        return res.status(404).json({ message: "Job not found or update failed" });
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        if (!id) throw badRequest("Job ID is required.");
+        const job = await Job.findById(id);
+        if (!job) throw notFound("Job not found.");
+        // Only allow the user who posted the job to update
+        if (job.postedBy.toString() !== req.user._id.toString()) {
+            throw forbidden("You are not authorized to update this job post.");
+        }
+        const updated = await Job.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
+        return res.status(200).json(successResponse(updated, "Job updated successfully."));
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(badRequestResponse(error.message));
     }
-    res.status(200).json({ job, message: "Job updated successfully" });
 });
 
 // Delete job post
 const deleteJobPost = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const job = await Job.findByIdAndDelete(id);
-    if (!job) {
-        return res.status(404).json({ message: "Job not found or already deleted" });
+    try {
+        const { id } = req.params;
+        if (!id) throw badRequest("Job ID is required.");
+        const job = await Job.findById(id);
+        if (!job) throw notFound("Job not found or already deleted.");
+        // Only allow the user who posted the job to delete
+        if (job.postedBy.toString() !== req.user._id.toString()) {
+            throw forbidden("You are not authorized to delete this job post.");
+        }
+        await Job.findByIdAndDelete(id);
+        return res.status(200).json(successResponse(null, "Job deleted successfully."));
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(badRequestResponse(error.message));
     }
-    res.status(200).json({ message: "Job deleted successfully" });
 });
 
 export { getAllJobs, getJobById, createJobPost, updateJobPost, deleteJobPost };

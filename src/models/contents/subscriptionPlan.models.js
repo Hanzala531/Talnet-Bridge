@@ -70,7 +70,7 @@ const subscriptionPlanSchema = new mongoose.Schema({
 });
 
 // Indexes
-subscriptionPlanSchema.index({ name: 1 });
+// subscriptionPlanSchema.index({ name: 1 });
 subscriptionPlanSchema.index({ isActive: 1 });
 subscriptionPlanSchema.index({ sortOrder: 1 });
 
