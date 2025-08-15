@@ -9,3 +9,4 @@ export { Subscription } from './contents/subscription.models.js';
 export { SubscriptionPlan } from './contents/subscriptionPlan.models.js';
 export { Message } from './contents/message.models.js';
 export { Notification } from './contents/notification.models.js';
+export { Employer } from './contents/employer.models.js'
