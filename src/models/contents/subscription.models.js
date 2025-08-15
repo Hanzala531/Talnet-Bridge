@@ -8,26 +8,10 @@ const subscriptionSchema = new mongoose.Schema({
     },
     
     // Subscription Plan
-    plan: {
-        name: {
-            type: String,
-            required: true,
-            enum: ["basic", "premium", "enterprise"]
-        },
-        price: {
-            type: Number,
-            required: true,
-            min: 0
-        },
-        currency: {
-            type: String,
-            default: "PKR"
-        },
-        billingCycle: {
-            type: String,
-            enum: ["monthly", "quarterly", "yearly"],
-            required: true
-        }
+    planId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "SubscriptionPlan",
+        required: true
     },
     
     // Subscription Status
@@ -80,47 +64,6 @@ const subscriptionSchema = new mongoose.Schema({
             default: "pending"
         }
     }],
-    
-    // Features Access
-    features: {
-        maxCourses: {
-            type: Number,
-            default: 50
-        },
-        maxStudents: {
-            type: Number,
-            default: 100
-        },
-        analyticsAccess: {
-            type: Boolean,
-            default: false
-        },
-        prioritySupport: {
-            type: Boolean,
-            default: false
-        },
-        customBranding: {
-            type: Boolean,
-            default: false
-        },
-        apiAccess: {
-            type: Boolean,
-            default: false
-        }
-    },
-    
-    // Usage Tracking
-    usage: {
-        coursesCreated: {
-            type: Number,
-            default: 0
-        },
-        studentsEnrolled: {
-            type: Number,
-            default: 0
-        },
-        lastActivity: Date
-    },
     
     // Cancellation Information
     cancellation: {

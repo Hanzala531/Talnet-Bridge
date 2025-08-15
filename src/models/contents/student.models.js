@@ -73,29 +73,6 @@ const educationSchema = new mongoose.Schema({
     }
 });
 
-const kycDocumentSchema = new mongoose.Schema({
-    docType: {
-        type: String,
-        required: true,
-        enum: ['CNIC', 'studentId', 'transcript', 'degree', 'other']
-    },
-    docUrl: {
-        type: String,
-        required: true
-    },
-    status: { 
-        type: String, 
-        enum: ["pending", "approved", "rejected"], 
-        default: "pending" 
-    },
-    verifiedAt: Date,
-    verifiedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User"
-    },
-    rejectionReason: String
-});
-
 const studentSchema = new mongoose.Schema({
     // Basic Profile
     userId: {
@@ -131,18 +108,6 @@ const studentSchema = new mongoose.Schema({
         uploadedAt: Date
     },
 
-    // Contact Information
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        lowercase: true
-    },
-    phone: {
-        type: String,
-        required: true,
-        match: [/^\d{10,15}$/, 'Please enter a valid phone number']
-    },
     location: {
         city: String,
         country: String

@@ -98,10 +98,10 @@ const instituteSchema = new mongoose.Schema({
         default: 'active'
     },
     
-    courses:{
+    courses:[{
     type: mongoose.Schema.Types.ObjectId,
     ref: "Course"
-    }
+    }]
 }, {
     timestamps: true,
     toJSON: { virtuals: true },
