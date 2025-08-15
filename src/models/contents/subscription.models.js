@@ -81,11 +81,34 @@ const subscriptionSchema = new mongoose.Schema({
         }
     }],
     
-    // features
-    features:{
-        type:String,
+    // Features Access
+    features: {
+        maxCourses: {
+            type: Number,
+            default: 50
+        },
+        maxStudents: {
+            type: Number,
+            default: 100
+        },
+        analyticsAccess: {
+            type: Boolean,
+            default: false
+        },
+        prioritySupport: {
+            type: Boolean,
+            default: false
+        },
+        customBranding: {
+            type: Boolean,
+            default: false
+        },
+        apiAccess: {
+            type: Boolean,
+            default: false
+        }
     },
-
+    
     // Usage Tracking
     usage: {
         coursesCreated: {

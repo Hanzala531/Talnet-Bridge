@@ -1,223 +1,312 @@
 import { Course } from "../models/index.js";
-import {asyncHandler} from "../utils/asyncHandler.js"
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { badRequest, notFound, internalServer } from "../utils/ApiError.js";
+import { successResponse, createdResponse, badRequestResponse } from "../utils/ApiResponse.js";
 
-
-
-// first of all get all courses controller
-// get a course by id 
-// search courses 
-// create a course controller
-// update a course controller
-//  update course status controller
-//  delete courses 
-// further controllers if required 
-// export all the controllers
-
-// --- Complete CRUD Controllers for Courses ---
-
-// Get all courses
+// ===============================
+// GET ALL COURSES
+// ===============================
 const getCourses = asyncHandler(async (req, res) => {
+  try {
     const { page = 1, limit = 10, category } = req.query;
-    
     const filter = {};
+
     if (category) {
-        filter.category = { $regex: category, $options: 'i' };
+      filter.category = { $regex: category, $options: "i" };
     }
 
     const skip = (page - 1) * limit;
     const courses = await Course.find(filter)
-        .skip(skip)
-        .limit(Number(limit))
-        .sort({ createdAt: -1 });
+      .populate("trainingProvider", "name email") // Populate provider info
+      .skip(skip)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 });
 
-    if (!courses || courses.length === 0) {
-        return res.status(404).json({ message: "No courses found" });
+    if (!courses.length) {
+      throw notFound("No courses found");
     }
 
     const total = await Course.countDocuments(filter);
 
-    res.status(200).json({ 
-        courses,
-        pagination: {
+    return res.status(200).json(
+      successResponse(
+        {
+          courses,
+          pagination: {
             page: Number(page),
             limit: Number(limit),
             total,
-            pages: Math.ceil(total / limit)
-        }
-    });
+            pages: Math.ceil(total / limit),
+          },
+        },
+        "Courses fetched successfully"
+      )
+    );
+  } catch (error) {
+    console.error("Get courses error:", error);
+    throw internalServer("Failed to fetch courses");
+  }
 });
 
-// Get course by ID
+// ===============================
+// GET COURSE BY ID
+// ===============================
 const getCoursesById = asyncHandler(async (req, res) => {
+  try {
     const { id } = req.params;
-    const course = await Course.findById(id);
+    const course = await Course.findById(id).populate("trainingProvider", "name email");
+
     if (!course) {
-        return res.status(404).json({ message: "Course not found" });
+      throw notFound("Course not found");
     }
-    res.status(200).json({ course });
+
+    return res.status(200).json(successResponse({ course }, "Course fetched successfully"));
+  } catch (error) {
+    console.error("Get course by ID error:", error);
+    throw internalServer("Failed to fetch course");
+  }
 });
 
-// Create a course
+// ===============================
+// CREATE COURSE
+// ===============================
 const createCourse = asyncHandler(async (req, res) => {
-    const { title, instructor, duration, price, language, type, description, objectives, skills, category } = req.body;
+  try {
+    const { title, instructor, duration, price, language, type, description, objectives, skills, category, maxEnrollments } = req.body;
     const trainingProvider = req.user?._id;
-    if (!title || !instructor || !duration || !price || !language || !type || !description || !objectives || !skills || !category) {
-        return res.status(400).json({ message: "Missing required fields" });
+
+    // Schema-level validations already exist, but we also check at controller-level for clarity
+    if (!title || !instructor || !duration || price == null || !language || !type || !description || !objectives?.length || !skills?.length || !category) {
+      throw badRequest("All required fields must be provided");
     }
-    const course = await Course.create({
-        title,
-        instructor,
-        duration,
-        price,
-        language,
-        type,
-        description,
-        objectives,
-        skills,
-        trainingProvider,
-        category
-    });
-    if (!course) {
-        return res.status(500).json({ message: "Failed to create course" });
-    }
-    res.status(201).json({ course, message: "Course created successfully" });
+// Checking if the course already exists
+const existingCourses = await Course.findOne({
+    trainingProvider,
+    title,
+    instructor
 });
 
-// Update course
+if (existingCourses) {
+  return res.status(409).json({
+    success: false,
+    status: 409,
+    message: "Course already exists"
+  });
+}
+
+
+    const course = await Course.create({
+      title,
+      instructor,
+      duration,
+      price,
+      language,
+      type,
+      description,
+      objectives,
+      skills,
+      category,
+      trainingProvider,
+      maxEnrollments: maxEnrollments ?? 50,
+    });
+
+    return res.status(201).json(createdResponse({ course }, "Course created successfully"));
+  } catch (error) {
+    console.error("Create course error:", error);
+    throw internalServer("Failed to create course");
+  }
+});
+
+// ===============================
+// UPDATE COURSE
+// ===============================
 const updateCourse = asyncHandler(async (req, res) => {
+  try {
     const { id } = req.params;
     const updates = req.body;
     const userId = req.user._id;
 
-    // First check if course exists and belongs to the user
     const existingCourse = await Course.findById(id);
     if (!existingCourse) {
-        return res.status(404).json({ message: "Course not found" });
+      throw notFound("Course not found");
     }
 
-    // Check if the user owns this course
-    if (existingCourse.trainingProvider.toString() !== userId.toString()) {
-        return res.status(403).json({ message: "You can only update your own courses" });
+    if (existingCourse.trainingProvider?.toString() !== userId.toString()) {
+      throw badRequest("You can only update your own courses");
     }
 
-    const course = await Course.findByIdAndUpdate(id, updates, { new: true });
+    const course = await Course.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
     if (!course) {
-        return res.status(404).json({ message: "Course not found or update failed" });
+      throw notFound("Course update failed");
     }
-    res.status(200).json({ course, message: "Course updated successfully" });
+
+    return res.status(200).json(successResponse({ course }, "Course updated successfully"));
+  } catch (error) {
+    console.error("Update course error:", error);
+    throw internalServer("Failed to update course");
+  }
 });
 
-// Update course status
+// ===============================
+// UPDATE COURSE STATUS (ADMIN)
+// ===============================
 const updateCourseStatus = asyncHandler(async (req, res) => {
+  try {
     const { id } = req.params;
     const { status } = req.body;
-    
-    // Check if user is admin (this should be handled by middleware, but double-check)
-    if (req.user?.role !== 'admin') {
-        return res.status(403).json({ message: "Only admin can update course status" });
+
+    if (req.user?.role !== "admin") {
+      throw badRequest("Only admin can update course status");
     }
-    
-    const validStatuses = ["draft", "pending_approval", "approved", "rejected", "archived"];
+
+    const validStatuses = ["draft", "pending_approval", "approved", "rejected"];
     if (!validStatuses.includes(status)) {
-        return res.status(400).json({ message: "Invalid status value" });
+      throw badRequest("Invalid status value");
     }
-    
+
     const course = await Course.findByIdAndUpdate(id, { status }, { new: true });
     if (!course) {
-        return res.status(404).json({ message: "Course not found or update failed" });
+      throw notFound("Course not found or update failed");
     }
-    res.status(200).json({ course, message: "Course status updated successfully" });
+
+    return res.status(200).json(successResponse({ course }, "Course status updated successfully"));
+  } catch (error) {
+    console.error("Update course status error:", error);
+    throw internalServer("Failed to update course status");
+  }
 });
 
-// Delete a course
+// ===============================
+// DELETE COURSE (ADMIN)
+// ===============================
 const deleteCourseById = asyncHandler(async (req, res) => {
+  try {
+    if (req.user?.role !== "admin") {
+      throw badRequest("Only admin can delete courses");
+    }
+
     const { id } = req.params;
-    
-    // Check if user is admin (this should be handled by middleware, but double-check)
-    if (req.user?.role !== 'admin') {
-        return res.status(403).json({ message: "Only admin can delete courses" });
-    }
-    
     const course = await Course.findByIdAndDelete(id);
+
     if (!course) {
-        return res.status(404).json({ message: "Course not found or already deleted" });
+      throw notFound("Course not found or already deleted");
     }
-    res.status(200).json({ message: "Course deleted successfully" });
+
+    return res.status(200).json(successResponse(null, "Course deleted successfully"));
+  } catch (error) {
+    console.error("Delete course error:", error);
+    throw internalServer("Failed to delete course");
+  }
 });
 
-// Search courses
+// ===============================
+// SEARCH COURSES (category, title, instructor)
+// ===============================
 const searchCourses = asyncHandler(async (req, res) => {
-    const { q, category, priceMin, priceMax, page = 1, limit = 10 } = req.query;
-    
-    if (!q) {
-        return res.status(400).json({ message: "Search query is required" });
-    }
+  try {
+    const { q, title, category, location, page = 1, limit = 10 } = req.query;
 
-    const searchFilter = {
-        $or: [
-            { title: { $regex: q, $options: 'i' } },
-            { instructor: { $regex: q, $options: 'i' } },
-            { description: { $regex: q, $options: 'i' } },
-            { category: { $regex: q, $options: 'i' } }
-        ]
-    };
+    const searchFilter = {};
 
-    // Add additional filters
-    if (category) {
-        searchFilter.category = { $regex: category, $options: 'i' };
-    }
-
-    if (priceMin || priceMax) {
-        searchFilter.price = {};
-        if (priceMin) searchFilter.price.$gte = Number(priceMin);
-        if (priceMax) searchFilter.price.$lte = Number(priceMax);
+    if (q) {
+      // Broad search when `q` is present
+      searchFilter.$or = [
+        { title: { $regex: q, $options: "i" } },
+        { instructor: { $regex: q, $options: "i" } },
+        { category: { $regex: q, $options: "i" } },
+        { location: { $regex: q, $options: "i" } }
+      ];
+    } else {
+      // Specific filtering when `q` is NOT passed
+      if (title) {
+        searchFilter.title = { $regex: title, $options: "i" };
+      }
+      if (category) {
+        searchFilter.category = { $regex: category, $options: "i" };
+      }
+      if (location) {
+        searchFilter.location = { $regex: location, $options: "i" };
+      }
     }
 
     const skip = (page - 1) * limit;
+
     const courses = await Course.find(searchFilter)
-        .skip(skip)
-        .limit(Number(limit))
-        .sort({ createdAt: -1 });
+      .populate("trainingProvider", "name email")
+      .skip(skip)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 });
 
     const total = await Course.countDocuments(searchFilter);
 
-    res.status(200).json({ 
-        courses,
-        pagination: {
+    return res.status(200).json(
+      successResponse(
+        {
+          courses,
+          pagination: {
             page: Number(page),
             limit: Number(limit),
             total,
-            pages: Math.ceil(total / limit)
-        }
-    });
+            pages: Math.ceil(total / limit),
+          },
+        },
+        "Search results fetched successfully"
+      )
+    );
+  } catch (error) {
+    console.error("Search courses error:", error);
+    throw internalServer("Failed to search courses");
+  }
 });
 
-// Get courses by training provider
+
+// ===============================
+// GET COURSES BY PROVIDER
+// ===============================
 const getCoursesByProvider = asyncHandler(async (req, res) => {
+  try {
     const { providerId } = req.params;
     const { page = 1, limit = 10 } = req.query;
 
     const skip = (page - 1) * limit;
     const courses = await Course.find({ trainingProvider: providerId })
-        .skip(skip)
-        .limit(Number(limit))
-        .sort({ createdAt: -1 });
+      .skip(skip)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 });
 
-    if (!courses || courses.length === 0) {
-        return res.status(404).json({ message: "No courses found for this provider" });
+    if (!courses.length) {
+      throw notFound("No courses found for this provider");
     }
 
     const total = await Course.countDocuments({ trainingProvider: providerId });
 
-    res.status(200).json({ 
-        courses,
-        pagination: {
+    return res.status(200).json(
+      successResponse(
+        {
+          courses,
+          pagination: {
             page: Number(page),
             limit: Number(limit),
             total,
-            pages: Math.ceil(total / limit)
-        }
-    });
+            pages: Math.ceil(total / limit),
+          },
+        },
+        "Courses by provider fetched successfully"
+      )
+    );
+  } catch (error) {
+    console.error("Get courses by provider error:", error);
+    throw internalServer("Failed to fetch courses by provider");
+  }
 });
 
-export { getCourses, getCoursesById, createCourse, updateCourse, updateCourseStatus, deleteCourseById, searchCourses, getCoursesByProvider };
+export {
+  getCourses,
+  getCoursesById,
+  createCourse,
+  updateCourse,
+  updateCourseStatus,
+  deleteCourseById,
+  searchCourses,
+  getCoursesByProvider,
+};

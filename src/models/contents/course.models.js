@@ -40,7 +40,7 @@ const courseSchema = new mongoose.Schema({
     type: {
         type: String,
         required: true,
-        enum: ["Online", "Offline", "Hybrid"]
+        enum: [ "oncampus", "hybrid"]
     },
 
     // Course Objectives
@@ -78,8 +78,13 @@ const courseSchema = new mongoose.Schema({
     trainingProvider: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "TrainingInstitute",
-    },
-    
+    }, 
+
+    // category
+    category:{
+        type:String,
+        required:true
+    },    
     
     // Course Status
     status: {

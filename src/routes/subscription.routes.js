@@ -398,7 +398,7 @@ subscriptionRouter.post('/cancel', requestLogger, verifyJWT, cancelSubscription)
  *       404:
  *         description: No active subscription found
  */
-subscriptionRouter.get('/stats', requestLogger, verifyJWT, authorizeRoles('school'), getSubscriptionStats);
+subscriptionRouter.get('/stats', requestLogger, verifyJWT, getSubscriptionStats);
 
 // ===========================================
 // PAYMENT ROUTES
