@@ -15,18 +15,47 @@ const getCourses = asyncHandler(async (req, res) => {
       filter.category = { $regex: category, $options: "i" };
     }
 
-    const skip = (page - 1) * limit;
-    const courses = await Course.find(filter)
-      .populate("trainingProvider", "name email") // Populate provider info
-      .skip(skip)
-      .limit(Number(limit))
-      .sort({ createdAt: -1 });
+    const skip = (page - 1) * Math.min(limit, 100);
+    const limitNum = Math.min(Number(limit), 100);
+
+    // Use aggregation for better performance instead of populate
+    const pipeline = [
+      { $match: filter },
+      {
+        $lookup: {
+          from: "traininginstitutes",
+          localField: "trainingProvider",
+          foreignField: "_id",
+          as: "provider",
+          pipeline: [{ $project: { name: 1, email: 1 } }]
+        }
+      },
+      {
+        $project: {
+          title: 1,
+          instructor: 1,
+          duration: 1,
+          price: 1,
+          category: 1,
+          status: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          trainingProvider: { $arrayElemAt: ["$provider", 0] }
+        }
+      },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limitNum }
+    ];
+
+    const [courses, total] = await Promise.all([
+      Course.aggregate(pipeline),
+      Course.countDocuments(filter)
+    ]);
 
     if (!courses.length) {
       throw notFound("No courses found");
     }
-
-    const total = await Course.countDocuments(filter);
 
     return res.status(200).json(
       successResponse(
@@ -34,9 +63,9 @@ const getCourses = asyncHandler(async (req, res) => {
           courses,
           pagination: {
             page: Number(page),
-            limit: Number(limit),
+            limit: limitNum,
             total,
-            pages: Math.ceil(total / limit),
+            pages: Math.ceil(total / limitNum),
           },
         },
         "Courses fetched successfully"

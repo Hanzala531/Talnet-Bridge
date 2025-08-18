@@ -16,26 +16,28 @@ const kycSchema = new mongoose.Schema({
         docUrl: {
             type: String,
             required: true
-        },
-        status: {
-            type: String,
-            enum: ["pending", "approved", "rejected"],
-            default: "pending"
-        },
-        verifiedAt: Date,
-        verifiedBy: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User"
-        },
-        rejectionReason: String
+        }
     }],
     status: {
         type: String,
         enum: ["pending", "verified", "rejected"],
         default: "pending"
-    }
+    },
+    verifiedAt: Date,
+    verifiedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+    },
+    rejectionReason: String
 }, {
     timestamps: true
 });
+
+// ===== Indexes for Performance =====
+// Note: userId already has unique: true
+kycSchema.index({ status: 1 });
+kycSchema.index({ verifiedBy: 1 });
+kycSchema.index({ createdAt: -1 });
+kycSchema.index({ status: 1, createdAt: -1 }); // Compound for admin filtering
 
 export const KYC = mongoose.model("KYC", kycSchema);

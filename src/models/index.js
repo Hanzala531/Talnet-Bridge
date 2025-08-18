@@ -1,6 +1,6 @@
 // Export all models
 export { User } from './contents/User.models.js';
-export { Student } from './contents/student.models.js';
+export { Student } from './student models/students.models.js';
 export { TrainingInstitute } from './contents/trainingInstitute.models.js';
 export { Course } from './contents/course.models.js';
 export { Enrollment } from './contents/enrollments.models.js';
@@ -9,4 +9,7 @@ export { Subscription } from './contents/subscription.models.js';
 export { SubscriptionPlan } from './contents/subscriptionPlan.models.js';
 export { Message } from './contents/message.models.js';
 export { Notification } from './contents/notification.models.js';
-export { Employer } from './contents/employer.models.js'
+export { Employer } from './contents/employer.models.js';
+export { KYC } from './student models/kyc.models.js';
+export { Certification } from './student models/certification.models.js';
+export { Experience } from './student models/experience.models.js';

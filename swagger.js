@@ -43,6 +43,30 @@ const options = {
         description: 'Training provider/school management endpoints'
       },
       {
+        name: 'Employers',
+        description: 'Employer company profile management endpoints'
+      },
+      {
+        name: 'Jobs',
+        description: 'Job posting and management endpoints'
+      },
+      {
+        name: 'Students',
+        description: 'Student profile management endpoints'
+      },
+      {
+        name: 'KYC',
+        description: 'Know Your Customer document verification endpoints'
+      },
+      {
+        name: 'Certifications',
+        description: 'Certification management and search endpoints'
+      },
+      {
+        name: 'Experiences',
+        description: 'Work experience management endpoints'
+      },
+      {
         name: 'Subscription Plans',
         description: 'Subscription plan management endpoints'
       },

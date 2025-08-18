@@ -11,8 +11,12 @@ import paymentRouter from "./routes/payment.routes.js";
 import webhookRouter from "./routes/webhook.routes.js";
 import notificationRouter from "./routes/notification.routes.js";
 import limiter from "./middlewares/rateLimit.middlewares.js";
-import employerRouter from "./routes/employer.controllers.js";
+import employerRouter from "./routes/employer.routes.js";
 import jobsRouter from "./routes/jobs.routes.js";
+import studentRouter from "./routes/student.routes.js";
+import kycRouter from "./routes/kyc.routes.js";
+import certificationRouter from "./routes/certification.routes.js";
+import experienceRouter from "./routes/experience.routes.js";
 // Swagger imports
 import { setupSwagger } from "../swagger.js";
 
@@ -80,6 +84,12 @@ app.get("/", (req, res) => {
         "/api/v1/users",
         "/api/v1/courses",
         "/api/v1/schools",
+        "/api/v1/employer",
+        "/api/v1/jobs",
+        "/api/v1/students",
+        "/api/v1/kyc",
+        "/api/v1/certifications",
+        "/api/v1/experiences",
         "/api/v1/subscriptions",
         "/api/v1/payments",
         "/api/v1/webhooks",
@@ -105,6 +115,18 @@ app.use("/api/v1/employer", employerRouter);
 
 // jobs routes
 app.use("/api/v1/jobs", jobsRouter);
+
+// Student routes
+app.use("/api/v1/students", studentRouter);
+
+// KYC routes
+app.use("/api/v1/kyc", kycRouter);
+
+// Certification routes
+app.use("/api/v1/certifications", certificationRouter);
+
+// Experience routes
+app.use("/api/v1/experiences", experienceRouter);
 
 // Subscription routes
 app.use("/api/v1/subscriptions", subscriptionRouter);

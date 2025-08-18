@@ -9,16 +9,73 @@ import { successResponse, createdResponse, badRequestResponse } from "../utils/A
 // Get all job posts
 const getAllJobs = asyncHandler(async (req, res) => {
     try {
-        const jobs = await Job.find().populate({
-            path: 'postedBy',
-            select: 'fullName email role'
-        });
+        const { page = 1, limit = 10, status, location, employmentType, sort = '-createdAt' } = req.query;
+        
+        const filter = {};
+        if (status) filter.status = status;
+        if (location) filter.location = { $regex: location, $options: 'i' };
+        if (employmentType) filter.employmentType = employmentType;
+
+        const skip = (page - 1) * Math.min(limit, 100);
+        const limitNum = Math.min(Number(limit), 100);
+
+        // Use aggregation for better performance
+        const pipeline = [
+            { $match: filter },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "postedBy",
+                    foreignField: "_id",
+                    as: "poster",
+                    pipeline: [{ $project: { fullName: 1, email: 1, role: 1 } }]
+                }
+            },
+            {
+                $project: {
+                    jobTitle: 1,
+                    department: 1,
+                    location: 1,
+                    employmentType: 1,
+                    salary: 1,
+                    category: 1,
+                    applicationDeadline: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    postedBy: { $arrayElemAt: ["$poster", 0] }
+                }
+            },
+            { $sort: sort.startsWith('-') ? { [sort.slice(1)]: -1 } : { [sort]: 1 } },
+            { $skip: skip },
+            { $limit: limitNum }
+        ];
+
+        const [jobs, total] = await Promise.all([
+            Job.aggregate(pipeline),
+            Job.countDocuments(filter)
+        ]);
+
         if (!jobs || jobs.length === 0) {
             throw notFound("No jobs found.");
         }
-        return res.status(200).json(successResponse(jobs, "Jobs fetched successfully."));
+
+        return res.status(200).json(
+            successResponse(
+                {
+                    jobs,
+                    pagination: {
+                        page: Number(page),
+                        limit: limitNum,
+                        total,
+                        pages: Math.ceil(total / limitNum)
+                    }
+                },
+                "Jobs fetched successfully."
+            )
+        );
     } catch (error) {
-        return res.status(error.statusCode || 500).json(badRequestResponse(error.message));
+        console.error("Get all jobs error:", error);
+        throw error;
     }
 });
 

@@ -44,18 +44,7 @@ const userSchema = new mongoose.Schema(
       ],
       default: "basic_info",
     },
-
-    // KYC Fields (multi-document)
-    kyc: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "KYC"
-    },
-    // Accreditation (for training providers)
-    accreditation: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Accreditation"
-    },
-
+    
     // Payment Tracking
     subscription: {
       type : mongoose.Schema.Types.ObjectId,
@@ -104,5 +93,12 @@ userSchema.methods.generateRefreshToken = function () {
     expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
   });
 };
+
+// ===== Indexes for Performance =====
+// Note: email already has unique: true, fullName already has index: true
+userSchema.index({ role: 1 });
+userSchema.index({ status: 1 });
+userSchema.index({ createdAt: -1 });
+userSchema.index({ role: 1, status: 1 }); // Compound index for filtering
 
 export const User = mongoose.model("User", userSchema);
