@@ -13,3 +13,7 @@ export { Employer } from './contents/employer.models.js';
 export { KYC } from './student models/kyc.models.js';
 export { Certification } from './student models/certification.models.js';
 export { Experience } from './student models/experience.models.js';
+
+// CHAT FEATURE: Chat models
+export { ChatConversation } from './contents/chat.conversation.models.js';
+export { ChatMessage } from './contents/chat.message.models.js';

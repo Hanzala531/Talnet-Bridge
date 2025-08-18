@@ -3,9 +3,10 @@ import mongoose from "mongoose";
 const instituteSchema = new mongoose.Schema({
     // Basic Information
    userId:{
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true,
-    trim: true
+
    },
     about: {
         type: String,

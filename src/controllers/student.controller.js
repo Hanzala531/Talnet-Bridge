@@ -235,7 +235,7 @@ const updateStudentProfile = asyncHandler(async (req, res) => {
             throw badRequest("Invalid website URL format");
         }
 
-        // Update fields
+        // Update student profile fields
         const updateData = {};
         if (bio !== undefined) updateData.bio = bio?.trim();
         if (location !== undefined) updateData.location = location?.trim();
@@ -244,6 +244,36 @@ const updateStudentProfile = asyncHandler(async (req, res) => {
         if (gsceResult !== undefined) updateData.gsceResult = gsceResult;
 
         Object.assign(student, updateData);
+
+        // Also allow updating basic User credentials (fullName, email, phone)
+        const { fullName, email, phone } = req.body;
+        if (fullName !== undefined || email !== undefined || phone !== undefined) {
+            const user = await User.findById(student.userId);
+            if (!user) throw notFound("Linked user not found");
+
+            const userUpdates = {};
+            if (fullName !== undefined) userUpdates.fullName = fullName.trim();
+            if (phone !== undefined) userUpdates.phone = phone.trim();
+
+            if (email !== undefined) {
+                const normalized = String(email).toLowerCase().trim();
+                // Basic email format check
+                const emailRegex = /^\S+@\S+\.\S+$/;
+                if (!emailRegex.test(normalized)) throw badRequest("Invalid email format");
+
+                // Ensure uniqueness
+                const existing = await User.findOne({ email: normalized, _id: { $ne: user._id } }).lean();
+                if (existing) throw badRequest("Email already in use");
+                userUpdates.email = normalized;
+            }
+
+            // Apply and save user updates if any
+            if (Object.keys(userUpdates).length) {
+                Object.assign(user, userUpdates);
+                await user.save();
+            }
+        }
+
         await student.save();
 
         return res.status(200).json(

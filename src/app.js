@@ -94,6 +94,7 @@ app.get("/", (req, res) => {
         "/api/v1/payments",
         "/api/v1/webhooks",
         "/api/v1/notifications",
+        "/api/v1/chat", // CHAT FEATURE: chat endpoints
         "/docs", // Swagger UI
         "/swagger.json", // Raw OpenAPI spec
       ],
@@ -117,7 +118,7 @@ app.use("/api/v1/employer", employerRouter);
 app.use("/api/v1/jobs", jobsRouter);
 
 // Student routes
-app.use("/api/v1/students", studentRouter);
+app.use("/api/v1/students", studentRouter );
 
 // KYC routes
 app.use("/api/v1/kyc", kycRouter);
@@ -139,6 +140,12 @@ app.use("/api/v1/webhooks", webhookRouter);
 
 // Notification routes
 app.use("/api/v1/notifications", notificationRouter);
+
+// CHAT FEATURE: mount chat routes
+import chatConversationRouter from "./routes/chat.conversation.routes.js";
+import chatMessageRouter from "./routes/chat.message.routes.js";
+app.use("/api/v1/chat", chatConversationRouter);
+app.use("/api/v1/chat", chatMessageRouter);
 
 // 404 handler
 app.use("*", (req, res) => {

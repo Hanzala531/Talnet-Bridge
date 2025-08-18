@@ -4,9 +4,9 @@ import { badRequest, internalServer, notFound, forbidden } from "../utils/ApiErr
 import { asyncHandler } from "../utils/asyncHandler.js";
 import mongoose from "mongoose";
 
-// ===============================
+// =====================
 // CREATE CERTIFICATION
-// ===============================
+// =====================
 const createCertification = asyncHandler(async (req, res) => {
     try {
         const { name, issuedBy, issueDate, certificateFile } = req.body;

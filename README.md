@@ -1,270 +1,211 @@
-# Student Management & Profile System (MERN Backend)
+# Talnet Bridge Backend
 
-## Project Overview
+## Overview
+Talnet Bridge is a robust backend system designed to power a talent management and job placement platform. It provides RESTful APIs for managing users, students, employers, jobs, courses, certifications, subscriptions, notifications, and more. The platform is intended for educational institutions, employers, and students seeking streamlined job placement, certification, and upskilling solutions.
 
-This project is a robust backend API for a Student Management & Profile System, designed for educational institutions and e-learning platforms. It enables seamless management of users (students, teachers, admins), student profiles, courses, enrollments, certifications, and analytics. The system is built for scalability, security, and extensibility, providing a solid foundation for a full-stack MERN (MongoDB, Express, React, Node.js) application.
+## Implemented Features (Detailed)
 
-**Key Features:**
-- **User Authentication:** Secure JWT-based login for students, teachers, and admins.
-- **Student Profile Management:** Store and update personal info, academic records, skills, certifications, and experiences.
-- **Course & Enrollment System:** Teachers create courses, students enroll, and admins oversee all activity.
-- **Certification Module:** Students upload certifications; teachers/admins validate them.
-- **Analytics & Reporting:** Track enrollments, course completions, and certification stats.
-- **Admin Panel:** Admins manage users, courses, and system-wide settings.
+### User Management
+- **Files Involved:**
+  - Models: `src/models/contents/User.models.js`
+  - Controllers: `src/controllers/user.controllers.js`
+  - Routes: `src/routes/user.routes.js`
+- **What it does:** Handles user registration, authentication, profile management, and role assignment.
+- **How it works:** Implements JWT-based authentication, role-based access control, and CRUD operations for user profiles.
+- **Why it’s useful:** Ensures secure and organized user access, supporting multiple user types (students, employers, admins).
 
----
+### Student Management
+- **Files Involved:**
+  - Models: `src/models/student models/students.models.js`
+  - Controllers: `src/controllers/student.controller.js`
+  - Routes: `src/routes/student.routes.js`
+- **What it does:** Manages student profiles, experiences, certifications, and KYC.
+- **How it works:** Provides endpoints for CRUD operations on student data, linking experiences and certifications.
+- **Why it’s useful:** Centralizes student data for better tracking and matching with job opportunities.
 
-## Tech Stack
+### Employer & Job Management
+- **Files Involved:**
+  - Models: `src/models/contents/employer.models.js`, `src/models/contents/jobs.models.js`
+  - Controllers: `src/controllers/employer.controllers.js`, `src/controllers/jobs.controllers.js`
+  - Routes: `src/routes/employer.routes.js`, `src/routes/jobs.routes.js`
+- **What it does:** Allows employers to post jobs and manage company profiles.
+- **How it works:** CRUD endpoints for job postings and employer data, with validation and access control.
+- **Why it’s useful:** Enables employers to efficiently manage job listings and candidate applications.
 
-- **Node.js** – JavaScript runtime for server-side logic
-- **Express.js** – Web framework for building RESTful APIs
-- **MongoDB** – NoSQL database for flexible data storage
-- **Mongoose** – ODM for MongoDB schema modeling
-- **JWT (jsonwebtoken)** – Secure authentication tokens
-- **bcrypt** – Password hashing
-- **Swagger/OpenAPI** – API documentation
-- **Other:** dotenv, cookie-parser, CORS, nodemon, etc.
+### Course & Enrollment Management
+- **Files Involved:**
+  - Models: `src/models/contents/course.models.js`, `src/models/contents/enrollments.models.js`
+  - Controllers: `src/controllers/courses.controllers.js`
+  - Routes: `src/routes/courses.routes.js`
+- **What it does:** Manages courses, enrollments, and training institutes.
+- **How it works:** Endpoints for course CRUD, enrollment, and linking students to courses.
+- **Why it’s useful:** Facilitates upskilling and certification for students.
 
----
+### Certification & Experience Tracking
+- **Files Involved:**
+  - Models: `src/models/student models/certification.models.js`, `src/models/student models/experience.models.js`
+  - Controllers: `src/controllers/certification.controller.js`, `src/controllers/experience.controller.js`
+  - Routes: `src/routes/certification.routes.js`, `src/routes/experience.routes.js`
+- **What it does:** Tracks student certifications and work experiences.
+- **How it works:** CRUD endpoints for adding, updating, and retrieving certifications and experiences.
+- **Why it’s useful:** Provides a comprehensive student profile for employers.
 
-## Folder Structure
+### Subscription & Payment
+- **Files Involved:**
+  - Models: `src/models/contents/subscription.models.js`, `src/models/contents/subscriptionPlan.models.js`
+  - Controllers: `src/controllers/subscription.controllers.js`
+  - Routes: `src/routes/subscription.routes.js`, `src/routes/payment.routes.js`
+  - Config: `src/config/stripe.config.js`
+- **What it does:** Manages subscription plans and payment processing.
+- **How it works:** Integrates with Stripe for secure payments, handles plan upgrades, downgrades, and renewals.
+- **Why it’s useful:** Supports monetization and premium features for users.
 
-```
-├── src/
-│   ├── models/         # Mongoose schemas for all entities
-│   ├── controllers/    # Business logic for each module
-│   ├── routes/         # Express route definitions (RESTful)
-│   ├── middlewares/    # Auth, role, error, logging, etc.
-│   ├── utils/          # Helpers: responses, errors, async handler
-│   └── app.js          # Main Express app
-├── public/             # Static files (e.g., Swagger UI)
-├── swagger.js          # Swagger/OpenAPI config
-├── package.json        # Project dependencies
-└── README.md           # Project documentation
-```
+### Notifications
+- **Files Involved:**
+  - Models: `src/models/contents/notification.models.js`
+  - Controllers: `src/controllers/notification.controllers.js`
+  - Routes: `src/routes/notification.routes.js`
+- **What it does:** Sends and manages notifications for users.
+- **How it works:** Stores notifications in the database, provides endpoints for retrieval and status updates.
+- **Why it’s useful:** Keeps users informed about important events and updates.
 
-### Folder Details
-- **models/**: All MongoDB schemas (User, Student, Course, etc.)
-- **controllers/**: Functions for CRUD, validation, business rules
-- **routes/**: Maps HTTP endpoints to controllers, applies middleware
-- **middlewares/**: Handles authentication, authorization, error catching, logging
-- **utils/**: Common utilities for API responses, error formatting, async wrappers
+### KYC & Verification
+- **Files Involved:**
+  - Models: `src/models/student models/kyc.models.js`
+  - Controllers: `src/controllers/kyc.comtrollers.js`
+  - Routes: `src/routes/kyc.routes.js`
+- **What it does:** Handles Know Your Customer (KYC) verification for students.
+- **How it works:** Stores KYC documents, integrates with OCR for document validation.
+- **Why it’s useful:** Ensures compliance and trustworthiness of student profiles.
 
----
+### Webhooks
+- **Files Involved:**
+  - Controllers: `src/controllers/webhook.controllers.js`
+  - Routes: `src/routes/webhook.routes.js`
+- **What it does:** Handles incoming webhooks (e.g., from payment providers).
+- **How it works:** Validates and processes webhook events securely.
+- **Why it’s useful:** Enables real-time updates and integrations with external services.
 
-## Database Models & Relationships
+### API Documentation
+- **Files Involved:**
+  - `swagger.js`, `swagger.json`, `public/swagger.html`
+- **What it does:** Provides interactive API documentation using Swagger UI.
+- **How it works:** Serves OpenAPI docs at a public endpoint for easy testing and exploration.
+- **Why it’s useful:** Simplifies API integration for frontend and third-party developers.
 
-### 1. **User**
-- **Fields:** fullName, email, password (hashed), phone, role (admin/student/teacher), status, subscription, timestamps
-- **Relationships:**
-  - One-to-One with StudentProfile (if role is student)
-  - One-to-Many with Course (if role is teacher)
+## Technical Details
+- **Tech Stack:**
+  - Language: JavaScript (Node.js)
+  - Framework: Express.js
+  - Database: MongoDB (via Mongoose ODM)
+  - Caching: Redis
+  - Payment: Stripe
+  - API Docs: Swagger/OpenAPI
+  - File Storage: Cloudinary
+**Architectural Patterns:**
+  - MVC (Model-View-Controller)
+  - Middleware-based request processing
+  - Modular route/controller structure
+  - Microservice-ready modularity (stateless, decoupled components)
+**Design Decisions & Trade-offs:**
+  - Chose MongoDB for flexible, scalable data modeling.
+  - Used middleware for cross-cutting concerns (auth, logging, rate limiting).
+  - Prioritized RESTful design for broad compatibility.
+  - Designed modules and APIs to be easily migrated to microservices when needed.
 
-### 2. **StudentProfile**
-- **Fields:** userId (ref User), bio, location, website, skills, certifications, experiences, academic records, timestamps
-- **Relationships:**
-  - One-to-One with User
-  - Many-to-Many with Certification, Experience
-
-### 3. **Course**
-- **Fields:** title, description, instructor (ref User), duration, price, category, status, enrolledStudents, timestamps
-- **Relationships:**
-  - Many-to-One with User (teacher as instructor)
-  - Many-to-Many with User (students via Enrollment)
-
-### 4. **Enrollment**
-- **Fields:** studentId (ref User), courseId (ref Course), status, enrolledAt, completedAt
-- **Relationships:**
-  - Many-to-One with User (student)
-  - Many-to-One with Course
-
-### 5. **Certification**
-- **Fields:** name, issuedBy, issueDate, certificateFile, status (pending/validated), validatedBy (ref User), timestamps
-- **Relationships:**
-  - Many-to-One with User (student)
-  - Many-to-One with User (teacher/admin as validator)
-
-### 6. **Experience**
-- **Fields:** title, company, startDate, endDate, description, timestamps
-- **Relationships:**
-  - Many-to-One with StudentProfile
-
-### 7. **Other Supporting Models**
-- **Notification, Message, Subscription, etc.** (optional, for future expansion)
-
-#### **Relationship Diagram (Textual)**
-- **User** (1) — (1) **StudentProfile**
-- **User** (1) — (M) **Course** (as instructor)
-- **User** (1) — (M) **Enrollment** (as student)
-- **Course** (1) — (M) **Enrollment**
-- **StudentProfile** (1) — (M) **Certification**
-- **StudentProfile** (1) — (M) **Experience**
-
----
-
-## API Routes Explanation
-
-### **Auth Routes**
-| Method | Endpoint           | Description                | Request Body / Params         | Response                |
-|--------|--------------------|----------------------------|-------------------------------|-------------------------|
-| POST   | /api/v1/users/register | Register new user      | { fullName, email, phone, password, role } | JWT, user info         |
-| POST   | /api/v1/users/login    | Login user              | { email, password }           | JWT, user info          |
-| POST   | /api/v1/users/logout   | Logout user             | (JWT in cookie/header)        | Success message         |
-
-### **Student Routes**
-| Method | Endpoint                | Description                        | Request Body / Params         | Response                |
-|--------|-------------------------|------------------------------------|-------------------------------|-------------------------|
-| GET    | /api/v1/students/my     | Get current user's profile         | JWT                           | Student profile         |
-| POST   | /api/v1/students        | Create student profile             | { bio, location, ... }        | Student profile         |
-| PUT    | /api/v1/students/:id    | Update student profile             | { bio, ... }                  | Updated profile         |
-| GET    | /api/v1/students/:id    | Get student by ID                  | :id param                     | Student profile         |
-| DELETE | /api/v1/students/:id    | Delete student profile             | :id param                     | Success message         |
-| POST   | /api/v1/students/:id/certifications | Add certification to student | { certificationId }           | Updated profile         |
-| DELETE | /api/v1/students/:id/certifications/:certId | Remove certification | :id, :certId params           | Updated profile         |
-
-### **Course Routes**
-| Method | Endpoint                | Description                        | Request Body / Params         | Response                |
-|--------|-------------------------|------------------------------------|-------------------------------|-------------------------|
-| GET    | /api/v1/courses         | List all courses                   | [filters, pagination]         | List of courses         |
-| POST   | /api/v1/courses         | Create new course (teacher/admin)  | { title, description, ... }   | Course info             |
-| GET    | /api/v1/courses/:id     | Get course by ID                   | :id param                     | Course info             |
-| PATCH  | /api/v1/courses/:id     | Update course                      | { ...fields }                 | Updated course          |
-| DELETE | /api/v1/courses/:id     | Delete course                      | :id param                     | Success message         |
-| POST   | /api/v1/courses/:id/enroll | Enroll student in course         | JWT, :id param                | Enrollment info         |
-
-### **Certification Routes**
-| Method | Endpoint                | Description                        | Request Body / Params         | Response                |
-|--------|-------------------------|------------------------------------|-------------------------------|-------------------------|
-| POST   | /api/v1/certifications  | Upload certification (student)     | { name, issuedBy, ... }       | Certification info      |
-| GET    | /api/v1/certifications  | List certifications                | [filters, pagination]         | List of certifications  |
-| GET    | /api/v1/certifications/:id | Get certification by ID           | :id param                     | Certification info      |
-| PUT    | /api/v1/certifications/:id | Update certification (admin/teacher) | { ...fields }             | Updated certification   |
-| DELETE | /api/v1/certifications/:id | Delete certification (admin)      | :id param                     | Success message         |
-| PATCH  | /api/v1/certifications/:id/validate | Validate certification (teacher/admin) | { status }         | Updated certification   |
-
-### **Admin Routes**
-| Method | Endpoint                | Description                        | Request Body / Params         | Response                |
-|--------|-------------------------|------------------------------------|-------------------------------|-------------------------|
-| GET    | /api/v1/users           | List all users (admin)             | [filters, pagination]         | List of users           |
-| GET    | /api/v1/analytics       | Get system analytics               | -                             | Stats, reports          |
-| PATCH  | /api/v1/users/:id/role  | Change user role                   | { role }                      | Updated user            |
-| DELETE | /api/v1/users/:id       | Delete user                        | :id param                     | Success message         |
-
----
-
-## Workflow Explanation
-
-### **Student Workflow**
-1. **Registration:** Student signs up via `/api/v1/users/register`.
-2. **Login:** Receives JWT token after `/api/v1/users/login`.
-3. **Profile Completion:** Fills out profile via `/api/v1/students` (bio, skills, etc.).
-4. **Upload Certifications:** Adds certifications via `/api/v1/certifications`.
-5. **Enroll in Courses:** Enrolls using `/api/v1/courses/:id/enroll`.
-6. **View Progress:** Can view enrolled courses, certifications, and analytics.
-
-### **Teacher Workflow**
-1. **Login:** Authenticates via `/api/v1/users/login`.
-2. **Create Courses:** Adds new courses via `/api/v1/courses`.
-3. **Manage Enrollments:** Views and manages students in their courses.
-4. **Validate Certifications:** Reviews and validates student certifications via `/api/v1/certifications/:id/validate`.
-
-### **Admin Workflow**
-1. **Login:** Authenticates via `/api/v1/users/login`.
-2. **Manage Users:** Views, edits, or deletes users via `/api/v1/users` endpoints.
-3. **Manage Courses:** Oversees all courses and enrollments.
-4. **Monitor Analytics:** Accesses `/api/v1/analytics` for system-wide stats.
-5. **Validate/Remove Certifications:** Can validate or remove any certification.
-
----
-
-## Data Flow
-
-1. **Frontend → Backend:**
-   - Frontend (React) sends HTTP requests to Express API endpoints.
-   - JWT token is sent in Authorization header or cookies for protected routes.
-2. **Backend → Database:**
-   - Express controllers process requests, validate data, and interact with MongoDB via Mongoose models.
-   - Responses are formatted and sent back to the frontend.
-3. **Backend → Frontend:**
-   - API returns JSON responses with status, message, payload, and success flag.
-
----
-
-## Error Handling
-
-- All errors are caught by a global error handler middleware.
-- Errors are returned in a consistent JSON format:
-
-```json
-{
-  "status": 400,
-  "message": "Validation error: email is required",
-  "payload": null,
-  "success": false,
-  "timestamp": "2025-08-18T12:34:56.789Z"
-}
-```
-- Common error types: Validation errors, Authentication errors, Authorization errors, Not found, Server errors.
-
----
+## Project Scalability & Optimization
+- **Current Optimizations:**
+  - MongoDB indexes on frequently queried fields
+  - Redis caching for session and rate limiting
+  - Pagination for large data sets
+  - Use of `.lean()` queries for performance
+- **Scalability Considerations:**
+  - Stateless API design for horizontal scaling
+  - Potential for DB sharding and replica sets
+  - Queue workers for background jobs (future)
+  - Message pagination for chat/notifications
 
 ## Security
+- **Implemented Measures:**
+  - JWT-based authentication
+  - Role-based access control
+  - Rate limiting middleware
+  - Input validation and sanitization
+  - Secure password hashing (bcrypt)
+  - HTTPS recommended for deployment
+- **Recommended Improvements:**
+  - Implement 2FA/MFA for sensitive actions
+  - Add audit logging for critical operations
+  - Enhance monitoring for suspicious activity
+  - Regular dependency vulnerability scans
 
-- **Password Hashing:** All passwords are hashed using bcrypt before storage.
-- **JWT Authentication:**
-  - On login, a JWT is issued and must be sent with each protected request.
-  - JWT contains user ID, role, and other claims.
-- **Role-Based Access Control:**
-  - Middleware checks user role for each route (admin, student, teacher).
-  - Only authorized users can access/modify certain resources.
-- **Input Validation & Sanitization:**
-  - All incoming data is validated and sanitized to prevent injection attacks.
-- **Sensitive Data Protection:**
-  - Passwords, tokens, and sensitive fields are never returned in API responses.
+## Challenges & Solutions
+- **Challenge:** Handling large, nested data models (students, experiences, certifications)
+  - **Solution:** Used Mongoose population and schema references for efficient data retrieval.
+- **Challenge:** Secure payment integration
+  - **Solution:** Leveraged Stripe’s secure APIs and webhooks, validated all incoming events.
+- **Challenge:** Ensuring API scalability
+  - **Solution:** Implemented pagination, caching, and stateless design.
+- **Challenge:** Real-time notifications
+  - **Solution:** Designed notification schema for extensibility; future: add WebSocket support.
 
----
+## Future Improvements (Roadmap)
+- Add WebSocket-based real-time notifications
+- Implement background job queue (e.g., BullMQ)
+- Add advanced analytics and reporting endpoints
+- Seamless migration to microservices architecture (system is already microservice-ready)
+- Integrate monitoring (Prometheus, Grafana)
+- Automate CI/CD and deployment scripts
+- Expand test coverage and add E2E tests
 
-## Future Improvements
-
-- **Notifications:** Real-time or email notifications for important events (enrollment, certification validation, etc.)
-- **File Storage:** Store certification files and profile images on cloud storage (AWS S3, Cloudinary, etc.)
-- **Advanced Analytics:** More detailed reporting and dashboards for teachers/admins.
-- **Soft Deletes:** Implement soft delete for users and courses for auditability.
-- **Multi-Tenancy:** Support for multiple institutions/organizations.
-- **API Rate Limiting:** Prevent abuse by limiting requests per user/IP.
-- **Unit & Integration Tests:** Add comprehensive automated tests.
-- **Frontend Integration:** Build a React frontend to consume this API.
-
----
-
-## Getting Started
-
+## Installation & Setup
 1. **Clone the repository:**
    ```sh
    git clone <repo-url>
-   cd <project-folder>
+   cd Talnet-Bridge
    ```
 2. **Install dependencies:**
    ```sh
    npm install
    ```
 3. **Configure environment variables:**
-   - Copy `.env.example` to `.env` and fill in your MongoDB URI, JWT secrets, etc.
+   - Copy `.env.example` to `.env` and fill in required values (MongoDB URI, Redis, Stripe keys, etc.)
 4. **Run the server:**
    ```sh
-   npm run dev
+   npm start
    ```
-5. **Access API docs:**
-   - Visit `http://localhost:4000/docs` for Swagger UI.
 
----
+## API Documentation
+- **Swagger UI:** Available at `/swagger` or `public/swagger.html`.
+- **Example Endpoints:**
+  - `POST /api/v1/users/register` – Register a new user
+  - `POST /api/v1/auth/login` – User login
+  - `GET /api/v1/jobs` – List all jobs
+  - `POST /api/v1/courses` – Create a new course
+  - `POST /api/v1/subscription/subscribe` – Subscribe to a plan
+- **Request/Response:**
+  ```json
+  // Example: Register User Request
+  {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "securePassword123"
+  }
+  // Example: Register User Response
+  {
+    "success": true,
+    "data": {
+      "userId": "abc123",
+      "token": "<jwt-token>"
+    }
+  }
+  ```
 
-## Contributing
-
-Pull requests are welcome! Please open an issue first to discuss major changes.
-
----
+## Contribution Guidelines
+- Fork the repository and create a feature branch.
+- Write clear, well-documented code and tests.
+- Submit a pull request with a detailed description.
+- Follow the project’s code style and commit message conventions.
 
 ## License
-
-MIT License. See [LICENSE](LICENSE) for details.
+This project is licensed under the MIT License. See the `LICENSE` file for details.

@@ -1,0 +1,436 @@
+{
+  "info": {
+    "name": "TalentBridge Chat API",
+    "description": "Real-time chat functionality for TalentBridge platform with role-based messaging, file uploads, and socket.io integration",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "conversationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "targetUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "messageId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Conversations",
+      "item": [
+        {
+          "name": "Start DM Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetUserId\": \"{{targetUserId}}\",\n  \"isGroup\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat/conversations/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "chat", "conversations", "start"]
+            },
+            "description": "Start a new direct message conversation or return existing one between authenticated user and target user"
+          },
+          "response": [
+            {
+              "name": "Success - New Conversation",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"targetUserId\": \"60f7b3b3b3b3b3b3b3b3b3b3\",\n  \"isGroup\": false\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/chat/conversations/start",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "chat", "conversations", "start"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Conversation retrieved successfully\",\n  \"data\": {\n    \"conversation\": {\n      \"_id\": \"60f7b3b3b3b3b3b3b3b3b3b5\",\n      \"type\": \"dm\",\n      \"participants\": [\n        {\n          \"user\": {\n            \"_id\": \"60f7b3b3b3b3b3b3b3b3b3b1\",\n            \"fullName\": \"John Doe\",\n            \"email\": \"john@example.com\",\n            \"role\": \"student\"\n          },\n          \"role\": \"student\"\n        },\n        {\n          \"user\": {\n            \"_id\": \"60f7b3b3b3b3b3b3b3b3b3b3\",\n            \"fullName\": \"Jane School\",\n            \"email\": \"jane@school.com\",\n            \"role\": \"school\"\n          },\n          \"role\": \"school\"\n        }\n      ],\n      \"unreadCount\": 0,\n      \"createdAt\": \"2025-08-18T10:00:00.000Z\",\n      \"updatedAt\": \"2025-08-18T10:00:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get User Conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat/conversations?limit=20&cursor=&search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "chat", "conversations"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Number of conversations to retrieve (1-50)"
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "description": "Cursor for pagination (ISO date or ObjectId)"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search in conversation names and participant names"
+                }
+              ]
+            },
+            "description": "Get paginated list of conversations for the authenticated user"
+          },
+          "response": [
+            {
+              "name": "Success - Conversations List",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/chat/conversations?limit=20",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "chat", "conversations"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Conversations retrieved successfully\",\n  \"data\": {\n    \"conversations\": [\n      {\n        \"_id\": \"60f7b3b3b3b3b3b3b3b3b3b5\",\n        \"type\": \"dm\",\n        \"participantUsers\": [\n          {\n            \"_id\": \"60f7b3b3b3b3b3b3b3b3b3b3\",\n            \"fullName\": \"Jane School\",\n            \"email\": \"jane@school.com\",\n            \"role\": \"school\"\n          }\n        ],\n        \"lastMessage\": {\n          \"_id\": \"60f7b3b3b3b3b3b3b3b3b3b6\",\n          \"text\": \"Hello, how are you?\",\n          \"senderData\": {\n            \"fullName\": \"Jane School\",\n            \"role\": \"school\"\n          },\n          \"createdAt\": \"2025-08-18T10:30:00.000Z\"\n        },\n        \"unreadCount\": 1,\n        \"updatedAt\": \"2025-08-18T10:30:00.000Z\"\n      }\n    ],\n    \"pagination\": {\n      \"hasMore\": false,\n      \"nextCursor\": null,\n      \"limit\": 20\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Conversation Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "chat", "conversations", "{{conversationId}}"]
+            },
+            "description": "Get detailed information about a specific conversation"
+          },
+          "response": []
+        }
+      ],
+      "description": "Conversation management endpoints for creating and retrieving chat conversations"
+    },
+    {
+      "name": "Messages",
+      "item": [
+        {
+          "name": "Send Text Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversationId\": \"{{conversationId}}\",\n  \"text\": \"Hello! How are you doing today?\",\n  \"replyTo\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "chat", "messages"]
+            },
+            "description": "Send a text message to a conversation"
+          },
+          "response": [
+            {
+              "name": "Success - Message Sent",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"conversationId\": \"60f7b3b3b3b3b3b3b3b3b3b5\",\n  \"text\": \"Hello! How are you doing today?\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/chat/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "chat", "messages"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Message sent successfully\",\n  \"data\": {\n    \"message\": {\n      \"_id\": \"60f7b3b3b3b3b3b3b3b3b3b7\",\n      \"conversationId\": \"60f7b3b3b3b3b3b3b3b3b3b5\",\n      \"text\": \"Hello! How are you doing today?\",\n      \"sender\": {\n        \"_id\": \"60f7b3b3b3b3b3b3b3b3b3b1\",\n        \"fullName\": \"John Doe\",\n        \"email\": \"john@example.com\",\n        \"role\": \"student\"\n      },\n      \"attachments\": [],\n      \"readBy\": [],\n      \"type\": \"text\",\n      \"hasAttachments\": false,\n      \"createdAt\": \"2025-08-18T11:00:00.000Z\",\n      \"updatedAt\": \"2025-08-18T11:00:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Send Message with Attachments",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "conversationId",
+                  "value": "{{conversationId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "text",
+                  "value": "Here's the document you requested",
+                  "type": "text"
+                },
+                {
+                  "key": "attachments",
+                  "type": "file",
+                  "src": [],
+                  "description": "Select files to upload (max 5 files, 10MB each)"
+                },
+                {
+                  "key": "replyTo",
+                  "value": "",
+                  "type": "text",
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "chat", "messages"]
+            },
+            "description": "Send a message with file attachments (images, PDFs, documents)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Messages from Conversation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat/messages/{{conversationId}}?limit=20&cursor=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "chat", "messages", "{{conversationId}}"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Number of messages to retrieve (1-50)"
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "description": "Cursor for pagination (ISO date or ObjectId)"
+                }
+              ]
+            },
+            "description": "Get paginated messages from a specific conversation"
+          },
+          "response": [
+            {
+              "name": "Success - Messages List",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/chat/messages/60f7b3b3b3b3b3b3b3b3b3b5?limit=20",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "chat", "messages", "60f7b3b3b3b3b3b3b3b3b3b5"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Messages retrieved successfully\",\n  \"data\": {\n    \"messages\": [\n      {\n        \"_id\": \"60f7b3b3b3b3b3b3b3b3b3b6\",\n        \"conversationId\": \"60f7b3b3b3b3b3b3b3b3b3b5\",\n        \"text\": \"Hello, how are you?\",\n        \"sender\": {\n          \"_id\": \"60f7b3b3b3b3b3b3b3b3b3b3\",\n          \"fullName\": \"Jane School\",\n          \"email\": \"jane@school.com\",\n          \"role\": \"school\"\n        },\n        \"attachments\": [],\n        \"readBy\": [],\n        \"type\": \"text\",\n        \"hasAttachments\": false,\n        \"createdAt\": \"2025-08-18T10:30:00.000Z\",\n        \"updatedAt\": \"2025-08-18T10:30:00.000Z\"\n      },\n      {\n        \"_id\": \"60f7b3b3b3b3b3b3b3b3b3b7\",\n        \"conversationId\": \"60f7b3b3b3b3b3b3b3b3b3b5\",\n        \"text\": \"Hello! How are you doing today?\",\n        \"sender\": {\n          \"_id\": \"60f7b3b3b3b3b3b3b3b3b3b1\",\n          \"fullName\": \"John Doe\",\n          \"email\": \"john@example.com\",\n          \"role\": \"student\"\n        },\n        \"attachments\": [],\n        \"readBy\": [],\n        \"type\": \"text\",\n        \"hasAttachments\": false,\n        \"createdAt\": \"2025-08-18T11:00:00.000Z\",\n        \"updatedAt\": \"2025-08-18T11:00:00.000Z\"\n      }\n    ],\n    \"pagination\": {\n      \"hasMore\": false,\n      \"nextCursor\": null,\n      \"limit\": 20\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Mark Messages as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upToMessageId\": \"{{messageId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat/messages/{{conversationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "chat", "messages", "{{conversationId}}", "read"]
+            },
+            "description": "Mark messages as read in a conversation. If upToMessageId is provided, marks all messages up to that point as read."
+          },
+          "response": [
+            {
+              "name": "Success - Messages Marked as Read",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/chat/messages/60f7b3b3b3b3b3b3b3b3b3b5/read",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "chat", "messages", "60f7b3b3b3b3b3b3b3b3b3b5", "read"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Messages marked as read\",\n  \"data\": {\n    \"conversationId\": \"60f7b3b3b3b3b3b3b3b3b3b5\",\n    \"unreadCount\": 0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Send Typing Indicator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversationId\": \"{{conversationId}}\",\n  \"isTyping\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat/typing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "chat", "typing"]
+            },
+            "description": "Send typing indicator to other participants in a conversation. Set isTyping to true when user starts typing, false when they stop."
+          },
+          "response": []
+        }
+      ],
+      "description": "Message-related endpoints for sending, retrieving, and managing chat messages"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Check if token is available",
+          "if (!pm.collectionVariables.get(\"token\")) {",
+          "    console.log(\"Warning: No authentication token set. Please set the 'token' variable.\");",
+          "}"
+        ]
+      }
+    }
+  ]
+}
