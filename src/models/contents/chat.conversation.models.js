@@ -66,7 +66,10 @@ chatConversationSchema.virtual("type").get(function () {
 // Method to check if user is participant
 chatConversationSchema.methods.hasParticipant = function (userId) {
   return this.participants.some(
-    (participant) => participant.user.toString() === userId.toString()
+    (participant) =>
+      (typeof participant.user === 'object' && participant.user._id && participant.user._id.toString() === userId.toString()) ||
+      (typeof participant.user === 'string' && participant.user === userId.toString()) ||
+      (typeof participant.user === 'object' && participant.user.toString && participant.user.toString() === userId.toString())
   );
 };
 
