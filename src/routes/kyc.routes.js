@@ -7,7 +7,7 @@ import {
     verifyKYC,
     updateKYCDocs,
     deleteKYC
-} from '../controllers/kyc.comtrollers.js';
+} from '../controllers/kyc.controllers.js';
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
 import { authorizeRoles } from '../middlewares/Role.middlewares.js';

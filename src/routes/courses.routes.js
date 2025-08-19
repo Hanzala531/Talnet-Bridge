@@ -13,6 +13,7 @@ import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
 import { authorizeRoles } from '../middlewares/Role.middlewares.js';
 import { requireActiveSubscription, checkCourseLimit } from '../middlewares/subscription.middlewares.js';
+import { coursesCache, invalidateUserCache } from '../middlewares/redis.middlewares.js';
 
 const courseRouter = express.Router();
 
@@ -46,7 +47,7 @@ const courseRouter = express.Router();
  *       404:
  *         description: No courses found
  */
-courseRouter.get('/', requestLogger, getCourses);
+courseRouter.get('/', requestLogger, coursesCache, getCourses);
 
 /**
  * @swagger
@@ -82,7 +83,7 @@ courseRouter.get('/', requestLogger, getCourses);
  *       400:
  *         description: Invalid search parameters
  */
-courseRouter.get('/search', requestLogger, searchCourses);
+courseRouter.get('/search', requestLogger, coursesCache, searchCourses);
 
 /**
  * @swagger
@@ -124,7 +125,7 @@ courseRouter.get('/provider/:providerId', requestLogger, getCoursesByProvider);
  *       404:
  *         description: Course not found
  */
-courseRouter.get('/:id', requestLogger, getCoursesById);
+courseRouter.get('/:id', requestLogger, coursesCache, getCoursesById);
 
 /**
  * @swagger

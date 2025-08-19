@@ -1,14 +1,46 @@
+/**
+ * USER CONTROLLERS
+ * 
+ * This module contains all user-related controller functions for authentication
+ * and user management in the TalentBridge platform.
+ * 
+ * Features:
+ * - User registration with role-based access
+ * - User authentication (login/logout)
+ * - JWT token generation and management
+ * - Password hashing and validation
+ * - Cookie-based authentication
+ * 
+ * Dependencies:
+ * - bcrypt for password hashing
+ * - jsonwebtoken for JWT tokens
+ * - express-validator for input validation
+ */
+
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/contents/User.models.js";
-import { badRequest, notFound, internalServer } from "../utils/ApiError.js";
+import { badRequest, notFound, internalServer, ApiError } from "../utils/ApiError.js";
 import { successResponse, createdResponse } from "../utils/ApiResponse.js";
+
+/**
+ * Generate access and refresh tokens for a user
+ * 
+ * @function generateAccessAndRefreshTokens
+ * @param {string} userid - MongoDB ObjectId of the user
+ * @returns {Promise<Object>} Object containing accessToken and refreshToken
+ * @throws {ApiError} When user not found or token generation fails
+ * 
+ * @example
+ * const tokens = await generateAccessAndRefreshTokens("64f123abc456def789");
+ * // Returns: { accessToken: "jwt...", refreshToken: "jwt..." }
+ */
 
 // Access and Refresh Tokens
 const generateAccessAndRefreshTokens = async (userid) => {
   try {
     const user = await User.findById(userid);
     if (!user) {
-      throw new notFound(404, "User not found");
+      throw new ApiError(404, "User not found");
     }
 
     // Call the methods on the user instance
@@ -25,6 +57,49 @@ const generateAccessAndRefreshTokens = async (userid) => {
   }
 };
 
+/**
+ * Register a new user
+ * 
+ * @function registerUser
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.fullName - User's full name (3-50 characters)
+ * @param {string} req.body.email - User's email address (must be unique)
+ * @param {string} req.body.phone - User's phone number (10-15 digits)
+ * @param {string} req.body.password - User's password (min 6 characters)
+ * @param {string} req.body.role - User role: "user", "student", "school", "employer", "admin"
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} Created user data with access token
+ * @throws {ApiError} When validation fails or user already exists
+ * 
+ * @example
+ * POST /api/v1/users/register
+ * Body: {
+ *   "fullName": "John Doe",
+ *   "email": "john@example.com", 
+ *   "phone": "1234567890",
+ *   "password": "securepass123",
+ *   "role": "student"
+ * }
+ * 
+ * Response: {
+ *   "success": true,
+ *   "statusCode": 201,
+ *   "data": {
+ *     "user": {
+ *       "_id": "64f123...",
+ *       "fullName": "John Doe",
+ *       "email": "john@example.com",
+ *       "phone": "1234567890",
+ *       "role": "student",
+ *       "onboardingStage": "basic_info",
+ *       "status": "pending"
+ *     },
+ *     "accessToken": "eyJhbGciOiJIUzI1NiIs..."
+ *   },
+ *   "message": "User registered successfully"
+ * }
+ */
 // register user  
 const registerUser = asyncHandler(async (req, res) => {
   try {
@@ -80,6 +155,44 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 });
 
+/**
+ * Login user with email and password
+ * 
+ * @function loginUser
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.email - User's email address
+ * @param {string} req.body.password - User's password
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} User data with access token and cookies
+ * @throws {ApiError} When credentials are invalid or user not found
+ * 
+ * @example
+ * POST /api/v1/users/login
+ * Body: {
+ *   "email": "john@example.com",
+ *   "password": "securepass123"
+ * }
+ * 
+ * Response: {
+ *   "success": true,
+ *   "statusCode": 200,
+ *   "data": {
+ *     "user": {
+ *       "_id": "64f123...",
+ *       "fullName": "John Doe",
+ *       "email": "john@example.com",
+ *       "role": "student"
+ *     },
+ *     "accessToken": "eyJhbGciOiJIUzI1NiIs..."
+ *   },
+ *   "message": "User logged in successfully"
+ * }
+ * 
+ * Cookies Set:
+ * - accessToken: JWT access token (httpOnly)
+ * - refreshToken: JWT refresh token (httpOnly)
+ */
 // Login User Controller
 const loginUser = asyncHandler(async (req, res) => {
   try {
@@ -133,6 +246,33 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
+/**
+ * Logout user and clear authentication tokens
+ * 
+ * @function logoutUser
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated user object (from middleware)
+ * @param {string} req.user._id - User's MongoDB ObjectId
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} Success message
+ * @throws {ApiError} When user not found or logout fails
+ * 
+ * @example
+ * POST /api/v1/users/logout
+ * Headers: { Authorization: "Bearer <accessToken>" }
+ * 
+ * Response: {
+ *   "success": true,
+ *   "statusCode": 200,
+ *   "data": null,
+ *   "message": "User logged out successfully"
+ * }
+ * 
+ * Actions:
+ * - Removes refreshToken from database
+ * - Clears accessToken and refreshToken cookies
+ * - Invalidates user session
+ */
 // logout user
 const logoutUser = asyncHandler(async (req, res) => {
     try {

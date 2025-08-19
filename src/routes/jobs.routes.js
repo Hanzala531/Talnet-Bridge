@@ -4,11 +4,15 @@ import {
     getJobById,
     createJobPost,
     updateJobPost,
-    deleteJobPost
+    deleteJobPost,
+    searchJobs,
+    getMyJobs,
+    updateJobStatus
 } from '../controllers/jobs.controllers.js';
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
 import { authorizeRoles } from '../middlewares/Role.middlewares.js';
+import { jobsCache, invalidateUserCache } from '../middlewares/redis.middlewares.js';
 
 const jobsRouter = express.Router();
 
@@ -24,7 +28,7 @@ const jobsRouter = express.Router();
  *       404:
  *         description: No jobs found
  */
-jobsRouter.get('/', requestLogger, getAllJobs);
+jobsRouter.get('/', requestLogger, jobsCache, getAllJobs);
 
 /**
  * @swagger
@@ -45,7 +49,7 @@ jobsRouter.get('/', requestLogger, getAllJobs);
  *       404:
  *         description: Job not found
  */
-jobsRouter.get('/:id', requestLogger, getJobById);
+jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
 
 /**
  * @swagger
@@ -228,5 +232,89 @@ jobsRouter.put('/:id', requestLogger, verifyJWT, authorizeRoles('employer'), upd
  *         description: Forbidden - Only the job creator can delete
  */
 jobsRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('employer'), deleteJobPost);
+
+// Additional routes
+/**
+ * @swagger
+ * /api/v1/jobs/search:
+ *   get:
+ *     summary: Search jobs with advanced filtering
+ *     tags: [Jobs]
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Search term for job title, description, or company
+ *       - in: query
+ *         name: location
+ *         schema:
+ *           type: string
+ *         description: Location filter
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Job category filter
+ *       - in: query
+ *         name: employmentType
+ *         schema:
+ *           type: string
+ *         description: Employment type filter
+ *       - in: query
+ *         name: minSalary
+ *         schema:
+ *           type: number
+ *         description: Minimum salary filter
+ *       - in: query
+ *         name: maxSalary
+ *         schema:
+ *           type: number
+ *         description: Maximum salary filter
+ *       - in: query
+ *         name: skills
+ *         schema:
+ *           type: string
+ *         description: Comma-separated skills filter
+ */
+jobsRouter.get('/search/advanced', requestLogger, jobsCache, searchJobs);
+
+/**
+ * @swagger
+ * /api/v1/jobs/my/posts:
+ *   get:
+ *     summary: Get jobs posted by current employer
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ */
+jobsRouter.get('/my/posts', requestLogger, verifyJWT, authorizeRoles('employer'), getMyJobs);
+
+/**
+ * @swagger
+ * /api/v1/jobs/{id}/status:
+ *   patch:
+ *     summary: Update job status
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: ["active", "closed", "expired"]
+ */
+jobsRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('employer', 'admin'), updateJobStatus);
 
 export default jobsRouter;
