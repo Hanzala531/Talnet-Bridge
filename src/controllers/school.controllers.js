@@ -635,3 +635,9 @@ const activeCourses = asyncHandler(async (req, res) => {
     throw internalServer("Failed to fetch active courses");
   }
 });
+
+
+
+// helper to find total students of a school 
+
+// 
