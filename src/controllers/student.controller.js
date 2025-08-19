@@ -406,6 +406,11 @@ const removeCertification = asyncHandler(async (req, res) => {
     }
 });
 
+
+// ===============================
+// Show student profile completion in percentage 
+// ===============================
+
 export {
     createStudentProfile,
     getAllStudents,

@@ -10,7 +10,7 @@ const paymentRouter = express.Router();
 
 /**
  * @swagger
- * c:
+ * /api/v1/payments/create-intent:
  *   post:
  *     summary: Create payment intent
  *     tags: [Payments]

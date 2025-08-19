@@ -85,6 +85,10 @@ const options = {
       {
         name: 'Notifications',
         description: 'User notification management endpoints'
+      },
+      {
+        name: 'Chat',
+        description: 'Real-time chat and messaging endpoints'
       }
     ],
     components: {
@@ -92,7 +96,366 @@ const options = {
         bearerAuth: {
           type: 'http',
           scheme: 'bearer',
-          bearerFormat: 'JWT'
+          bearerFormat: 'JWT',
+          description: 'JWT token obtained from login endpoint'
+        }
+      },
+      schemas: {
+        User: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              example: '64f123abc456def789012345'
+            },
+            fullName: {
+              type: 'string',
+              example: 'John Doe'
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              example: 'john@example.com'
+            },
+            phone: {
+              type: 'string',
+              example: '03001234567'
+            },
+            role: {
+              type: 'string',
+              enum: ['student', 'school', 'employer', 'admin'],
+              example: 'student'
+            },
+            onboardingStage: {
+              type: 'string',
+              enum: ['basic_info', 'profile_setup', 'verification', 'completed'],
+              example: 'basic_info'
+            },
+            status: {
+              type: 'string',
+              enum: ['active', 'inactive', 'suspended', 'pending'],
+              example: 'active'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        Course: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              example: '64f456def789abc123456789'
+            },
+            title: {
+              type: 'string',
+              example: 'Web Development Fundamentals'
+            },
+            instructor: {
+              type: 'string',
+              example: 'John Doe'
+            },
+            duration: {
+              type: 'string',
+              example: '8 weeks'
+            },
+            price: {
+              type: 'number',
+              example: 299.99
+            },
+            language: {
+              type: 'string',
+              example: 'English'
+            },
+            type: {
+              type: 'string',
+              enum: ['online', 'offline', 'hybrid'],
+              example: 'online'
+            },
+            description: {
+              type: 'string',
+              example: 'Learn the fundamentals of web development'
+            },
+            objectives: {
+              type: 'array',
+              items: {
+                type: 'string'
+              },
+              example: ['Learn HTML', 'Learn CSS', 'Learn JavaScript']
+            },
+            skills: {
+              type: 'array',
+              items: {
+                type: 'string'
+              },
+              example: ['Frontend Development', 'Responsive Design']
+            },
+            category: {
+              type: 'string',
+              example: 'Technology'
+            },
+            status: {
+              type: 'string',
+              enum: ['draft', 'pending_approval', 'approved', 'rejected', 'archived'],
+              example: 'approved'
+            },
+            providerId: {
+              type: 'string',
+              example: '64f789abc123def456789012'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        Job: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              example: '64f789abc123def456789012'
+            },
+            jobTitle: {
+              type: 'string',
+              example: 'Software Engineer'
+            },
+            department: {
+              type: 'string',
+              example: 'Engineering'
+            },
+            location: {
+              type: 'string',
+              example: 'Lahore'
+            },
+            employmentType: {
+              type: 'string',
+              enum: ['Full-time', 'Part-time', 'Internship', 'Contract'],
+              example: 'Full-time'
+            },
+            salary: {
+              type: 'object',
+              properties: {
+                min: {
+                  type: 'number',
+                  example: 50000
+                },
+                max: {
+                  type: 'number',
+                  example: 100000
+                },
+                currency: {
+                  type: 'string',
+                  example: 'PKR'
+                }
+              }
+            },
+            jobDescription: {
+              type: 'string',
+              example: 'Develop and maintain web applications.'
+            },
+            skillsRequired: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  skill: {
+                    type: 'string',
+                    example: 'JavaScript'
+                  },
+                  proficiency: {
+                    type: 'string',
+                    enum: ['Beginner', 'Intermediate', 'Advanced'],
+                    example: 'Intermediate'
+                  }
+                }
+              }
+            },
+            benefits: {
+              type: 'string',
+              example: 'Health insurance, Flexible hours'
+            },
+            category: {
+              type: 'string',
+              example: 'Technology'
+            },
+            applicationDeadline: {
+              type: 'string',
+              format: 'date',
+              example: '2025-12-31'
+            },
+            status: {
+              type: 'string',
+              enum: ['active', 'closed', 'expired'],
+              example: 'active'
+            },
+            companyId: {
+              type: 'string',
+              example: '64f890abc123def456789013'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        ApiResponse: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: true
+            },
+            statusCode: {
+              type: 'integer',
+              example: 200
+            },
+            data: {
+              type: 'object',
+              description: 'Response data (varies by endpoint)'
+            },
+            message: {
+              type: 'string',
+              example: 'Operation completed successfully'
+            }
+          }
+        },
+        ErrorResponse: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: false
+            },
+            statusCode: {
+              type: 'integer',
+              example: 400
+            },
+            message: {
+              type: 'string',
+              example: 'Validation error or operation failed'
+            },
+            errors: {
+              type: 'array',
+              items: {
+                type: 'string'
+              },
+              description: 'Detailed error messages (optional)'
+            }
+          }
+        },
+        PaginationInfo: {
+          type: 'object',
+          properties: {
+            page: {
+              type: 'integer',
+              example: 1
+            },
+            limit: {
+              type: 'integer',
+              example: 20
+            },
+            total: {
+              type: 'integer',
+              example: 150
+            },
+            totalPages: {
+              type: 'integer',
+              example: 8
+            }
+          }
+        }
+      },
+      responses: {
+        UnauthorizedError: {
+          description: 'Authentication required or token invalid',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/ErrorResponse'
+              },
+              example: {
+                success: false,
+                statusCode: 401,
+                message: 'Access token required'
+              }
+            }
+          }
+        },
+        ForbiddenError: {
+          description: 'Insufficient permissions for this operation',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/ErrorResponse'
+              },
+              example: {
+                success: false,
+                statusCode: 403,
+                message: 'Access denied'
+              }
+            }
+          }
+        },
+        NotFoundError: {
+          description: 'Resource not found',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/ErrorResponse'
+              },
+              example: {
+                success: false,
+                statusCode: 404,
+                message: 'Resource not found'
+              }
+            }
+          }
+        },
+        ValidationError: {
+          description: 'Request validation failed',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/ErrorResponse'
+              },
+              example: {
+                success: false,
+                statusCode: 400,
+                message: 'Validation error',
+                errors: ['Email is required', 'Password must be at least 6 characters']
+              }
+            }
+          }
+        },
+        InternalServerError: {
+          description: 'Internal server error',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/ErrorResponse'
+              },
+              example: {
+                success: false,
+                statusCode: 500,
+                message: 'Internal server error'
+              }
+            }
+          }
         }
       }
     },

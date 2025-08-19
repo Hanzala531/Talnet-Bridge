@@ -30,17 +30,20 @@ const courseRouter = express.Router();
  *           type: integer
  *           default: 1
  *         description: Page number for pagination
+ *         example: 1
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
  *         description: Number of courses per page
+ *         example: 10
  *       - in: query
  *         name: category
  *         schema:
  *           type: string
  *         description: Filter by course category
+ *         example: "Technology"
  *     responses:
  *       200:
  *         description: List of courses retrieved successfully
@@ -61,22 +64,26 @@ courseRouter.get('/', requestLogger, coursesCache, getCourses);
  *         schema:
  *           type: string
  *         required: true
- *         description: Search query
+ *         description: Search query for course title, instructor, or description
+ *         example: "web development"
  *       - in: query
  *         name: category
  *         schema:
  *           type: string
- *         description: Filter by category
+ *         description: Filter by course category
+ *         example: "Technology"
  *       - in: query
  *         name: priceMin
  *         schema:
  *           type: number
  *         description: Minimum price filter
+ *         example: 100
  *       - in: query
  *         name: priceMax
  *         schema:
  *           type: number
  *         description: Maximum price filter
+ *         example: 500
  *     responses:
  *       200:
  *         description: Search results retrieved successfully
