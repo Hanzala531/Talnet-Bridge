@@ -65,75 +65,91 @@ export default function registerChatSockets(io) {
     });
     
     // Handle joining conversation rooms
-    socket.on("conversation:join", (data, callback) => {
-  // const validator = validateSocketEvent('conversation:join');
-      validator(data, socket, () => {
-        try {
-          const { conversationId } = data;
-          
-          socket.join(`conv:${conversationId}`);
-          console.log(`User ${socket.userId} joined conversation: ${conversationId}`);
-          
-          // Notify others in the conversation that user is online
-          socket.to(`conv:${conversationId}`).emit("user:joined", {
-            conversationId,
-            user: socket.userInfo,
-            timestamp: new Date().toISOString()
-          });
-          
-          // Send acknowledgment to the sender
-          if (callback && typeof callback === 'function') {
-            callback({ success: true, message: 'Joined conversation successfully' });
-          }
-        } catch (error) {
-          console.error("Error joining conversation:", error);
+    socket.on("conversation:join", async (data, callback) => {
+      try {
+        const { conversationId } = data;
+        
+        if (!conversationId) {
+          const error = "Conversation ID is required";
           socket.emit("error", { 
-            message: "Failed to join conversation",
+            message: error,
             event: "conversation:join",
             timestamp: new Date().toISOString()
           });
-          
-          if (callback && typeof callback === 'function') {
-            callback({ success: false, message: 'Failed to join conversation' });
-          }
+          if (callback) callback({ success: false, message: error });
+          return;
         }
-      });
+        
+        socket.join(`conv:${conversationId}`);
+        console.log(`User ${socket.userId} joined conversation: ${conversationId}`);
+        
+        // Notify others in the conversation that user is online
+        socket.to(`conv:${conversationId}`).emit("user:joined", {
+          conversationId,
+          user: socket.userInfo,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Send acknowledgment to the sender
+        if (callback && typeof callback === 'function') {
+          callback({ success: true, message: 'Joined conversation successfully' });
+        }
+      } catch (error) {
+        console.error("Error joining conversation:", error);
+        socket.emit("error", { 
+          message: "Failed to join conversation",
+          event: "conversation:join",
+          timestamp: new Date().toISOString()
+        });
+        
+        if (callback && typeof callback === 'function') {
+          callback({ success: false, message: 'Failed to join conversation' });
+        }
+      }
     });
 
     // Handle leaving conversation rooms
-    socket.on("conversation:leave", (data, callback) => {
-  // const validator = validateSocketEvent('conversation:leave');
-      validator(data, socket, () => {
-        try {
-          const { conversationId } = data;
-          
-          socket.leave(`conv:${conversationId}`);
-          console.log(`User ${socket.userId} left conversation: ${conversationId}`);
-          
-          // Notify others in the conversation that user left
-          socket.to(`conv:${conversationId}`).emit("user:left", {
-            conversationId,
-            user: socket.userInfo,
-            timestamp: new Date().toISOString()
-          });
-          
-          // Send acknowledgment to the sender
-          if (callback && typeof callback === 'function') {
-            callback({ success: true, message: 'Left conversation successfully' });
-          }
-        } catch (error) {
-          console.error("Error leaving conversation:", error);
+    socket.on("conversation:leave", async (data, callback) => {
+      try {
+        const { conversationId } = data;
+        
+        if (!conversationId) {
+          const error = "Conversation ID is required";
           socket.emit("error", { 
-            message: "Failed to leave conversation",
+            message: error,
             event: "conversation:leave",
             timestamp: new Date().toISOString()
           });
-          
-          if (callback && typeof callback === 'function') {
-            callback({ success: false, message: 'Failed to leave conversation' });
-          }
+          if (callback) callback({ success: false, message: error });
+          return;
         }
-      });
+        
+        socket.leave(`conv:${conversationId}`);
+        console.log(`User ${socket.userId} left conversation: ${conversationId}`);
+        
+        // Notify others in the conversation that user left
+        socket.to(`conv:${conversationId}`).emit("user:left", {
+          conversationId,
+          user: socket.userInfo,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Send acknowledgment to the sender
+        if (callback && typeof callback === 'function') {
+          callback({ success: true, message: 'Left conversation successfully' });
+        }
+      } catch (error) {
+        console.error("Error leaving conversation:", error);
+        socket.emit("error", { 
+          message: "Failed to leave conversation",
+          event: "conversation:leave",
+          timestamp: new Date().toISOString()
+        });
+        
+        if (callback && typeof callback === 'function') {
+          callback({ success: false, message: 'Failed to leave conversation' });
+        }
+      }
     });
 
     // Handle typing indicators

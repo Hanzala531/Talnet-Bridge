@@ -315,4 +315,57 @@ const logoutUser = asyncHandler(async (req, res) => {
     }
 });
 
-export { registerUser, loginUser, logoutUser };
+
+const getAllUsers = asyncHandler(async (req, res) => {
+  try {
+    // Query params: page, limit, search, role
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, parseInt(req.query.limit, 10) || 20);
+    const skip = (page - 1) * limit;
+
+    const { search, role } = req.query;
+
+    // Build filter
+    const filter = {};
+    if (role) filter.role = role;
+    if (search) {
+      const regex = new RegExp(search.trim(), 'i');
+      filter.$or = [{ fullName: regex }, { email: regex }, { phone: regex }];
+    }
+
+    // Projection - exclude sensitive fields
+    const projection = { password: 0, refreshToken: 0 };
+
+    // Total count for pagination
+    const total = await User.countDocuments(filter);
+
+    // Fetch users
+    const users = await User.find(filter, projection)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const totalPages = Math.ceil(total / limit);
+
+    return res.status(200).json(
+      successResponse(
+        {
+          users,
+          pagination: {
+            total,
+            page,
+            limit,
+            totalPages,
+          },
+        },
+        'Users fetched successfully'
+      )
+    );
+  } catch (error) {
+    console.error('Error fetching users', error);
+    throw internalServer('Failed to fetch users');
+  }
+});
+
+export { registerUser, loginUser, logoutUser, getAllUsers };

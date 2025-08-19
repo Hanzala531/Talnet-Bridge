@@ -26,6 +26,14 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+
+import { connectRedis } from "./config/redis.config.js"; // adjust path
+
+(async () => {
+  await connectRedis();
+})();
+
+
 // ---------- Middlewares ---------- //
 
 // Configure CORS for production & local dev

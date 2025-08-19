@@ -90,9 +90,9 @@ const getUserNotifications = asyncHandler(async (req, res) => {
             return res.status(200).json(JSON.parse(cached));
         }
 
-        const filter = { userId };
+        const filter = { recipient: userId };
         if (unread === 'true') {
-            filter.isRead = false;
+            filter.status = 'unread';
         }
         if (type) {
             filter.type = type;
@@ -109,7 +109,7 @@ const getUserNotifications = asyncHandler(async (req, res) => {
                 .populate('relatedEntity.entityId', 'title name')
                 .lean(),
             Notification.countDocuments(filter),
-            Notification.countDocuments({ userId, isRead: false })
+            Notification.countDocuments({ recipient: userId, status: 'unread' })
         ]);
 
         const response = successResponse(200, {
@@ -177,15 +177,15 @@ const getNotificationCount = asyncHandler(async (req, res) => {
         }
 
         const [totalCount, unreadCount, typeBreakdown, recentCount] = await Promise.all([
-            Notification.countDocuments({ userId }),
-            Notification.countDocuments({ userId, isRead: false }),
+            Notification.countDocuments({ recipient: userId }),
+            Notification.countDocuments({ recipient: userId, status: 'unread' }),
             Notification.aggregate([
-                { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+                { $match: { recipient: new mongoose.Types.ObjectId(userId) } },
                 { $group: { _id: '$type', count: { $sum: 1 } } },
                 { $sort: { count: -1 } }
             ]),
             Notification.countDocuments({ 
-                userId, 
+                recipient: userId, 
                 createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } 
             })
         ]);
@@ -219,8 +219,8 @@ const markNotificationAsRead = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
         const notification = await Notification.findOneAndUpdate(
-            { _id: id, userId },
-            { isRead: true, readAt: new Date() },
+            { _id: id, recipient: userId },
+            { status: 'read', readAt: new Date() },
             { new: true }
         );
 
@@ -250,8 +250,8 @@ const markAllNotificationsAsRead = asyncHandler(async (req, res) => {
         const userId = req.user._id;
 
         const result = await Notification.updateMany(
-            { userId, isRead: false },
-            { isRead: true, readAt: new Date() }
+            { recipient: userId, status: 'unread' },
+            { status: 'read', readAt: new Date() }
         );
 
         // Invalidate cache
@@ -279,7 +279,7 @@ const deleteNotification = asyncHandler(async (req, res) => {
 
         const notification = await Notification.findOneAndDelete({
             _id: id,
-            userId
+            recipient: userId
         });
 
         if (!notification) {
@@ -319,13 +319,13 @@ const createNotification = asyncHandler(async (req, res) => {
         }
 
         const notification = await Notification.create({
-            userId,
+            recipient: userId,
             title,
             message,
             type,
             relatedEntity,
             priority,
-            isRead: false
+            status: 'unread'
         });
 
         // Invalidate user's notification cache
@@ -376,7 +376,8 @@ const bulkCreateNotifications = asyncHandler(async (req, res) => {
         const createdNotifications = await Notification.insertMany(
             notifications.map(notif => ({
                 ...notif,
-                isRead: false,
+                recipient: notif.userId,
+                status: 'unread',
                 priority: notif.priority || 'normal'
             }))
         );
@@ -423,7 +424,7 @@ const bulkDeleteNotifications = asyncHandler(async (req, res) => {
 
         const result = await Notification.deleteMany({
             _id: { $in: notificationIds },
-            userId
+            recipient: userId
         });
 
         // Invalidate cache

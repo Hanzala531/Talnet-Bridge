@@ -4,6 +4,7 @@ import {
     loginUser,
     logoutUser
 } from '../controllers/user.controllers.js';
+import { getAllUsers } from '../controllers/user.controllers.js';
 import {requestLogger} from '../middlewares/ReqLog.middlewares.js';
 import {verifyJWT} from '../middlewares/Auth.middlewares.js';
 
@@ -100,6 +101,12 @@ userRouter.post('/login', requestLogger, loginUser);
 
 
 userRouter.post('/logout', requestLogger, verifyJWT, logoutUser);
+
+/**
+ * GET /api/v1/users
+ * List users (admin or authenticated)
+ */
+userRouter.get('/', requestLogger, verifyJWT, getAllUsers);
 
 
 
