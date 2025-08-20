@@ -49,9 +49,7 @@ const uploadDocs = asyncHandler(async (req, res) => {
                 "KYC documents uploaded successfully"
             )
         );
-    } catch (error) {
-        console.error("Upload KYC docs error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -96,9 +94,7 @@ const getAllKYCDocs = asyncHandler(async (req, res) => {
                 "KYC documents retrieved successfully"
             )
         );
-    } catch (error) {
-        console.error("Get all KYC docs error:", error);
-        throw internalServer("Failed to fetch KYC documents");
+    } catch (error) {throw internalServer("Failed to fetch KYC documents");
     }
 });
 
@@ -128,9 +124,7 @@ const getKYCById = asyncHandler(async (req, res) => {
         }
 
         return res.status(200).json(successResponse({ kyc }, "KYC retrieved successfully"));
-    } catch (error) {
-        console.error("Get KYC by ID error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -151,9 +145,7 @@ const getMyKYC = asyncHandler(async (req, res) => {
         }
 
         return res.status(200).json(successResponse({ kyc }, "KYC retrieved successfully"));
-    } catch (error) {
-        console.error("Get my KYC error:", error);
-        throw internalServer("Failed to fetch KYC");
+    } catch (error) {throw internalServer("Failed to fetch KYC");
     }
 });
 
@@ -201,9 +193,7 @@ const verifyKYC = asyncHandler(async (req, res) => {
                 `KYC ${status} successfully`
             )
         );
-    } catch (error) {
-        console.error("Verify KYC error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -253,9 +243,7 @@ const updateKYCDocs = asyncHandler(async (req, res) => {
                 "KYC documents updated successfully"
             )
         );
-    } catch (error) {
-        console.error("Update KYC docs error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -276,9 +264,7 @@ const deleteKYC = asyncHandler(async (req, res) => {
         }
 
         return res.status(200).json(successResponse(null, "KYC record deleted successfully"));
-    } catch (error) {
-        console.error("Delete KYC error:", error);
-        throw internalServer("Failed to delete KYC record");
+    } catch (error) {throw internalServer("Failed to delete KYC record");
     }
 });
 

@@ -20,13 +20,98 @@ const jobsRouter = express.Router();
  * @swagger
  * /api/v1/jobs:
  *   get:
- *     summary: Get all job posts
+ *     summary: Get all job posts with pagination and filtering
+ *     description: Retrieve a paginated list of active job posts with optional filtering by location, employment type, and category
  *     tags: [Jobs]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 20
+ *         description: Number of jobs per page (max 50)
+ *         example: 20
+ *       - in: query
+ *         name: location
+ *         schema:
+ *           type: string
+ *         description: Filter by job location
+ *         example: "Lahore"
+ *       - in: query
+ *         name: employmentType
+ *         schema:
+ *           type: string
+ *           enum: ["Full-time", "Part-time", "Internship", "Contract"]
+ *         description: Filter by employment type
+ *         example: "Full-time"
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filter by job category
+ *         example: "Technology"
+ *       - in: query
+ *         name: salaryMin
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *         description: Minimum salary filter
+ *         example: 50000
+ *       - in: query
+ *         name: salaryMax
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *         description: Maximum salary filter
+ *         example: 150000
  *     responses:
  *       200:
- *         description: Jobs fetched successfully
+ *         description: Jobs retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     jobs:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Job'
+ *                     pagination:
+ *                       $ref: '#/components/schemas/PaginationInfo'
+ *                 message:
+ *                   type: string
+ *                   example: "Jobs retrieved successfully"
  *       404:
  *         description: No jobs found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 jobsRouter.get('/', requestLogger, jobsCache, getAllJobs);
 
@@ -35,6 +120,7 @@ jobsRouter.get('/', requestLogger, jobsCache, getAllJobs);
  * /api/v1/jobs/{id}:
  *   get:
  *     summary: Get a job by ID
+ *     description: Retrieve detailed information about a specific job posting including company details and requirements
  *     tags: [Jobs]
  *     parameters:
  *       - in: path
@@ -42,12 +128,42 @@ jobsRouter.get('/', requestLogger, jobsCache, getAllJobs);
  *         required: true
  *         schema:
  *           type: string
- *         description: Job ID
+ *         description: Job unique identifier
+ *         example: "64f789abc123def456789012"
  *     responses:
  *       200:
- *         description: Job fetched successfully
+ *         description: Job retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     job:
+ *                       $ref: '#/components/schemas/Job'
+ *                 message:
+ *                   type: string
+ *                   example: "Job retrieved successfully"
  *       404:
  *         description: Job not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
 
@@ -56,6 +172,7 @@ jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
  * /api/v1/jobs:
  *   post:
  *     summary: Create a new job post
+ *     description: Create a new job posting (Only available to verified employers)
  *     tags: [Jobs]
  *     security:
  *       - bearerAuth: []
@@ -72,37 +189,48 @@ jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
  *               - employmentType
  *               - jobDescription
  *               - category
+ *               - applicationDeadline
  *             properties:
  *               jobTitle:
  *                 type: string
- *                 example: "Software Engineer"
+ *                 description: Job position title
+ *                 example: "Senior Software Engineer"
  *               department:
  *                 type: string
+ *                 description: Department or team
  *                 example: "Engineering"
  *               location:
  *                 type: string
+ *                 description: Job location (city/remote)
  *                 example: "Lahore"
  *               employmentType:
  *                 type: string
  *                 enum: ["Full-time", "Part-time", "Internship", "Contract"]
+ *                 description: Type of employment
  *                 example: "Full-time"
  *               salary:
  *                 type: object
+ *                 description: Salary range information
  *                 properties:
  *                   min:
  *                     type: number
- *                     example: 50000
+ *                     description: Minimum salary
+ *                     example: 80000
  *                   max:
  *                     type: number
- *                     example: 100000
+ *                     description: Maximum salary
+ *                     example: 150000
  *                   currency:
  *                     type: string
+ *                     description: Currency code
  *                     example: "PKR"
  *               jobDescription:
  *                 type: string
- *                 example: "Develop and maintain web applications."
+ *                 description: Detailed job description and responsibilities
+ *                 example: "We are looking for a Senior Software Engineer to join our team. You will be responsible for developing scalable web applications, mentoring junior developers, and contributing to architectural decisions."
  *               skillsRequired:
  *                 type: array
+ *                 description: Required skills and proficiency levels
  *                 items:
  *                   type: object
  *                   properties:
@@ -112,26 +240,71 @@ jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
  *                     proficiency:
  *                       type: string
  *                       enum: ["Beginner", "Intermediate", "Advanced"]
- *                       example: "Intermediate"
+ *                       example: "Advanced"
+ *                 example: [
+ *                   {"skill": "JavaScript", "proficiency": "Advanced"},
+ *                   {"skill": "React", "proficiency": "Intermediate"},
+ *                   {"skill": "Node.js", "proficiency": "Intermediate"}
+ *                 ]
  *               benefits:
  *                 type: string
- *                 example: "Health insurance, Flexible hours"
+ *                 description: Job benefits and perks
+ *                 example: "Health insurance, Flexible working hours, Remote work options, Professional development budget"
  *               category:
  *                 type: string
+ *                 description: Job category
  *                 example: "Technology"
  *               applicationDeadline:
  *                 type: string
  *                 format: date
+ *                 description: Application deadline (YYYY-MM-DD)
  *                 example: "2025-12-31"
  *     responses:
  *       201:
  *         description: Job created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     job:
+ *                       $ref: '#/components/schemas/Job'
+ *                 message:
+ *                   type: string
+ *                   example: "Job created successfully"
  *       400:
- *         description: Missing required fields
+ *         description: Missing required fields or validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized - Invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
- *         description: Forbidden - Only employers can create jobs
+ *         description: Forbidden - Only verified employers can create jobs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 jobsRouter.post('/', requestLogger, verifyJWT, authorizeRoles('employer'), createJobPost);
 

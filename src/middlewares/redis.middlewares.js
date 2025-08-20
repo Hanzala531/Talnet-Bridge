@@ -34,9 +34,7 @@ export const cacheMiddleware = (keyPrefix, expirySeconds = 60, userSpecific = fa
       const key = `${keyPrefix}${userPart}:${JSON.stringify(req.params)}:${JSON.stringify(req.query)}`;
 
       const cachedData = await redisClient.get(key);
-      if (cachedData) {
-        console.log(`💾 Cache hit: ${keyPrefix}`);
-        return res.json(JSON.parse(cachedData));
+      if (cachedData) {return res.json(JSON.parse(cachedData));
       }
 
       // Store original json method
@@ -46,7 +44,7 @@ export const cacheMiddleware = (keyPrefix, expirySeconds = 60, userSpecific = fa
       res.json = (body) => {
         if ((res.statusCode === 200 || res.statusCode === 201) && redisClient.isConnected()) {
           redisClient.setEx(key, expirySeconds, JSON.stringify(body))
-            .then(() => console.log(`💾 Cached: ${keyPrefix}`))
+            .then(() => {})
             .catch(() => {}); // Silent failure
         }
         return originalJson(body);
@@ -80,9 +78,7 @@ export const invalidateCacheMiddleware = (pattern) => {
           const keys = await redisClient.keys(fullPattern);
           
           if (keys.length > 0) {
-            await redisClient.del(keys);
-            console.log(`🗑️ Cache invalidated: ${keys.length} keys`);
-          }
+            await redisClient.del(keys);}
         } catch (err) {
           // Silent failure - don't break the response
         }

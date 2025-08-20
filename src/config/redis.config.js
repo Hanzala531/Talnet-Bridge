@@ -28,38 +28,26 @@ let isRedisEnabled = process.env.REDIS_ENABLED !== "false"; // env toggle
 
 // Safe Redis connect function
 const connectRedis = async () => {
-  if (!isRedisEnabled) {
-    console.log("📝 Redis disabled - running without cache");
-    return;
+  if (!isRedisEnabled) {return;
   }
 
   redisClient = new Redis(redisConfig);
 
-  redisClient.on("connect", () => {
-    console.log("✅ Redis connected successfully");
-    isConnected = true;
+  redisClient.on("connect", () => {isConnected = true;
   });
 
-  redisClient.on("ready", () => {
-    console.log("✅ Redis client ready to use");
-    isConnected = true;
+  redisClient.on("ready", () => {isConnected = true;
   });
 
-  redisClient.on("error", (err) => {
-    console.warn("⚠️ Redis error:", err.message);
-    isConnected = false;
+  redisClient.on("error", (err) => {isConnected = false;
   });
 
-  redisClient.on("close", () => {
-    console.warn("⚠️ Redis connection closed");
-    isConnected = false;
+  redisClient.on("close", () => {isConnected = false;
   });
 
   try {
     await redisClient.connect();
-  } catch (error) {
-    console.warn("Redis not available - continuing without cache:", error.message);
-    isRedisEnabled = false;
+  } catch (error) {isRedisEnabled = false;
     isConnected = false;
     redisClient.disconnect();
     redisClient = null;

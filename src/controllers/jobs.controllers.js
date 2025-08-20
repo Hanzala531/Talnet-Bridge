@@ -137,9 +137,7 @@ const getAllJobs = asyncHandler(async (req, res) => {
                 "Jobs fetched successfully."
             )
         );
-    } catch (error) {
-        console.error("Get all jobs error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -359,9 +357,7 @@ const searchJobs = asyncHandler(async (req, res) => {
                 "Job search completed successfully"
             )
         );
-    } catch (error) {
-        console.error("Search jobs error:", error);
-        throw internalServer("Failed to search jobs");
+    } catch (error) {throw internalServer("Failed to search jobs");
     }
 });
 
@@ -409,9 +405,7 @@ const getMyJobs = asyncHandler(async (req, res) => {
                 "Your jobs retrieved successfully"
             )
         );
-    } catch (error) {
-        console.error("Get my jobs error:", error);
-        throw internalServer("Failed to retrieve your jobs");
+    } catch (error) {throw internalServer("Failed to retrieve your jobs");
     }
 });
 
@@ -460,9 +454,7 @@ const updateJobStatus = asyncHandler(async (req, res) => {
                 `Job status updated to ${status} successfully`
             )
         );
-    } catch (error) {
-        console.error("Update job status error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 

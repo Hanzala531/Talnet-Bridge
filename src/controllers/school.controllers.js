@@ -200,9 +200,7 @@ const getAllTrainingProviders = asyncHandler(async (req, res) => {
         .skip(skip)
         .limit(Number(limit))
         .sort({ createdAt: -1 });
-    } catch (err) {
-      console.error("[ERROR] TrainingInstitute.find failed:", err);
-      throw internalServer("DB error in TrainingInstitute.find");
+    } catch (err) {throw internalServer("DB error in TrainingInstitute.find");
     }
 
     let total;
@@ -535,9 +533,7 @@ const matchStudents = asyncHandler(async (req, res) => {
         matchedStudents: matched,
       },
     });
-  } catch (error) {
-    console.error("Error in matchStudents:", error);
-    throw internalServer("Failed to match students for the job");
+  } catch (error) {throw internalServer("Failed to match students for the job");
   }
 });
 
@@ -618,9 +614,7 @@ const studentsDirectory = asyncHandler(async (req, res) => {
         },
       },
     });
-  } catch (error) {
-    console.error("Error in studentsDirectory:", error);
-    throw internalServer("Failed to fetch students directory");
+  } catch (error) {throw internalServer("Failed to fetch students directory");
   }
 });
 
@@ -695,9 +689,7 @@ const employerDirectory = asyncHandler(async (req, res) => {
         },
       },
     });
-  } catch (error) {
-    console.error("Error in employerDirectory:", error);
-    throw internalServer("Failed to fetch employers directory");
+  } catch (error) {throw internalServer("Failed to fetch employers directory");
   }
 });
 
@@ -706,8 +698,6 @@ const dashboardController = asyncHandler(async (req, res) => {
   try {
     // Find institute by userId
     const school = await TrainingInstitute.findOne({ userId: req.user._id });
-    // console.log("Hi i am the issue");
-
     if (!school) {
       return res.status(404).json({
         success: false,
@@ -715,8 +705,8 @@ const dashboardController = asyncHandler(async (req, res) => {
         payload: null,
       });
     }
-
     const schoolId = school._id;
+
 
     // Courses aggregation
     const coursesAgg = await Course.aggregate([
@@ -807,9 +797,7 @@ const dashboardController = asyncHandler(async (req, res) => {
         activeCourses,
       },
     });
-  } catch (error) {
-    console.error("Error in dashboardController:", error);
-    return res.status(500).json({
+  } catch (error) {return res.status(500).json({
       success: false,
       message: "Failed to fetch dashboard analytics",
       payload: null,

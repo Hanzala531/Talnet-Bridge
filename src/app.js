@@ -17,6 +17,7 @@ import studentRouter from "./routes/student.routes.js";
 import kycRouter from "./routes/kyc.routes.js";
 import certificationRouter from "./routes/certification.routes.js";
 import experienceRouter from "./routes/experience.routes.js";
+import enrollmentRouter from "./routes/enrollment.routes.js";
 // Swagger imports
 import { setupSwagger } from "../swagger.js";
 
@@ -25,8 +26,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-
-app.set('trust proxy', true);
 
 import { connectRedis } from "./config/redis.config.js"; // adjust path
 
@@ -99,6 +98,7 @@ app.get("/", (req, res) => {
         "/api/v1/kyc",
         "/api/v1/certifications",
         "/api/v1/experiences",
+        "/api/v1/enrollments",
         "/api/v1/subscriptions",
         "/api/v1/payments",
         "/api/v1/webhooks",
@@ -137,6 +137,9 @@ app.use("/api/v1/certifications", certificationRouter);
 
 // Experience routes
 app.use("/api/v1/experiences", experienceRouter);
+
+// Enrollment routes
+app.use("/api/v1/enrollments", enrollmentRouter);
 
 // Subscription routes
 app.use("/api/v1/subscriptions", subscriptionRouter);

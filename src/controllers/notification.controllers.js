@@ -130,9 +130,7 @@ const getUserNotifications = asyncHandler(async (req, res) => {
         await redisClient.setEx(cacheKey, 120, JSON.stringify(response));
 
         res.status(200).json(response);
-    } catch (error) {
-        console.error("Get notifications error:", error);
-        throw new ApiError(500, "Failed to retrieve notifications");
+    } catch (error) {throw new ApiError(500, "Failed to retrieve notifications");
     }
 });
 
@@ -206,9 +204,7 @@ const getNotificationCount = asyncHandler(async (req, res) => {
         await redisClient.setEx(cacheKey, 300, JSON.stringify(response));
 
         res.status(200).json(response);
-    } catch (error) {
-        console.error("Get notification count error:", error);
-        throw new ApiError(500, "Failed to get notification count");
+    } catch (error) {throw new ApiError(500, "Failed to get notification count");
     }
 });
 
@@ -238,9 +234,7 @@ const markNotificationAsRead = asyncHandler(async (req, res) => {
             successResponse(200, notification, "Notification marked as read")
         );
     } catch (error) {
-        if (error instanceof ApiError) throw error;
-        console.error("Mark notification as read error:", error);
-        throw new ApiError(500, "Failed to mark notification as read");
+        if (error instanceof ApiError) throw error;throw new ApiError(500, "Failed to mark notification as read");
     }
 });
 
@@ -265,9 +259,7 @@ const markAllNotificationsAsRead = asyncHandler(async (req, res) => {
                 modifiedCount: result.modifiedCount
             }, "All notifications marked as read")
         );
-    } catch (error) {
-        console.error("Mark all notifications as read error:", error);
-        throw new ApiError(500, "Failed to mark all notifications as read");
+    } catch (error) {throw new ApiError(500, "Failed to mark all notifications as read");
     }
 });
 
@@ -290,9 +282,7 @@ const deleteNotification = asyncHandler(async (req, res) => {
             new successResponse(200, null, "Notification deleted successfully")
         );
     } catch (error) {
-        if (error instanceof ApiError) throw error;
-        console.error("Delete notification error:", error);
-        throw new ApiError(500, "Failed to delete notification");
+        if (error instanceof ApiError) throw error;throw new ApiError(500, "Failed to delete notification");
     }
 });
 
@@ -342,9 +332,7 @@ const createNotification = asyncHandler(async (req, res) => {
         res.status(201).json(
             successResponse(201, notification, "Notification created successfully")
         );
-    } catch (error) {
-        console.error("Create notification error:", error);
-        throw new ApiError(500, "Failed to create notification");
+    } catch (error) {throw new ApiError(500, "Failed to create notification");
     }
 });
 
@@ -397,9 +385,7 @@ const bulkCreateNotifications = asyncHandler(async (req, res) => {
                 notifications: createdNotifications
             }, "Bulk notifications created successfully")
         );
-    } catch (error) {
-        console.error("Bulk create notifications error:", error);
-        throw new ApiError(500, "Failed to create bulk notifications");
+    } catch (error) {throw new ApiError(500, "Failed to create bulk notifications");
     }
 });
 
@@ -438,9 +424,7 @@ const bulkDeleteNotifications = asyncHandler(async (req, res) => {
                 deletedCount: result.deletedCount
             }, "Notifications deleted successfully")
         );
-    } catch (error) {
-        console.error("Bulk delete notifications error:", error);
-        throw new ApiError(500, "Failed to delete notifications");
+    } catch (error) {throw new ApiError(500, "Failed to delete notifications");
     }
 });
 
@@ -490,9 +474,7 @@ const getNotificationPreferences = asyncHandler(async (req, res) => {
         await redisClient.setEx(cacheKey, 3600, JSON.stringify(response));
 
         res.status(200).json(response);
-    } catch (error) {
-        console.error("Get notification preferences error:", error);
-        throw new ApiError(500, "Failed to get notification preferences");
+    } catch (error) {throw new ApiError(500, "Failed to get notification preferences");
     }
 });
 
@@ -519,9 +501,7 @@ const updateNotificationPreferences = asyncHandler(async (req, res) => {
         res.status(200).json(
             successResponse(200, updates, "Notification preferences updated successfully")
         );
-    } catch (error) {
-        console.error("Update notification preferences error:", error);
-        throw new ApiError(500, "Failed to update notification preferences");
+    } catch (error) {throw new ApiError(500, "Failed to update notification preferences");
     }
 });
 

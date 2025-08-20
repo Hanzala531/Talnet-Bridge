@@ -44,8 +44,6 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
 
     // 6. Proceed to next middleware
     next();
-  } catch (error) {
-    console.error("🔐 JWT Middleware Error:", error.message);
-    throw new ApiError(401, error.message || "Unauthorized");
+  } catch (error) {throw new ApiError(401, error.message || "Unauthorized");
   }
 });

@@ -111,10 +111,7 @@ const createPlan = asyncHandler(async (req, res) => {
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern)[0];
             throw conflict(`A plan with this ${field} already exists`, "DUPLICATE_PLAN_FIELD");
-        }
-
-        console.error("Create subscription plan error:", error);
-        throw internalServer("Failed to create subscription plan", "PLAN_CREATION_ERROR");
+        }throw internalServer("Failed to create subscription plan", "PLAN_CREATION_ERROR");
     }
 });
 
@@ -144,9 +141,7 @@ const getAllPlans = asyncHandler(async (req, res) => {
             successResponse(200, plans, "Subscription plans retrieved successfully")
         );
     } catch (error) {
-        if (error instanceof ApiError) throw error;
-        console.error("Get all plans error:", error);
-        throw internalServer("Failed to fetch subscription plans", "PLANS_FETCH_ERROR");
+        if (error instanceof ApiError) throw error;throw internalServer("Failed to fetch subscription plans", "PLANS_FETCH_ERROR");
     }
 });
 
@@ -170,9 +165,7 @@ const getPlanById = asyncHandler(async (req, res) => {
             successResponse(200, plan, "Subscription plan retrieved successfully")
         );
     } catch (error) {
-        if (error instanceof ApiError) throw error;
-        console.error("Get plan by ID error:", error);
-        throw internalServer("Failed to fetch subscription plan", "PLAN_FETCH_ERROR");
+        if (error instanceof ApiError) throw error;throw internalServer("Failed to fetch subscription plan", "PLAN_FETCH_ERROR");
     }
 });
 
@@ -251,10 +244,7 @@ const updatePlan = asyncHandler(async (req, res) => {
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern)[0];
             throw conflict(`A plan with this ${field} already exists`, "DUPLICATE_PLAN_FIELD");
-        }
-
-        console.error("Update subscription plan error:", error);
-        throw internalServer("Failed to update subscription plan", "PLAN_UPDATE_ERROR");
+        }throw internalServer("Failed to update subscription plan", "PLAN_UPDATE_ERROR");
     }
 });
 
@@ -293,9 +283,7 @@ const deletePlan = asyncHandler(async (req, res) => {
             successResponse(200, null, "Subscription plan deleted successfully")
         );
     } catch (error) {
-        if (error instanceof ApiError) throw error;
-        console.error("Delete subscription plan error:", error);
-        throw internalServer("Failed to delete subscription plan", "PLAN_DELETE_ERROR");
+        if (error instanceof ApiError) throw error;throw internalServer("Failed to delete subscription plan", "PLAN_DELETE_ERROR");
     }
 });
 
@@ -377,10 +365,7 @@ const createSubscription = asyncHandler(async (req, res) => {
                 message: e.message
             }));
             throw validationError(validationErrors, "Subscription validation failed", "SUBSCRIPTION_VALIDATION_ERROR");
-        }
-
-        console.error("Create subscription error:", error);
-        throw internalServer("Failed to create subscription", "SUBSCRIPTION_CREATION_ERROR");
+        }throw internalServer("Failed to create subscription", "SUBSCRIPTION_CREATION_ERROR");
     }
 });
 
@@ -401,9 +386,7 @@ const getUserSubscription = asyncHandler(async (req, res) => {
         res.status(200).json(
             successResponse(200, subscription, "Subscription retrieved successfully")
         );
-    } catch (error) {
-        console.error("Get user subscription error:", error);
-        throw internalServer("Failed to fetch user subscription", "USER_SUBSCRIPTION_FETCH_ERROR");
+    } catch (error) {throw internalServer("Failed to fetch user subscription", "USER_SUBSCRIPTION_FETCH_ERROR");
     }
 });
 
@@ -450,9 +433,7 @@ const getAllSubscriptions = asyncHandler(async (req, res) => {
             }, "Subscriptions retrieved successfully")
         );
     } catch (error) {
-        if (error instanceof ApiError) throw error;
-        console.error("Get all subscriptions error:", error);
-        throw internalServer("Failed to fetch subscriptions", "SUBSCRIPTIONS_FETCH_ERROR");
+        if (error instanceof ApiError) throw error;throw internalServer("Failed to fetch subscriptions", "SUBSCRIPTIONS_FETCH_ERROR");
     }
 });
 
@@ -498,9 +479,7 @@ const updateSubscriptionStatus = asyncHandler(async (req, res) => {
             successResponse(200, subscription, "Subscription status updated successfully")
         );
     } catch (error) {
-        if (error instanceof ApiError) throw error;
-        console.error("Update subscription status error:", error);
-        throw internalServer("Failed to update subscription status", "SUBSCRIPTION_STATUS_UPDATE_ERROR");
+        if (error instanceof ApiError) throw error;throw internalServer("Failed to update subscription status", "SUBSCRIPTION_STATUS_UPDATE_ERROR");
     }
 });
 
@@ -543,9 +522,7 @@ const cancelSubscription = asyncHandler(async (req, res) => {
             successResponse(200, subscription, "Subscription cancelled successfully")
         );
     } catch (error) {
-        if (error instanceof ApiError) throw error;
-        console.error("Cancel subscription error:", error);
-        throw internalServer("Failed to cancel subscription", "SUBSCRIPTION_CANCEL_ERROR");
+        if (error instanceof ApiError) throw error;throw internalServer("Failed to cancel subscription", "SUBSCRIPTION_CANCEL_ERROR");
     }
 });
 
@@ -625,14 +602,10 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
                     paymentIntentId: paymentIntent.id
                 }, "Payment intent created successfully")
             );
-        } catch (stripeError) {
-            console.error("Stripe payment intent creation error:", stripeError);
-            throw badRequest(`Stripe error: ${stripeError.message}", "STRIPE_PAYMENT_INTENT_ERROR"`);
+        } catch (stripeError) {throw badRequest(`Stripe error: ${stripeError.message}", "STRIPE_PAYMENT_INTENT_ERROR"`);
         }
     } catch (error) {
-        if (error instanceof ApiError) throw error;
-        console.error("Create payment intent error:", error);
-        throw internalServer("Failed to create payment intent", "PAYMENT_INTENT_CREATION_ERROR");
+        if (error instanceof ApiError) throw error;throw internalServer("Failed to create payment intent", "PAYMENT_INTENT_CREATION_ERROR");
     }
 });
 
@@ -686,15 +659,11 @@ const confirmPayment = asyncHandler(async (req, res) => {
                 errorCode: "PAYMENT_FAILED"
             });
 
-        } catch (stripeError) {
-            console.error("Stripe payment confirmation error:", stripeError);
-            throw badRequest(`Stripe error: ${stripeError.message}`, "STRIPE_PAYMENT_CONFIRMATION_ERROR");
+        } catch (stripeError) {throw badRequest(`Stripe error: ${stripeError.message}`, "STRIPE_PAYMENT_CONFIRMATION_ERROR");
         }
 
     } catch (error) {
-        if (error instanceof ApiError) throw error;
-        console.error("Confirm payment intent error:", error);
-        throw internalServer("Failed to confirm payment", "PAYMENT_INTENT_CONFIRMATION_ERROR");
+        if (error instanceof ApiError) throw error;throw internalServer("Failed to confirm payment", "PAYMENT_INTENT_CONFIRMATION_ERROR");
     }
 });
 
@@ -758,14 +727,10 @@ const getSubscriptionStats = asyncHandler(async (req, res) => {
             res.status(200).json(
                 successResponse(200, stats, "Subscription stats retrieved successfully")
             );
-        } catch (dbError) {
-            console.error("Database query error in subscription stats:", dbError);
-            throw internalServer("Failed to calculate usage statistics", "USAGE_CALCULATION_ERROR");
+        } catch (dbError) {throw internalServer("Failed to calculate usage statistics", "USAGE_CALCULATION_ERROR");
         }
     } catch (error) {
-        if (error instanceof ApiError) throw error;
-        console.error("Get subscription stats error:", error);
-        throw internalServer("Failed to fetch subscription stats", "SUBSCRIPTION_STATS_ERROR");
+        if (error instanceof ApiError) throw error;throw internalServer("Failed to fetch subscription stats", "SUBSCRIPTION_STATS_ERROR");
     }
 });
 

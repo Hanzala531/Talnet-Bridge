@@ -71,9 +71,7 @@ const getCourses = asyncHandler(async (req, res) => {
         "Courses fetched successfully"
       )
     );
-  } catch (error) {
-    console.error("Get courses error:", error);
-    throw internalServer("Failed to fetch courses");
+  } catch (error) {throw internalServer("Failed to fetch courses");
   }
 });
 
@@ -90,9 +88,7 @@ const getCoursesById = asyncHandler(async (req, res) => {
     }
 
     return res.status(200).json(successResponse({ course }, "Course fetched successfully"));
-  } catch (error) {
-    console.error("Get course by ID error:", error);
-    throw internalServer("Failed to fetch course");
+  } catch (error) {throw internalServer("Failed to fetch course");
   }
 });
 
@@ -142,9 +138,7 @@ if (existingCourses) {
     });
 
     return res.status(201).json(createdResponse({ course }, "Course created successfully"));
-  } catch (error) {
-    console.error("Create course error:", error);
-    throw internalServer("Failed to create course");
+  } catch (error) {throw internalServer("Failed to create course");
   }
 });
 
@@ -172,9 +166,7 @@ const updateCourse = asyncHandler(async (req, res) => {
     }
 
     return res.status(200).json(successResponse({ course }, "Course updated successfully"));
-  } catch (error) {
-    console.error("Update course error:", error);
-    throw internalServer("Failed to update course");
+  } catch (error) {throw internalServer("Failed to update course");
   }
 });
 
@@ -201,9 +193,7 @@ const updateCourseStatus = asyncHandler(async (req, res) => {
     }
 
     return res.status(200).json(successResponse({ course }, "Course status updated successfully"));
-  } catch (error) {
-    console.error("Update course status error:", error);
-    throw internalServer("Failed to update course status");
+  } catch (error) {throw internalServer("Failed to update course status");
   }
 });
 
@@ -220,9 +210,7 @@ const deleteCourseById = asyncHandler(async (req, res) => {
     }
 
     return res.status(200).json(successResponse(null, "Course deleted successfully"));
-  } catch (error) {
-    console.error("Delete course error:", error);
-    throw internalServer("Failed to delete course");
+  } catch (error) {throw internalServer("Failed to delete course");
   }
 });
 
@@ -280,9 +268,7 @@ const searchCourses = asyncHandler(async (req, res) => {
         "Search results fetched successfully"
       )
     );
-  } catch (error) {
-    console.error("Search courses error:", error);
-    throw internalServer("Failed to search courses");
+  } catch (error) {throw internalServer("Failed to search courses");
   }
 });
 
@@ -321,9 +307,7 @@ const getCoursesByProvider = asyncHandler(async (req, res) => {
         "Courses by provider fetched successfully"
       )
     );
-  } catch (error) {
-    console.error("Get courses by provider error:", error);
-    throw internalServer("Failed to fetch courses by provider");
+  } catch (error) {throw internalServer("Failed to fetch courses by provider");
   }
 });
 

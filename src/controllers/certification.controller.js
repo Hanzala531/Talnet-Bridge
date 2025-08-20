@@ -48,9 +48,7 @@ const createCertification = asyncHandler(async (req, res) => {
                 "Certification created successfully"
             )
         );
-    } catch (error) {
-        console.error("Create certification error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -106,9 +104,7 @@ const getAllCertifications = asyncHandler(async (req, res) => {
                 "Certifications retrieved successfully"
             )
         );
-    } catch (error) {
-        console.error("Get all certifications error:", error);
-        throw internalServer("Failed to fetch certifications");
+    } catch (error) {throw internalServer("Failed to fetch certifications");
     }
 });
 
@@ -132,9 +128,7 @@ const getCertificationById = asyncHandler(async (req, res) => {
         return res.status(200).json(
             successResponse({ certification }, "Certification retrieved successfully")
         );
-    } catch (error) {
-        console.error("Get certification by ID error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -198,9 +192,7 @@ const updateCertification = asyncHandler(async (req, res) => {
                 "Certification updated successfully"
             )
         );
-    } catch (error) {
-        console.error("Update certification error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -223,9 +215,7 @@ const deleteCertification = asyncHandler(async (req, res) => {
         return res.status(200).json(
             successResponse(null, "Certification deleted successfully")
         );
-    } catch (error) {
-        console.error("Delete certification error:", error);
-        throw internalServer("Failed to delete certification");
+    } catch (error) {throw internalServer("Failed to delete certification");
     }
 });
 
@@ -264,9 +254,7 @@ const searchCertifications = asyncHandler(async (req, res) => {
                 "Certifications search completed"
             )
         );
-    } catch (error) {
-        console.error("Search certifications error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -312,9 +300,7 @@ const getCertificationsByIssuer = asyncHandler(async (req, res) => {
                 "Certifications by issuer retrieved successfully"
             )
         );
-    } catch (error) {
-        console.error("Get certifications by issuer error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 

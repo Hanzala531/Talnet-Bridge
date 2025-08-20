@@ -17,6 +17,7 @@ const employerRouter = express.Router();
  * /api/v1/employers:
  *   post:
  *     summary: Create a new company profile
+ *     description: Create a new employer/company profile (Only available to users with employer role)
  *     tags: [Employers]
  *     security:
  *       - bearerAuth: []
@@ -27,27 +28,108 @@ const employerRouter = express.Router();
  *           schema:
  *             type: object
  *             required:
- *               - name
+ *               - companyName
  *               - companySize
  *               - industry
  *             properties:
- *               name:
+ *               companyName:
  *                 type: string
- *                 example: "Acme Corp"
+ *                 description: Company or organization name
+ *                 example: "TechCorp Solutions"
+ *               companyDescription:
+ *                 type: string
+ *                 description: Brief description of the company
+ *                 example: "Leading software development company specializing in web and mobile applications"
  *               companySize:
  *                 type: string
- *                 example: "100-500"
+ *                 enum: ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"]
+ *                 description: Company size range
+ *                 example: "51-200"
  *               industry:
  *                 type: string
- *                 example: "Technology"
- *               websiteLink:
+ *                 description: Industry sector
+ *                 example: "Information Technology"
+ *               website:
  *                 type: string
- *                 example: "www.google.com" 
+ *                 format: url
+ *                 description: Company website URL
+ *                 example: "https://techcorp.com"
+ *               address:
+ *                 type: object
+ *                 properties:
+ *                   street:
+ *                     type: string
+ *                     example: "456 Business Avenue"
+ *                   city:
+ *                     type: string
+ *                     example: "Karachi"
+ *                   state:
+ *                     type: string
+ *                     example: "Sindh"
+ *                   country:
+ *                     type: string
+ *                     example: "Pakistan"
+ *                   postalCode:
+ *                     type: string
+ *                     example: "75600"
+ *               establishedYear:
+ *                 type: integer
+ *                 minimum: 1800
+ *                 maximum: 2025
+ *                 description: Year company was established
+ *                 example: 2015
  *     responses:
  *       201:
  *         description: Employer profile created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     employer:
+ *                       $ref: '#/components/schemas/Employer'
+ *                 message:
+ *                   type: string
+ *                   example: "Employer profile created successfully"
  *       400:
- *         description: Bad request
+ *         description: Bad request - validation error or missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden - Only users with employer role can create company profiles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Conflict - Company profile already exists for this user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 employerRouter.post('/', requestLogger, verifyJWT, authorizeRoles('employer'), creatCompanyProfile);
 
@@ -55,13 +137,84 @@ employerRouter.post('/', requestLogger, verifyJWT, authorizeRoles('employer'), c
  * @swagger
  * /api/v1/employers:
  *   get:
- *     summary: Get all companies
+ *     summary: Get all companies with pagination and filtering
+ *     description: Retrieve a paginated list of verified company profiles with optional filtering
  *     tags: [Employers]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 20
+ *         description: Number of companies per page (max 50)
+ *         example: 20
+ *       - in: query
+ *         name: industry
+ *         schema:
+ *           type: string
+ *         description: Filter by industry sector
+ *         example: "Information Technology"
+ *       - in: query
+ *         name: companySize
+ *         schema:
+ *           type: string
+ *           enum: ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"]
+ *         description: Filter by company size
+ *         example: "51-200"
+ *       - in: query
+ *         name: location
+ *         schema:
+ *           type: string
+ *         description: Filter by company location (city)
+ *         example: "Karachi"
  *     responses:
  *       200:
- *         description: Companies fetched successfully
+ *         description: Companies retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     companies:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Employer'
+ *                     pagination:
+ *                       $ref: '#/components/schemas/PaginationInfo'
+ *                 message:
+ *                   type: string
+ *                   example: "Companies retrieved successfully"
  *       404:
  *         description: No companies found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 employerRouter.get('/', requestLogger, getAllCompanies);
 

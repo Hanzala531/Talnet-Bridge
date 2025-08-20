@@ -20,8 +20,6 @@ export async function extractTextFromImage(imagePath) {
     const [result] = await client.textDetection(imagePath);
     const detections = result.textAnnotations;
     return detections.length > 0 ? detections[0].description : "";
-  } catch (error) {
-    console.error("OCR Error:", error);
-    throw new Error("Failed to extract text from image");
+  } catch (error) {throw new Error("Failed to extract text from image");
   }
 }

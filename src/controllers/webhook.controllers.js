@@ -13,9 +13,7 @@ const handleStripeWebhook = asyncHandler(async (req, res) => {
 
     try {
         event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    } catch (err) {
-        console.error('Webhook signature verification failed:', err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
+    } catch (err) {return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
     // Handle the event
@@ -49,14 +47,10 @@ const handleStripeWebhook = asyncHandler(async (req, res) => {
                 await handleSubscriptionTrialWillEnd(event.data.object);
                 break;
             
-            default:
-                console.log(`Unhandled event type ${event.type}`);
-        }
+            default:}
 
         res.status(200).json({ received: true });
-    } catch (error) {
-        console.error('Error processing webhook:', error);
-        res.status(500).json({ error: 'Failed to process webhook' });
+    } catch (error) {res.status(500).json({ error: 'Failed to process webhook' });
     }
 });
 
@@ -89,14 +83,9 @@ const handlePaymentIntentSucceeded = async (paymentIntent) => {
                     'Payment Successful',
                     `Your payment of ${paymentIntent.currency.toUpperCase()} ${(paymentIntent.amount / 100).toFixed(2)} has been processed successfully.`,
                     { paymentIntentId: paymentIntent.id, subscriptionId: subscription._id }
-                );
-
-                console.log(`Payment succeeded for subscription ${subscription._id}`);
-            }
+                );}
         }
-    } catch (error) {
-        console.error('Error handling payment intent succeeded:', error);
-    }
+    } catch (error) {}
 };
 
 // Handle failed payment intent
@@ -127,14 +116,9 @@ const handlePaymentIntentFailed = async (paymentIntent) => {
                     'Payment Failed',
                     `Your payment of ${paymentIntent.currency.toUpperCase()} ${(paymentIntent.amount / 100).toFixed(2)} could not be processed. Please update your payment method.`,
                     { paymentIntentId: paymentIntent.id, subscriptionId: subscription._id }
-                );
-
-                console.log(`Payment failed for subscription ${subscription._id}`);
-            }
+                );}
         }
-    } catch (error) {
-        console.error('Error handling payment intent failed:', error);
-    }
+    } catch (error) {}
 };
 
 // Handle invoice payment succeeded
@@ -178,9 +162,7 @@ const handleInvoicePaymentSucceededWebhook = async (invoice) => {
                 { invoiceId: invoice.id, subscriptionId: subscription._id }
             );
         }
-    } catch (error) {
-        console.error('Error handling invoice payment succeeded:', error);
-    }
+    } catch (error) {}
 };
 
 // Handle invoice payment failed
@@ -217,9 +199,7 @@ const handleInvoicePaymentFailedWebhook = async (invoice) => {
                 { invoiceId: invoice.id, subscriptionId: subscription._id }
             );
         }
-    } catch (error) {
-        console.error('Error handling invoice payment failed:', error);
-    }
+    } catch (error) {}
 };
 
 // Handle customer subscription updated
@@ -256,9 +236,7 @@ const handleCustomerSubscriptionUpdated = async (stripeSubscription) => {
                 );
             }
         }
-    } catch (error) {
-        console.error('Error handling subscription updated:', error);
-    }
+    } catch (error) {}
 };
 
 // Handle customer subscription deleted
@@ -286,9 +264,7 @@ const handleCustomerSubscriptionDeleted = async (stripeSubscription) => {
                 { subscriptionId: subscription._id }
             );
         }
-    } catch (error) {
-        console.error('Error handling subscription deleted:', error);
-    }
+    } catch (error) {}
 };
 
 // Handle subscription trial will end
@@ -311,9 +287,7 @@ const handleSubscriptionTrialWillEnd = async (stripeSubscription) => {
                 }
             );
         }
-    } catch (error) {
-        console.error('Error handling trial will end:', error);
-    }
+    } catch (error) {}
 };
 
 // Helper function to create notifications
@@ -327,9 +301,7 @@ const createNotification = async (userId, type, title, message, metadata = {}) =
             metadata,
             isRead: false
         });
-    } catch (error) {
-        console.error('Error creating notification:', error);
-    }
+    } catch (error) {}
 };
 
 // Test webhook handlers (for development)

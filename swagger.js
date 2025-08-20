@@ -67,6 +67,10 @@ const options = {
         description: 'Work experience management endpoints'
       },
       {
+        name: 'Enrollments',
+        description: 'Course enrollment management and tracking endpoints'
+      },
+      {
         name: 'Subscription Plans',
         description: 'Subscription plan management endpoints'
       },
@@ -106,43 +110,54 @@ const options = {
           properties: {
             _id: {
               type: 'string',
+              description: 'User unique identifier',
               example: '64f123abc456def789012345'
             },
             fullName: {
               type: 'string',
+              description: 'User full name',
               example: 'John Doe'
             },
             email: {
               type: 'string',
               format: 'email',
+              description: 'User email address',
               example: 'john@example.com'
             },
             phone: {
               type: 'string',
+              description: 'User phone number',
               example: '03001234567'
             },
             role: {
               type: 'string',
               enum: ['student', 'school', 'employer', 'admin'],
+              description: 'User role in the platform',
               example: 'student'
             },
             onboardingStage: {
               type: 'string',
               enum: ['basic_info', 'profile_setup', 'verification', 'completed'],
+              description: 'Current onboarding stage',
               example: 'basic_info'
             },
             status: {
               type: 'string',
               enum: ['active', 'inactive', 'suspended', 'pending'],
+              description: 'User account status',
               example: 'active'
             },
             createdAt: {
               type: 'string',
-              format: 'date-time'
+              format: 'date-time',
+              description: 'Account creation timestamp',
+              example: '2025-08-15T10:30:00.000Z'
             },
             updatedAt: {
               type: 'string',
-              format: 'date-time'
+              format: 'date-time',
+              description: 'Account last update timestamp',
+              example: '2025-08-19T14:20:00.000Z'
             }
           }
         },
@@ -151,71 +166,89 @@ const options = {
           properties: {
             _id: {
               type: 'string',
+              description: 'Course unique identifier',
               example: '64f456def789abc123456789'
             },
             title: {
               type: 'string',
+              description: 'Course title',
               example: 'Web Development Fundamentals'
             },
             instructor: {
               type: 'string',
+              description: 'Instructor name',
               example: 'John Doe'
             },
             duration: {
               type: 'string',
+              description: 'Course duration',
               example: '8 weeks'
             },
             price: {
               type: 'number',
+              description: 'Course price in PKR',
               example: 299.99
             },
             language: {
               type: 'string',
+              description: 'Course language',
               example: 'English'
             },
             type: {
               type: 'string',
               enum: ['online', 'offline', 'hybrid'],
+              description: 'Course delivery type',
               example: 'online'
             },
             description: {
               type: 'string',
-              example: 'Learn the fundamentals of web development'
+              description: 'Course description',
+              example: 'Learn the fundamentals of web development including HTML, CSS, and JavaScript'
             },
             objectives: {
               type: 'array',
               items: {
                 type: 'string'
               },
-              example: ['Learn HTML', 'Learn CSS', 'Learn JavaScript']
+              description: 'Course learning objectives',
+              example: ['Learn HTML structure and semantics', 'Master CSS styling and layouts', 'Understand JavaScript fundamentals']
             },
             skills: {
               type: 'array',
               items: {
                 type: 'string'
               },
-              example: ['Frontend Development', 'Responsive Design']
+              description: 'Skills gained from this course',
+              description: 'Skills gained from this course',
+              example: ['Frontend Development', 'Responsive Design', 'JavaScript Programming']
             },
             category: {
               type: 'string',
+              description: 'Course category',
               example: 'Technology'
             },
             status: {
               type: 'string',
               enum: ['draft', 'pending_approval', 'approved', 'rejected', 'archived'],
+              description: 'Course approval status',
               example: 'approved'
             },
             providerId: {
               type: 'string',
+              description: 'Training provider (school) ID',
               example: '64f789abc123def456789012'
             },
             createdAt: {
               type: 'string',
-              format: 'date-time'
+              format: 'date-time',
+              description: 'Course creation timestamp',
+              example: '2025-08-15T10:30:00.000Z'
             },
             updatedAt: {
               type: 'string',
-              format: 'date-time'
+              format: 'date-time',
+              description: 'Course last update timestamp',
+              example: '2025-08-19T14:20:00.000Z'
             }
           }
         },
@@ -301,15 +334,315 @@ const options = {
             },
             companyId: {
               type: 'string',
+              description: 'Employer company ID',
               example: '64f890abc123def456789013'
             },
             createdAt: {
               type: 'string',
-              format: 'date-time'
+              format: 'date-time',
+              description: 'Job creation timestamp',
+              example: '2025-08-15T10:30:00.000Z'
             },
             updatedAt: {
               type: 'string',
-              format: 'date-time'
+              format: 'date-time',
+              description: 'Job last update timestamp',
+              example: '2025-08-19T14:20:00.000Z'
+            }
+          }
+        },
+        Student: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Student unique identifier',
+              example: '64f123abc456def789012345'
+            },
+            userId: {
+              type: 'string',
+              description: 'Associated user ID',
+              example: '64f123abc456def789012345'
+            },
+            dateOfBirth: {
+              type: 'string',
+              format: 'date',
+              description: 'Student date of birth',
+              example: '1998-05-15'
+            },
+            gender: {
+              type: 'string',
+              enum: ['male', 'female', 'other'],
+              description: 'Student gender',
+              example: 'male'
+            },
+            address: {
+              type: 'object',
+              properties: {
+                street: {
+                  type: 'string',
+                  example: '123 Main Street'
+                },
+                city: {
+                  type: 'string',
+                  example: 'Lahore'
+                },
+                state: {
+                  type: 'string',
+                  example: 'Punjab'
+                },
+                country: {
+                  type: 'string',
+                  example: 'Pakistan'
+                },
+                postalCode: {
+                  type: 'string',
+                  example: '54000'
+                }
+              }
+            },
+            education: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  institution: {
+                    type: 'string',
+                    example: 'University of Punjab'
+                  },
+                  degree: {
+                    type: 'string',
+                    example: 'Bachelor of Science in Computer Science'
+                  },
+                  fieldOfStudy: {
+                    type: 'string',
+                    example: 'Computer Science'
+                  },
+                  startDate: {
+                    type: 'string',
+                    format: 'date',
+                    example: '2016-09-01'
+                  },
+                  endDate: {
+                    type: 'string',
+                    format: 'date',
+                    example: '2020-06-30'
+                  },
+                  grade: {
+                    type: 'string',
+                    example: '3.8 GPA'
+                  }
+                }
+              }
+            },
+            skills: {
+              type: 'array',
+              items: {
+                type: 'string'
+              },
+              description: 'Student skills',
+              example: ['JavaScript', 'React', 'Node.js', 'MongoDB']
+            },
+            profileStatus: {
+              type: 'string',
+              enum: ['incomplete', 'complete', 'verified'],
+              description: 'Profile completion status',
+              example: 'complete'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Profile creation timestamp',
+              example: '2025-08-15T10:30:00.000Z'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Profile last update timestamp',
+              example: '2025-08-19T14:20:00.000Z'
+            }
+          }
+        },
+        Employer: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Employer unique identifier',
+              example: '64f890abc123def456789013'
+            },
+            userId: {
+              type: 'string',
+              description: 'Associated user ID',
+              example: '64f890abc123def456789013'
+            },
+            companyName: {
+              type: 'string',
+              description: 'Company name',
+              example: 'TechCorp Solutions'
+            },
+            companyDescription: {
+              type: 'string',
+              description: 'Company description',
+              example: 'Leading software development company specializing in web and mobile applications'
+            },
+            industry: {
+              type: 'string',
+              description: 'Company industry',
+              example: 'Information Technology'
+            },
+            companySize: {
+              type: 'string',
+              enum: ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'],
+              description: 'Company size range',
+              example: '51-200'
+            },
+            website: {
+              type: 'string',
+              format: 'url',
+              description: 'Company website URL',
+              example: 'https://techcorp.com'
+            },
+            address: {
+              type: 'object',
+              properties: {
+                street: {
+                  type: 'string',
+                  example: '456 Business Avenue'
+                },
+                city: {
+                  type: 'string',
+                  example: 'Karachi'
+                },
+                state: {
+                  type: 'string',
+                  example: 'Sindh'
+                },
+                country: {
+                  type: 'string',
+                  example: 'Pakistan'
+                },
+                postalCode: {
+                  type: 'string',
+                  example: '75600'
+                }
+              }
+            },
+            establishedYear: {
+              type: 'integer',
+              description: 'Year company was established',
+              example: 2015
+            },
+            verificationStatus: {
+              type: 'string',
+              enum: ['pending', 'verified', 'rejected'],
+              description: 'Company verification status',
+              example: 'verified'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Profile creation timestamp',
+              example: '2025-08-15T10:30:00.000Z'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Profile last update timestamp',
+              example: '2025-08-19T14:20:00.000Z'
+            }
+          }
+        },
+        School: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'School unique identifier',
+              example: '64f789abc123def456789012'
+            },
+            userId: {
+              type: 'string',
+              description: 'Associated user ID',
+              example: '64f789abc123def456789012'
+            },
+            institutionName: {
+              type: 'string',
+              description: 'Institution name',
+              example: 'TechEd Academy'
+            },
+            institutionType: {
+              type: 'string',
+              enum: ['university', 'college', 'training_institute', 'certification_body'],
+              description: 'Type of educational institution',
+              example: 'training_institute'
+            },
+            description: {
+              type: 'string',
+              description: 'Institution description',
+              example: 'Premier technology training institute offering industry-relevant courses'
+            },
+            address: {
+              type: 'object',
+              properties: {
+                street: {
+                  type: 'string',
+                  example: '789 Education Street'
+                },
+                city: {
+                  type: 'string',
+                  example: 'Islamabad'
+                },
+                state: {
+                  type: 'string',
+                  example: 'Federal'
+                },
+                country: {
+                  type: 'string',
+                  example: 'Pakistan'
+                },
+                postalCode: {
+                  type: 'string',
+                  example: '44000'
+                }
+              }
+            },
+            website: {
+              type: 'string',
+              format: 'url',
+              description: 'Institution website URL',
+              example: 'https://techedacademy.edu.pk'
+            },
+            accreditation: {
+              type: 'array',
+              items: {
+                type: 'string'
+              },
+              description: 'Institution accreditations',
+              example: ['HEC Recognized', 'ISO 9001:2015 Certified']
+            },
+            establishedYear: {
+              type: 'integer',
+              description: 'Year institution was established',
+              example: 2010
+            },
+            verificationStatus: {
+              type: 'string',
+              enum: ['pending', 'verified', 'rejected'],
+              description: 'Institution verification status',
+              example: 'verified'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Profile creation timestamp',
+              example: '2025-08-15T10:30:00.000Z'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Profile last update timestamp',
+              example: '2025-08-19T14:20:00.000Z'
             }
           }
         },
@@ -318,10 +651,12 @@ const options = {
           properties: {
             success: {
               type: 'boolean',
+              description: 'Indicates if the operation was successful',
               example: true
             },
             statusCode: {
               type: 'integer',
+              description: 'HTTP status code',
               example: 200
             },
             data: {
@@ -330,6 +665,7 @@ const options = {
             },
             message: {
               type: 'string',
+              description: 'Success message',
               example: 'Operation completed successfully'
             }
           }
@@ -339,14 +675,17 @@ const options = {
           properties: {
             success: {
               type: 'boolean',
+              description: 'Always false for error responses',
               example: false
             },
             statusCode: {
               type: 'integer',
+              description: 'HTTP error status code',
               example: 400
             },
             message: {
               type: 'string',
+              description: 'Error message describing what went wrong',
               example: 'Validation error or operation failed'
             },
             errors: {
@@ -354,7 +693,8 @@ const options = {
               items: {
                 type: 'string'
               },
-              description: 'Detailed error messages (optional)'
+              description: 'Detailed error messages (optional)',
+              example: ['Email is required', 'Password must be at least 6 characters']
             }
           }
         },
@@ -363,18 +703,22 @@ const options = {
           properties: {
             page: {
               type: 'integer',
+              description: 'Current page number',
               example: 1
             },
             limit: {
               type: 'integer',
+              description: 'Number of items per page',
               example: 20
             },
             total: {
               type: 'integer',
+              description: 'Total number of items',
               example: 150
             },
             totalPages: {
               type: 'integer',
+              description: 'Total number of pages',
               example: 8
             }
           }
@@ -406,7 +750,7 @@ const options = {
               example: {
                 success: false,
                 statusCode: 403,
-                message: 'Access denied'
+                message: 'Access denied - insufficient permissions'
               }
             }
           }

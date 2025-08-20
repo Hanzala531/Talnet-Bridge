@@ -51,8 +51,7 @@ const generateAccessAndRefreshTokens = async (userid) => {
     await user.save({ validateBeforeSave: false });
 
     return { accessToken, refreshToken };
-  } catch (error) {
-    console.error("Error generating tokens:", error); // Log the error
+  } catch (error) {// Log the error
     throw new ApiError(500, "Something went wrong while generating tokens");
   }
 };
@@ -149,9 +148,7 @@ const registerUser = asyncHandler(async (req, res) => {
       .status(201)
       .json(createdResponse({ user: createdUser, accessToken }, "User registered successfully"));
 
-  } catch (error) {
-    console.log("Error in creating user", error);
-    throw  internalServer("Failed to register user");
+  } catch (error) {throw  internalServer("Failed to register user");
   }
 });
 
@@ -240,9 +237,7 @@ const loginUser = asyncHandler(async (req, res) => {
         )
       );
 
-  } catch (error) {
-    console.log("Error in login user", error);
-    throw  internalServer("Failed to login");
+  } catch (error) {throw  internalServer("Failed to login");
   }
 });
 
@@ -309,9 +304,7 @@ const logoutUser = asyncHandler(async (req, res) => {
             .clearCookie("refreshToken", options)
             .json(successResponse(null, "User logged out successfully"));
 
-    } catch (error) {
-        console.log("Error in logout user", error);
-        throw  internalServer("Failed to logout");
+    } catch (error) {throw  internalServer("Failed to logout");
     }
 });
 
@@ -362,9 +355,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
         'Users fetched successfully'
       )
     );
-  } catch (error) {
-    console.error('Error fetching users', error);
-    throw internalServer('Failed to fetch users');
+  } catch (error) {throw internalServer('Failed to fetch users');
   }
 });
 

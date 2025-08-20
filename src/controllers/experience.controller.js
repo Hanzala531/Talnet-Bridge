@@ -57,9 +57,7 @@ const createExperience = asyncHandler(async (req, res) => {
                 "Experience created successfully"
             )
         );
-    } catch (error) {
-        console.error("Create experience error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -131,9 +129,7 @@ const getAllExperiences = asyncHandler(async (req, res) => {
                 "Experiences retrieved successfully"
             )
         );
-    } catch (error) {
-        console.error("Get all experiences error:", error);
-        throw internalServer("Failed to fetch experiences");
+    } catch (error) {throw internalServer("Failed to fetch experiences");
     }
 });
 
@@ -164,9 +160,7 @@ const getExperienceById = asyncHandler(async (req, res) => {
         return res.status(200).json(
             successResponse({ experience: enhancedExperience }, "Experience retrieved successfully")
         );
-    } catch (error) {
-        console.error("Get experience by ID error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -239,9 +233,7 @@ const updateExperience = asyncHandler(async (req, res) => {
                 "Experience updated successfully"
             )
         );
-    } catch (error) {
-        console.error("Update experience error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -264,9 +256,7 @@ const deleteExperience = asyncHandler(async (req, res) => {
         return res.status(200).json(
             successResponse(null, "Experience deleted successfully")
         );
-    } catch (error) {
-        console.error("Delete experience error:", error);
-        throw internalServer("Failed to delete experience");
+    } catch (error) {throw internalServer("Failed to delete experience");
     }
 });
 
@@ -313,9 +303,7 @@ const searchExperiences = asyncHandler(async (req, res) => {
                 "Experience search completed"
             )
         );
-    } catch (error) {
-        console.error("Search experiences error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -368,9 +356,7 @@ const getExperiencesByCompany = asyncHandler(async (req, res) => {
                 "Experiences by company retrieved successfully"
             )
         );
-    } catch (error) {
-        console.error("Get experiences by company error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 

@@ -63,9 +63,7 @@ const createStudentProfile = asyncHandler(async (req, res) => {
                 "Student profile created successfully"
             )
         );
-    } catch (error) {
-        console.error("Create student profile error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -119,9 +117,7 @@ const getAllStudents = asyncHandler(async (req, res) => {
                 "Students retrieved successfully"
             )
         );
-    } catch (error) {
-        console.error("Get all students error:", error);
-        throw internalServer("Failed to fetch students");
+    } catch (error) {throw internalServer("Failed to fetch students");
     }
 });
 
@@ -164,9 +160,7 @@ const getStudentById = asyncHandler(async (req, res) => {
         }
 
         return res.status(200).json(successResponse({ student }, "Student retrieved successfully"));
-    } catch (error) {
-        console.error("Get student by ID error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -188,9 +182,7 @@ const getMyStudentProfile = asyncHandler(async (req, res) => {
         }
 
         return res.status(200).json(successResponse({ student }, "Student profile retrieved successfully"));
-    } catch (error) {
-        console.error("Get my student profile error:", error);
-        throw internalServer("Failed to fetch student profile");
+    } catch (error) {throw internalServer("Failed to fetch student profile");
     }
 });
 
@@ -290,9 +282,7 @@ const updateStudentProfile = asyncHandler(async (req, res) => {
                 "Student profile updated successfully"
             )
         );
-    } catch (error) {
-        console.error("Update student profile error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -320,9 +310,7 @@ const deleteStudentProfile = asyncHandler(async (req, res) => {
         await Student.findByIdAndDelete(id);
 
         return res.status(200).json(successResponse(null, "Student profile deleted successfully"));
-    } catch (error) {
-        console.error("Delete student profile error:", error);
-        throw internalServer("Failed to delete student profile");
+    } catch (error) {throw internalServer("Failed to delete student profile");
     }
 });
 
@@ -362,9 +350,7 @@ const addCertification = asyncHandler(async (req, res) => {
                 "Certification added successfully"
             )
         );
-    } catch (error) {
-        console.error("Add certification error:", error);
-        throw error;
+    } catch (error) {throw error;
     }
 });
 
@@ -400,9 +386,7 @@ const removeCertification = asyncHandler(async (req, res) => {
                 "Certification removed successfully"
             )
         );
-    } catch (error) {
-        console.error("Remove certification error:", error);
-        throw internalServer("Failed to remove certification");
+    } catch (error) {throw internalServer("Failed to remove certification");
     }
 });
 

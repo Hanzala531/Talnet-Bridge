@@ -13,53 +13,28 @@ const uploadOnCloudinary = async (localFilePath) => {
   console.time(timerLabel);
   
   try {
-    if (!localFilePath) {
-      console.log("No file path provided");
-      return null;
+    if (!localFilePath) {return null;
     }
 
     // Debug: Log environment variables (only in development)
-    if (process.env.NODE_ENV === 'development') {
-      console.log("Cloudinary Config Check:");
-      console.log("CLOUD_NAME:", process.env.CLOUDINARY_CLOUD_NAME ? "✓" : "✗");
-      console.log("API_KEY:", process.env.CLOUDINARY_API_KEY ? "✓" : "✗");
-      console.log("API_SECRET:", process.env.CLOUDINARY_API_SECRET ? "✓" : "✗");
-    }
+    if (process.env.NODE_ENV === 'development') {}
 
     // Check if Cloudinary credentials are available
-    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-      console.error("Missing Cloudinary credentials:");
-      console.error("CLOUD_NAME:", process.env.CLOUDINARY_CLOUD_NAME || "MISSING");
-      console.error("API_KEY:", process.env.CLOUDINARY_API_KEY || "MISSING");
-      console.error("API_SECRET:", process.env.CLOUDINARY_API_SECRET ? "SET" : "MISSING");
-      throw new Error("Cloudinary credentials are missing. Check your environment variables");
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {throw new Error("Cloudinary credentials are missing. Check your environment variables");
     }
 
     // Check if the file exists before uploading
-    if (!fs.existsSync(localFilePath)) {
-      console.log("File does not exist:", localFilePath);
-      return null;
-    }
-
-    console.log("Uploading file to Cloudinary:", localFilePath);
-
-    const response = await cloudinary.uploader.upload(localFilePath, { 
+    if (!fs.existsSync(localFilePath)) {return null;
+    }const response = await cloudinary.uploader.upload(localFilePath, { 
       resource_type: "auto",
       folder: "loopwin-products", // Optional: organize uploads in a folder
       quality: "auto:good", // Optimize image quality
       fetch_format: "auto" // Optimize format (webp, etc.)
-    });
-    
-    console.log("File uploaded to Cloudinary successfully:", response.secure_url);
-
-    // Delete the file from the server
+    });// Delete the file from the server
     deleteLocalFile(localFilePath);
 
     return response;
-  } catch (error) {
-    console.error("Error uploading file to Cloudinary:", error.message);
-
-    // Delete the file even if upload fails
+  } catch (error) {// Delete the file even if upload fails
     deleteLocalFile(localFilePath);
 
     return null;
@@ -71,14 +46,8 @@ const uploadOnCloudinary = async (localFilePath) => {
 const deleteLocalFile = (filePath) => {
   try {
     if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      console.log("Local file deleted successfully:", filePath);
-    } else {
-      console.log("Local file does not exist:", filePath);
-    }
-  } catch (err) {
-    console.error("Error deleting local file:", err);
-  }
+      fs.unlinkSync(filePath);} else {}
+  } catch (err) {}
 };
 
 export { uploadOnCloudinary };

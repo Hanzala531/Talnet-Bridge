@@ -9,6 +9,8 @@ const limiter = rateLimit({
     message: "Too many requests, please try again later."
   },
   standardHeaders: true, 
-  legacyHeaders: false, });
+  legacyHeaders: false,
+  trustProxy: false, // Set to specific value to avoid security warning
+});
 
 export default limiter;

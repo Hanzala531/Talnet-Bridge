@@ -124,9 +124,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
           size: file.size,
           mimeType: file.mimetype,
         });
-      } catch (error) {
-        console.error(`Error uploading file ${file.originalname}:`, error);
-        throw new ApiError(500, `Failed to upload file: ${file.originalname}`);
+      } catch (error) {throw new ApiError(500, `Failed to upload file: ${file.originalname}`);
       }
     }
   }
