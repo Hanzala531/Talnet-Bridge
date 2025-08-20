@@ -611,7 +611,7 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
             );
         } catch (stripeError) {
             console.error("Stripe payment intent creation error:", stripeError);
-            throw badRequest(`Stripe error: ${stripeError.message}", "STRIPE_PAYMENT_INTENT_ERROR");
+            throw badRequest(`Stripe error: ${stripeError.message}", "STRIPE_PAYMENT_INTENT_ERROR"  `);
         }
     } catch (error) {
         if (error instanceof ApiError) throw error;
