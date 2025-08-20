@@ -45,8 +45,8 @@ const createPlan = asyncHandler(async (req, res) => {
         if (!price || price < 0) {
             throw badRequest("Valid price is required", "INVALID_PRICE");
         }
-        if (!billingCycle || !['monthly', 'lifetime', 'yearly'].includes(billingCycle)) {
-            throw badRequest("Valid billing cycle is required (monthly, lifetime, yearly)", "INVALID_BILLING_CYCLE");
+        if (!billingCycle || !['onetime', 'monthly'].includes(billingCycle)) {
+            throw badRequest("Valid billing cycle is required (onetime, monthly)", "INVALID_BILLING_CYCLE");
         }
         if (!stripePriceId) {
             throw badRequest("Stripe price ID is required", "MISSING_STRIPE_PRICE_ID");
@@ -56,8 +56,8 @@ const createPlan = asyncHandler(async (req, res) => {
         }
 
         // Validate plan name format
-        if (!['learner', 'employer', 'trainingInstitute'].includes(name)) {
-            throw badRequest("Plan name must be one of: learner, employer, trainingInstitute", "INVALID_PLAN_NAME");
+        if (!['learner', 'employer', 'trainingInstitue'].includes(name)) {
+            throw badRequest("Plan name must be one of: learner, employer, trainingInstitue", "INVALID_PLAN_NAME");
         }
 
         // Check if plan already exists
@@ -77,9 +77,9 @@ const createPlan = asyncHandler(async (req, res) => {
             throw conflict("Stripe product ID is already in use", "STRIPE_PRODUCT_ID_EXISTS");
         }
 
-        // Validate features if provided (should be an array of strings)
-        if (features && !Array.isArray(features)) {
-            throw badRequest("Features must be an array of strings", "INVALID_FEATURES_TYPE");
+        // Validate features (required, must be array of strings)
+        if (!features || !Array.isArray(features) || !features.every(f => typeof f === 'string')) {
+            throw badRequest("Features must be a non-empty array of strings", "INVALID_FEATURES_TYPE");
         }
 
         // Create the plan
@@ -197,19 +197,19 @@ const updatePlan = asyncHandler(async (req, res) => {
         delete updates.stripeProductId;
 
         // Validate updates if provided
-        if (updates.name && !['learner', 'employer', 'trainingInstitute'].includes(updates.name)) {
-            throw badRequest("Plan name must be one of: learner, employer, trainingInstitute", "INVALID_PLAN_NAME");
+        if (updates.name && !['learner', 'employer', 'trainingInstitue'].includes(updates.name)) {
+            throw badRequest("Plan name must be one of: learner, employer, trainingInstitue", "INVALID_PLAN_NAME");
         }
 
         if (updates.price !== undefined && updates.price < 0) {
             throw badRequest("Price must be a positive number", "INVALID_PRICE");
         }
 
-        if (updates.billingCycle && !['monthly', 'lifetime', 'yearly'].includes(updates.billingCycle)) {
-            throw badRequest("Billing cycle must be: monthly, lifetime, or yearly", "INVALID_BILLING_CYCLE");
+        if (updates.billingCycle && !['onetime', 'monthly'].includes(updates.billingCycle)) {
+            throw badRequest("Billing cycle must be: onetime or monthly", "INVALID_BILLING_CYCLE");
         }
 
-        if (updates.features && !Array.isArray(updates.features)) {
+        if (updates.features && (!Array.isArray(updates.features) || !updates.features.every(f => typeof f === 'string'))) {
             throw badRequest("Features must be an array of strings", "INVALID_FEATURES_TYPE");
         }
 

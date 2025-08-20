@@ -31,7 +31,7 @@ const subscriptionPlanSchema = new mongoose.Schema({
     
     billingCycle: {
         type: String,
-        enum: ["monthly", "lifetime"],
+        enum: ["onetime", "monthly"],
         required: true
     },
 
