@@ -196,9 +196,9 @@ const options = {
             },
             type: {
               type: 'string',
-              enum: ['online', 'offline', 'hybrid'],
+              enum: ['oncampus','hybrid'],
               description: 'Course delivery type',
-              example: 'online'
+              example: 'oncampus'
             },
             description: {
               type: 'string',
