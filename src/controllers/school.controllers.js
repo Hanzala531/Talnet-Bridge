@@ -487,43 +487,80 @@ const employerDirectory = asyncHandler(async (req, res) => {
   }
 });
 
-// controller for dashboard
+// controller for dashboard (aggregation-based, no helper functions)
 const dashboardController = asyncHandler(async (req, res) => {
   try {
     const { schoolId } = req.query;
     if (!schoolId) {
       return badRequestResponse("schoolId query parameter is required");
     }
-    // 1. Total Enrollments
-    const courses = await Course.find({ trainingProvider: schoolId }).select('_id price');
-    const courseIds = courses.map(c => c._id);
-    // Total Enrollments
-    const totalEnrollments = await Enrollment.countDocuments({ course: { $in: courseIds } });
-    // Completion Rate
-    const completedEnrollments = await Enrollment.countDocuments({ course: { $in: courseIds }, status: "completed" });
+    // Get all courses and active courses in one aggregation
+    const coursesAgg = await Course.aggregate([
+      { $match: { trainingProvider: typeof schoolId === 'string' ? new mongoose.Types.ObjectId(schoolId) : schoolId } },
+      {
+        $facet: {
+          allCourses: [
+            { $project: { _id: 1, price: 1, status: 1 } }
+          ],
+          activeCourses: [
+            { $match: { status: "approved" } }
+          ]
+        }
+      }
+    ]);
+    const allCourses = coursesAgg[0]?.allCourses || [];
+    const activeCourses = coursesAgg[0]?.activeCourses || [];
+    const courseIds = allCourses.map(c => c._id);
+
+    // Enrollment analytics
+    const enrollmentStats = await Enrollment.aggregate([
+      { $match: { course: { $in: courseIds } } },
+      {
+        $group: {
+          _id: null,
+          totalEnrollments: { $sum: 1 },
+          completedEnrollments: {
+            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+    const totalEnrollments = enrollmentStats[0]?.totalEnrollments || 0;
+    const completedEnrollments = enrollmentStats[0]?.completedEnrollments || 0;
     const completionRate = totalEnrollments > 0 ? (completedEnrollments / totalEnrollments) * 100 : 0;
-    // Total Revenue
-    const courseMap = new Map();
-    courses.forEach(c => courseMap.set(c._id.toString(), c.price));
-    const enrollments = await Enrollment.find({ course: { $in: courseIds }, paymentStatus: "paid" }).select('course');
-    let totalRevenue = 0;
-    enrollments.forEach(e => {
-      const price = courseMap.get(e.course.toString()) || 0;
-      totalRevenue += price;
-    });
-    // Active Courses
-    const active = await Course.find({ trainingProvider: schoolId, status: "approved" });
+
+    // Revenue analytics
+    const revenueStats = await Enrollment.aggregate([
+      { $match: { course: { $in: courseIds }, paymentStatus: "paid" } },
+      {
+        $lookup: {
+          from: "courses",
+          localField: "course",
+          foreignField: "_id",
+          as: "courseInfo"
+        }
+      },
+      { $unwind: "$courseInfo" },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$courseInfo.price" }
+        }
+      }
+    ]);
+    const totalRevenue = revenueStats[0]?.totalRevenue || 0;
+
     // Response
     return successResponse(res, {
       totalEnrollments,
       completedEnrollments,
       completionRate: completionRate.toFixed(2) + "%",
       totalRevenue,
-      totalActiveCourses: active.length,
-      activeCourses: active
-    }, "Dashboard analytics fetched successfully");
+      totalActiveCourses: activeCourses.length,
+      activeCourses
+    }, "Dashboard analytics fetched successfully (aggregation)");
   } catch (error) {
-    console.error("Error in dashboardController:", error);
+    console.error("Error in dashboardController (aggregation):", error);
     throw internalServer("Failed to fetch dashboard analytics");
   }
 });
@@ -541,103 +578,3 @@ export {
   studentsDirectory,
   dashboardController
 };
-
-
-
-//  helper functions 
-
-
-// function to calculate the total enrollments in school 
-const totaLEnrollments = asyncHandler(async (req, res) => {
-  try {
-    const { schoolId } = req.query;
-    if (!schoolId) {
-      return badRequestResponse("schoolId query parameter is required");
-    }
-    // Find all courses offered by this school (training provider)
-    const courses = await Course.find({ trainingProvider: schoolId }).select('_id');
-    const courseIds = courses.map(c => c._id);
-    // Count all enrollments in these courses
-    const totalEnrollments = await Enrollment.countDocuments({ course: { $in: courseIds } });
-    return successResponse(res, { totalEnrollments }, "Total enrollments in school calculated successfully");
-  } catch (error) {
-    console.error("Error in totaLEnrollments:", error);
-    throw internalServer("Failed to calculate total enrollments");
-  }
-});
-
-// function to calculate the course completion rate 
-const completionRate = asyncHandler(async (req, res) => {
-  try {
-    const { schoolId } = req.query;
-    if (!schoolId) {
-      return badRequestResponse("schoolId query parameter is required");
-    }
-    // Find all courses offered by this school
-    const courses = await Course.find({ trainingProvider: schoolId }).select('_id');
-    const courseIds = courses.map(c => c._id);
-    // Find all enrollments in these courses
-    const totalEnrollments = await Enrollment.countDocuments({ course: { $in: courseIds } });
-    const completedEnrollments = await Enrollment.countDocuments({ course: { $in: courseIds }, status: "completed" });
-    const rate = totalEnrollments > 0 ? (completedEnrollments / totalEnrollments) * 100 : 0;
-    return successResponse(res, {
-      totalEnrollments,
-      completedEnrollments,
-      completionRate: rate.toFixed(2) + "%"
-    }, "Course completion rate calculated successfully");
-  } catch (error) {
-    console.error("Error in completionRate:", error);
-    throw internalServer("Failed to calculate course completion rate");
-  }
-});
-
-// function to calculate the total revenue
-const totalRevenue = asyncHandler(async (req, res) => {
-  try {
-    const { schoolId } = req.query;
-    if (!schoolId) {
-      return badRequestResponse("schoolId query parameter is required");
-    }
-    // Find all courses offered by this school
-    const courses = await Course.find({ trainingProvider: schoolId }).select('_id price');
-    const courseMap = new Map();
-    courses.forEach(c => courseMap.set(c._id.toString(), c.price));
-    const courseIds = courses.map(c => c._id);
-    // Find all paid enrollments in these courses
-    const enrollments = await Enrollment.find({ course: { $in: courseIds }, paymentStatus: "paid" }).select('course');
-    let totalRevenue = 0;
-    enrollments.forEach(e => {
-      const price = courseMap.get(e.course.toString()) || 0;
-      totalRevenue += price;
-    });
-    return successResponse(res, { totalRevenue }, "Total revenue calculated successfully");
-  } catch (error) {
-    console.error("Error in totalRevenue:", error);
-    throw internalServer("Failed to calculate total revenue");
-  }
-});
-
-// function to calculate all the active courses 
-const activeCourses = asyncHandler(async (req, res) => {
-  try {
-    const { schoolId } = req.query;
-    if (!schoolId) {
-      return badRequestResponse("schoolId query parameter is required");
-    }
-    // Find all courses with status 'approved' (active) for this school
-    const active = await Course.find({ trainingProvider: schoolId, status: "approved" });
-    return successResponse(res, {
-      totalActiveCourses: active.length,
-      courses: active
-    }, "Active courses fetched successfully");
-  } catch (error) {
-    console.error("Error in activeCourses:", error);
-    throw internalServer("Failed to fetch active courses");
-  }
-});
-
-
-
-// helper to find total students of a school 
-
-// 

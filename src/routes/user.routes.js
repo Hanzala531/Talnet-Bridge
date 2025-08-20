@@ -7,7 +7,7 @@ import {
 import { getAllUsers } from '../controllers/user.controllers.js';
 import {requestLogger} from '../middlewares/ReqLog.middlewares.js';
 import {verifyJWT} from '../middlewares/Auth.middlewares.js';
-
+import {verifyRegisterCredentials} from '../middlewares/check.role.js'
 const userRouter = express.Router();
 
 
@@ -86,7 +86,7 @@ const userRouter = express.Router();
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 
-userRouter.post('/register', requestLogger, registerUser);
+userRouter.post('/register', requestLogger,verifyRegisterCredentials, registerUser);
 /**
  * @swagger
  * /api/v1/users/login:
