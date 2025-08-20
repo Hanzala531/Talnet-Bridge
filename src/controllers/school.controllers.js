@@ -1,6 +1,6 @@
-
 import { internalServer } from "../utils/ApiError.js";
 import {
+  Enrollment,
   Job,
   Employer,
   User,
@@ -13,7 +13,7 @@ import {
   successResponse,
   notFoundResponse,
   badRequestResponse,
-  validationErrorResponse
+  validationErrorResponse,
 } from "../utils/ApiResponse.js";
 // Create training provider profile
 const createProfile = asyncHandler(async (req, res) => {
@@ -27,17 +27,43 @@ const createProfile = asyncHandler(async (req, res) => {
       return res.status(409).json({
         success: false,
         message: "Training provider profile already exists",
-        payload: null
+        payload: null,
       });
     }
 
-
-    // Optionally validate required fields (e.g., name, about, etc.)
+    // Validate required fields for new schema
+    const requiredFields = [
+      "name",
+      "email",
+      "phone",
+      "about",
+      "established",
+      "location",
+    ];
+    for (const field of requiredFields) {
+      if (
+        !data[field] ||
+        (typeof data[field] === "string" && !data[field].trim())
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: `Field '${field}' is required`,
+          payload: null,
+        });
+      }
+    }
+    if (typeof data.location !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Location must be a string (address, city, etc.)",
+        payload: null,
+      });
+    }
     if (data.about && data.about.length > 1000) {
       return res.status(400).json({
         success: false,
         message: "About section cannot exceed 1000 characters",
-        payload: null
+        payload: null,
       });
     }
 
@@ -50,14 +76,14 @@ const createProfile = asyncHandler(async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Training provider profile created successfully",
-      payload: profile
+      payload: profile,
     });
   } catch (error) {
     if (error.name === "ValidationError") {
       return res.status(422).json({
         success: false,
         message: "Validation failed",
-        payload: Object.values(error.errors).map((e) => e.message)
+        payload: Object.values(error.errors).map((e) => e.message),
       });
     }
     throw internalServer("Failed to create training provider profile");
@@ -74,13 +100,13 @@ const getProfile = asyncHandler(async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Training provider profile not found",
-        payload: null
+        payload: null,
       });
     }
     return res.status(200).json({
       success: true,
       message: "Profile fetched successfully",
-      payload: profile
+      payload: profile,
     });
   } catch (error) {
     throw internalServer("Failed to fetch profile");
@@ -94,11 +120,32 @@ const editProfile = asyncHandler(async (req, res) => {
     const updates = req.body;
 
     // Validate required fields if provided
+    if (updates.name && !updates.name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Institute name cannot be empty",
+        payload: null,
+      });
+    }
+    if (updates.email && !updates.email.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Institute email cannot be empty",
+        payload: null,
+      });
+    }
+    if (updates.phone && !updates.phone.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Institute phone cannot be empty",
+        payload: null,
+      });
+    }
     if (updates.about && updates.about.length > 1000) {
       return res.status(400).json({
         success: false,
         message: "About section cannot exceed 1000 characters",
-        payload: null
+        payload: null,
       });
     }
 
@@ -112,21 +159,21 @@ const editProfile = asyncHandler(async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Profile not found",
-        payload: null
+        payload: null,
       });
     }
 
     return res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      payload: updatedProfile
+      payload: updatedProfile,
     });
   } catch (error) {
     if (error.name === "ValidationError") {
       return res.status(422).json({
         success: false,
         message: "Validation failed",
-        payload: Object.values(error.errors).map((e) => e.message)
+        payload: Object.values(error.errors).map((e) => e.message),
       });
     }
     throw internalServer("Failed to update profile");
@@ -176,7 +223,7 @@ const getAllTrainingProviders = asyncHandler(async (req, res) => {
           total,
           pages: Math.ceil(total / Number(limit)),
         },
-      }
+      },
     });
   } catch (error) {
     throw internalServer("Failed to fetch training providers");
@@ -194,7 +241,7 @@ const getTrainingProviderById = asyncHandler(async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Training provider not found",
-        payload: null
+        payload: null,
       });
     }
 
@@ -209,7 +256,7 @@ const getTrainingProviderById = asyncHandler(async (req, res) => {
       payload: {
         ...provider.toObject(),
         courses,
-      }
+      },
     });
   } catch (error) {
     throw internalServer("Failed to fetch training provider");
@@ -225,7 +272,7 @@ const searchTrainingProviders = asyncHandler(async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Search query is required",
-        payload: null
+        payload: null,
       });
     }
 
@@ -266,7 +313,7 @@ const searchTrainingProviders = asyncHandler(async (req, res) => {
           total,
           pages: Math.ceil(total / limit),
         },
-      }
+      },
     });
   } catch (error) {
     throw internalServer("Failed to search training providers");
@@ -283,8 +330,9 @@ const updateTrainingProviderStatus = asyncHandler(async (req, res) => {
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid status value. Valid values are: active, inactive, suspended",
-        payload: null
+        message:
+          "Invalid status value. Valid values are: active, inactive, suspended",
+        payload: null,
       });
     }
 
@@ -298,14 +346,14 @@ const updateTrainingProviderStatus = asyncHandler(async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Training provider not found",
-        payload: null
+        payload: null,
       });
     }
 
     return res.status(200).json({
       success: true,
       message: "Training provider status updated successfully",
-      payload: provider
+      payload: provider,
     });
   } catch (error) {
     throw internalServer("Failed to update training provider status");
@@ -323,7 +371,7 @@ const deleteTrainingProvider = asyncHandler(async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Training provider not found",
-        payload: null
+        payload: null,
       });
     }
 
@@ -333,7 +381,7 @@ const deleteTrainingProvider = asyncHandler(async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Training provider and associated courses deleted successfully",
-      payload: null
+      payload: null,
     });
   } catch (error) {
     throw internalServer("Failed to delete training provider");
@@ -352,7 +400,7 @@ const getTrainingProviderStats = asyncHandler(async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Training provider profile not found",
-        payload: null
+        payload: null,
       });
     }
 
@@ -392,7 +440,7 @@ const getTrainingProviderStats = asyncHandler(async (req, res) => {
           pending: pendingCourses,
           byCategory: coursesByCategory,
         },
-      }
+      },
     });
   } catch (error) {
     throw internalServer("Failed to fetch training provider statistics");
@@ -407,7 +455,7 @@ const matchStudents = asyncHandler(async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "jobId query parameter is required",
-        payload: null
+        payload: null,
       });
     }
 
@@ -417,7 +465,7 @@ const matchStudents = asyncHandler(async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Job not found",
-        payload: null
+        payload: null,
       });
     }
     const requiredSkills = (job.skillsRequired || []).map((s) =>
@@ -429,7 +477,7 @@ const matchStudents = asyncHandler(async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Job does not have any required skills defined",
-        payload: null
+        payload: null,
       });
     }
 
@@ -485,7 +533,7 @@ const matchStudents = asyncHandler(async (req, res) => {
           requiredSkills: job.skillsRequired,
         },
         matchedStudents: matched,
-      }
+      },
     });
   } catch (error) {
     console.error("Error in matchStudents:", error);
@@ -497,13 +545,16 @@ const matchStudents = asyncHandler(async (req, res) => {
 const studentsDirectory = asyncHandler(async (req, res) => {
   try {
     // Query params: schoolId (required), page, limit
-    const { schoolId, page = 1, limit = 20 } = req.query;
+    const {  page = 1, limit = 20 } = req.query;
+
+    const school = await TrainingInstitute.findOne({ userId: req.user._id });
+    const schoolId = school._id
 
     if (!schoolId) {
       return res.status(400).json({
         success: false,
         message: "schoolId query parameter is required",
-        payload: null
+        payload: null,
       });
     }
 
@@ -521,7 +572,7 @@ const studentsDirectory = asyncHandler(async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "No students found for the given school",
-        payload: null
+        payload: null,
       });
     }
 
@@ -565,7 +616,7 @@ const studentsDirectory = asyncHandler(async (req, res) => {
           total,
           totalPages: Math.ceil(total / Number(limit)),
         },
-      }
+      },
     });
   } catch (error) {
     console.error("Error in studentsDirectory:", error);
@@ -593,7 +644,7 @@ const employerDirectory = asyncHandler(async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "No employers found",
-        payload: null
+        payload: null,
       });
     }
 
@@ -642,7 +693,7 @@ const employerDirectory = asyncHandler(async (req, res) => {
           total,
           totalPages: Math.ceil(total / Number(limit)),
         },
-      }
+      },
     });
   } catch (error) {
     console.error("Error in employerDirectory:", error);
@@ -653,31 +704,51 @@ const employerDirectory = asyncHandler(async (req, res) => {
 // controller for dashboard (aggregation-based, no helper functions)
 const dashboardController = asyncHandler(async (req, res) => {
   try {
-    const { schoolId } = req.query;
-    if (!schoolId) {
-      return res.status(400).json({
+    // Find institute by userId
+    const school = await TrainingInstitute.findOne({ userId: req.user._id });
+    // console.log("Hi i am the issue");
+
+    if (!school) {
+      return res.status(404).json({
         success: false,
-        message: "schoolId query parameter is required",
-        payload: null
+        message: "Training institute not found for this user",
+        payload: null,
       });
     }
-    // Get all courses and active courses in one aggregation
+
+    const schoolId = school._id;
+
+    // Courses aggregation
     const coursesAgg = await Course.aggregate([
-      { $match: { trainingProvider: typeof schoolId === 'string' ? new mongoose.Types.ObjectId(schoolId) : schoolId } },
+      { $match: { trainingProvider: schoolId } },
       {
         $facet: {
-          allCourses: [
-            { $project: { _id: 1, price: 1, status: 1 } }
-          ],
-          activeCourses: [
-            { $match: { status: "approved" } }
-          ]
-        }
-      }
+          allCourses: [{ $project: { _id: 1, price: 1, status: 1 } }],
+          activeCourses: [{ $match: { status: "approved" } }],
+        },
+      },
     ]);
+
     const allCourses = coursesAgg[0]?.allCourses || [];
     const activeCourses = coursesAgg[0]?.activeCourses || [];
-    const courseIds = allCourses.map(c => c._id);
+    const courseIds = allCourses.map((c) => c._id);
+
+    // Agar courses hi nahi mile
+    if (courseIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "Dashboard analytics fetched successfully",
+        payload: {
+          totalEnrollments: 0,
+          completedEnrollments: 0,
+          completionRate: "0%",
+          completionRateValue: 0,
+          totalRevenue: 0,
+          totalActiveCourses: 0,
+          activeCourses: [],
+        },
+      });
+    }
 
     // Enrollment analytics
     const enrollmentStats = await Enrollment.aggregate([
@@ -687,14 +758,18 @@ const dashboardController = asyncHandler(async (req, res) => {
           _id: null,
           totalEnrollments: { $sum: 1 },
           completedEnrollments: {
-            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] }
-          }
-        }
-      }
+            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
+          },
+        },
+      },
     ]);
+
     const totalEnrollments = enrollmentStats[0]?.totalEnrollments || 0;
     const completedEnrollments = enrollmentStats[0]?.completedEnrollments || 0;
-    const completionRate = totalEnrollments > 0 ? (completedEnrollments / totalEnrollments) * 100 : 0;
+    const completionRateValue =
+      totalEnrollments > 0
+        ? (completedEnrollments / totalEnrollments) * 100
+        : 0;
 
     // Revenue analytics
     const revenueStats = await Enrollment.aggregate([
@@ -704,35 +779,41 @@ const dashboardController = asyncHandler(async (req, res) => {
           from: "courses",
           localField: "course",
           foreignField: "_id",
-          as: "courseInfo"
-        }
+          as: "courseInfo",
+        },
       },
       { $unwind: "$courseInfo" },
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: "$courseInfo.price" }
-        }
-      }
+          totalRevenue: { $sum: "$courseInfo.price" },
+        },
+      },
     ]);
+
     const totalRevenue = revenueStats[0]?.totalRevenue || 0;
 
     // Response
     return res.status(200).json({
       success: true,
-      message: "Dashboard analytics fetched successfully (aggregation)",
+      message: "Dashboard analytics fetched successfully",
       payload: {
         totalEnrollments,
         completedEnrollments,
-        completionRate: completionRate.toFixed(2) + "%",
+        completionRate: completionRateValue.toFixed(2) + "%",
+        completionRateValue,
         totalRevenue,
         totalActiveCourses: activeCourses.length,
-        activeCourses
-      }
+        activeCourses,
+      },
     });
   } catch (error) {
-    console.error("Error in dashboardController (aggregation):", error);
-    throw internalServer("Failed to fetch dashboard analytics");
+    console.error("Error in dashboardController:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch dashboard analytics",
+      payload: null,
+    });
   }
 });
 
@@ -748,5 +829,5 @@ export {
   getTrainingProviderStats,
   matchStudents,
   studentsDirectory,
-  dashboardController
+  dashboardController,
 };

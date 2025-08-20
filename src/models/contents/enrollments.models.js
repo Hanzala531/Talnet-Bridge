@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
 
 const enrollmentSchema = new mongoose.Schema({
-    learner: {
+    studentId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true
     },
-    course: {
+    courseId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Course", 
         required: true
@@ -19,49 +19,8 @@ const enrollmentSchema = new mongoose.Schema({
         type: String,
         enum: ["enrolled", "in-progress", "completed", "withdrawn", "suspended"],
         default: "enrolled"
-    },
-    progress: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 100
-    },
-    completionDate: {
-        type: Date
-    },
-    certificateUrl: {
-        type: String 
-    },
+    },    
     
-    // Payment Information
-    paymentStatus: {
-        type: String,
-        enum: ["pending", "paid", "failed", "refunded"],
-        default: "pending"
-    },
-    
-    paymentId: {
-        type: String
-    },
-    
-    // Learning Analytics
-    timeSpent: {
-        type: Number, // in minutes
-        default: 0
-    },
-    
-    lastAccessedAt: {
-        type: Date,
-        default: Date.now
-    },
-    
-    // Assessment Results
-    assessments: [{
-        name: String,
-        score: Number,
-        maxScore: Number,
-        completedAt: Date
-    }]
 }, { 
     timestamps: true 
 });

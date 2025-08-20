@@ -4,6 +4,10 @@ import jwt from "jsonwebtoken";
 
 const userSchema = new mongoose.Schema(
   {
+     picture : {
+      type: String,
+      default: "https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg",
+    },
     fullName: { 
       type: String, 
       required: true, 
@@ -26,7 +30,6 @@ const userSchema = new mongoose.Schema(
       type : String ,
       required : true,
     },
-
     role: {
       type: String,
       enum: ["user","student", "school", "employer", "admin"],

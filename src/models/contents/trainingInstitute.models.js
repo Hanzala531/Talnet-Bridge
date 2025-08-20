@@ -1,13 +1,32 @@
 import mongoose from "mongoose";
 
 const instituteSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    email: {
+        type: String,
+        required: true,
+        trim: true,
+        lowercase: true
+    },
+    phone: {
+        type: String,
+        required: true,
+        trim: true
+    },
     // Basic Information
    userId:{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-
    },
+    picture : {
+      type: String,
+      default: "https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg",
+    },
     about: {
         type: String,
         required: true,
@@ -25,27 +44,10 @@ const instituteSchema = new mongoose.Schema({
     
     // Location Information
     location: {
-        address: {
             type: String,
             required: true,
             trim: true
         },
-        city: {
-            type: String,
-            required: true,
-            trim: true
-        },
-        country: {
-            type: String,
-            required: true,
-            trim: true,
-            default: 'Pakistan'
-        },
-        coordinates: {
-            latitude: Number,
-            longitude: Number
-        }
-    },
     
     // Accreditation & Verification
     accreditation: {

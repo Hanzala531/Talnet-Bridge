@@ -1,4 +1,4 @@
-import { Course } from "../models/index.js";
+import { Course , TrainingInstitute} from "../models/index.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { badRequest, notFound, internalServer } from "../utils/ApiError.js";
 import { successResponse, createdResponse, badRequestResponse } from "../utils/ApiResponse.js";
@@ -102,7 +102,8 @@ const getCoursesById = asyncHandler(async (req, res) => {
 const createCourse = asyncHandler(async (req, res) => {
   try {
     const { title, instructor, duration, price, language, type, description, objectives, skills, category, maxEnrollments } = req.body;
-    const trainingProvider = req.user?._id;
+        const school = await TrainingInstitute.findOne({ userId: req.user._id });
+    const trainingProvider = school._id;
 
     // Schema-level validations already exist, but we also check at controller-level for clarity
     if (!title || !instructor || !duration || price == null || !language || !type || !description || !objectives?.length || !skills?.length || !category) {
