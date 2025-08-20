@@ -42,9 +42,7 @@ const createPlan = asyncHandler(async (req, res) => {
         if (!description) {
             throw badRequest("Plan description is required", "MISSING_DESCRIPTION");
         }
-        if (!price || price < 0) {
-            throw badRequest("Valid price is required", "INVALID_PRICE");
-        }
+        
         if (!billingCycle || !['onetime', 'monthly'].includes(billingCycle)) {
             throw badRequest("Valid billing cycle is required (onetime, monthly)", "INVALID_BILLING_CYCLE");
         }
