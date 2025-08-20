@@ -45,8 +45,8 @@ const createPlan = asyncHandler(async (req, res) => {
         if (!price || price < 0) {
             throw badRequest("Valid price is required", "INVALID_PRICE");
         }
-        if (!billingCycle || !['monthly', 'quarterly', 'yearly'].includes(billingCycle)) {
-            throw badRequest("Valid billing cycle is required (monthly, quarterly, yearly)", "INVALID_BILLING_CYCLE");
+        if (!billingCycle || !['monthly', 'lifetime', 'yearly'].includes(billingCycle)) {
+            throw badRequest("Valid billing cycle is required (monthly, lifetime, yearly)", "INVALID_BILLING_CYCLE");
         }
         if (!stripePriceId) {
             throw badRequest("Stripe price ID is required", "MISSING_STRIPE_PRICE_ID");
@@ -56,8 +56,8 @@ const createPlan = asyncHandler(async (req, res) => {
         }
 
         // Validate plan name format
-        if (!['basic', 'premium', 'enterprise'].includes(name)) {
-            throw badRequest("Plan name must be one of: basic, premium, enterprise", "INVALID_PLAN_NAME");
+        if (!['learner', 'employer', 'trainingInstitute'].includes(name)) {
+            throw badRequest("Plan name must be one of: learner, employer, trainingInstitute", "INVALID_PLAN_NAME");
         }
 
         // Check if plan already exists
@@ -77,17 +77,9 @@ const createPlan = asyncHandler(async (req, res) => {
             throw conflict("Stripe product ID is already in use", "STRIPE_PRODUCT_ID_EXISTS");
         }
 
-        // Validate features if provided
-        if (features) {
-            if (features.maxCourses !== undefined && features.maxCourses < -1) {
-                throw badRequest("Max courses must be -1 (unlimited) or a positive number", "INVALID_MAX_COURSES");
-            }
-            if (features.maxStudents !== undefined && features.maxStudents < -1) {
-                throw badRequest("Max students must be -1 (unlimited) or a positive number", "INVALID_MAX_STUDENTS");
-            }
-            if (features.supportLevel && !['email', 'priority', 'dedicated'].includes(features.supportLevel)) {
-                throw badRequest("Support level must be: email, priority, or dedicated", "INVALID_SUPPORT_LEVEL");
-            }
+        // Validate features if provided (should be an array of strings)
+        if (features && !Array.isArray(features)) {
+            throw badRequest("Features must be an array of strings", "INVALID_FEATURES_TYPE");
         }
 
         // Create the plan
@@ -205,28 +197,20 @@ const updatePlan = asyncHandler(async (req, res) => {
         delete updates.stripeProductId;
 
         // Validate updates if provided
-        if (updates.name && !['basic', 'premium', 'enterprise'].includes(updates.name)) {
-            throw badRequest("Plan name must be one of: basic, premium, enterprise", "INVALID_PLAN_NAME");
+        if (updates.name && !['learner', 'employer', 'trainingInstitute'].includes(updates.name)) {
+            throw badRequest("Plan name must be one of: learner, employer, trainingInstitute", "INVALID_PLAN_NAME");
         }
 
         if (updates.price !== undefined && updates.price < 0) {
             throw badRequest("Price must be a positive number", "INVALID_PRICE");
         }
 
-        if (updates.billingCycle && !['monthly', 'quarterly', 'yearly'].includes(updates.billingCycle)) {
-            throw badRequest("Billing cycle must be: monthly, quarterly, or yearly", "INVALID_BILLING_CYCLE");
+        if (updates.billingCycle && !['monthly', 'lifetime', 'yearly'].includes(updates.billingCycle)) {
+            throw badRequest("Billing cycle must be: monthly, lifetime, or yearly", "INVALID_BILLING_CYCLE");
         }
 
-        if (updates.features) {
-            if (updates.features.maxCourses !== undefined && updates.features.maxCourses < -1) {
-                throw badRequest("Max courses must be -1 (unlimited) or a positive number", "INVALID_MAX_COURSES");
-            }
-            if (updates.features.maxStudents !== undefined && updates.features.maxStudents < -1) {
-                throw badRequest("Max students must be -1 (unlimited) or a positive number", "INVALID_MAX_STUDENTS");
-            }
-            if (updates.features.supportLevel && !['email', 'priority', 'dedicated'].includes(updates.features.supportLevel)) {
-                throw badRequest("Support level must be: email, priority, or dedicated", "INVALID_SUPPORT_LEVEL");
-            }
+        if (updates.features && !Array.isArray(updates.features)) {
+            throw badRequest("Features must be an array of strings", "INVALID_FEATURES_TYPE");
         }
 
         // Check if plan exists

@@ -5,7 +5,7 @@ const subscriptionPlanSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
-        enum: ["basic", "premium", "enterprise"]
+        enum: ["learner", "employer", "trainingInstitue"]
     },
     
     displayName: {
@@ -31,12 +31,12 @@ const subscriptionPlanSchema = new mongoose.Schema({
     
     billingCycle: {
         type: String,
-        enum: ["monthly", "lifetime", "yearly"],
+        enum: ["monthly", "lifetime"],
         required: true
     },
 
     features:{
-        type: String,
+        type: [String],
         required:true,
 
     },
