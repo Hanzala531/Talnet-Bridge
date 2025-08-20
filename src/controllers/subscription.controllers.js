@@ -577,12 +577,17 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
             throw notFound("Subscription not found or not pending", "SUBSCRIPTION_NOT_FOUND_OR_NOT_PENDING");
         }
 
-        // Debug logging
-        console.log('DEBUG: subscription.planId =', subscription.planId);
+        
         const plan = await SubscriptionPlan.findById(subscription.planId);
-        console.log('DEBUG: plan found =', plan);
         if (!plan || plan.price === undefined || plan.price === null) {
             throw badRequest(`Invalid subscription plan data for planId: ${subscription.planId}`, "INVALID_PLAN_DATA");
+        }
+        if (plan.name === "learner") {
+            await User.findByIdAndUpdate(userId, { role: "student" });
+        } else if (plan.name === "employer") {
+            await User.findByIdAndUpdate(userId, { role: "employer" });
+        } else if (plan.name === "trainingInstitue") {
+            await User.findByIdAndUpdate(userId, { role: "school" });
         }
         if (plan.price === undefined || plan.price === null || plan.price < 0) {
             throw badRequest("Invalid subscription price", "INVALID_PRICE");
