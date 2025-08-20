@@ -33,8 +33,10 @@ connectDB()
     app.set("io", io);
     
     app.on('error', (error) => {});
-    
-    httpServer.listen(process.env.PORT || 8000, () => {});
+    const port = process.env.PORT || 8000
+    httpServer.listen(port, () => {
+    console.log(`Server is running on : http://localhost:${port}`)
+});
 })
 .catch((error) => {process.exit(1);
 });

@@ -14,7 +14,7 @@ import { successResponse, createdResponse, badRequestResponse } from "../utils/A
 // ===============================
 const createEnrollment = asyncHandler(async (req, res) => {
     try {
-        const { courseId, enrollmentSource = "web" } = req.body;
+    const { courseId } = req.body;
         const studentId = req.user._id;
 
         // Validate course exists and is active
@@ -27,10 +27,7 @@ const createEnrollment = asyncHandler(async (req, res) => {
             throw badRequest("Course is not available for enrollment");
         }
 
-        // Check enrollment capacity
-        if (course.currentEnrollments >= course.maxEnrollments) {
-            throw badRequest("Course is at maximum capacity");
-        }
+    // Optionally, check for course capacity if you want to keep this logic
 
         // Check if student already enrolled
         const existingEnrollment = await Enrollment.findOne({
@@ -46,21 +43,14 @@ const createEnrollment = asyncHandler(async (req, res) => {
         // Create enrollment
         const enrollment = await Enrollment.create({
             studentId,
-            courseId,
-            course: courseId, // For backwards compatibility
-            paymentAmount: course.price,
-            paymentStatus: course.price > 0 ? "pending" : "paid",
-            enrollmentSource
+            courseId
         });
 
-        // Update course enrollment count
-        await Course.findByIdAndUpdate(courseId, {
-            $inc: { currentEnrollments: 1 }
-        });
+    // Optionally, update course enrollment count if you want to keep this logic
 
         // Populate enrollment with course and student details
         const populatedEnrollment = await Enrollment.findById(enrollment._id)
-            .populate('courseId', 'title instructor duration price category')
+            .populate('courseId', 'title instructor duration category')
             .populate('studentId', 'fullName email');
 
         return res.status(201).json(
@@ -80,18 +70,17 @@ const createEnrollment = asyncHandler(async (req, res) => {
 const getUserEnrollments = asyncHandler(async (req, res) => {
     try {
         const studentId = req.user._id;
-        const { page = 1, limit = 10, status, paymentStatus } = req.query;
+    const { page = 1, limit = 10, status } = req.query;
 
-        const filter = { studentId };
-        if (status) filter.status = status;
-        if (paymentStatus) filter.paymentStatus = paymentStatus;
+    const filter = { studentId };
+    if (status) filter.status = status;
 
         const skip = (page - 1) * Math.min(limit, 100);
         const limitNum = Math.min(Number(limit), 100);
 
         const [enrollments, total] = await Promise.all([
             Enrollment.find(filter)
-                .populate('courseId', 'title instructor duration price category status trainingProvider')
+                .populate('courseId', 'title instructor duration category status trainingProvider')
                 .populate({
                     path: 'courseId',
                     populate: {
@@ -174,7 +163,7 @@ const getEnrollmentById = asyncHandler(async (req, res) => {
 const updateEnrollmentStatus = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, progressPercentage, completionDate } = req.body;
+    const { status } = req.body;
         const userId = req.user._id;
         const userRole = req.user.role;
 
@@ -199,24 +188,16 @@ const updateEnrollmentStatus = asyncHandler(async (req, res) => {
             throw badRequest("Access denied");
         }
 
-        // Update fields
-        const updateData = {};
-        if (status) updateData.status = status;
-        if (progressPercentage !== undefined) updateData.progressPercentage = progressPercentage;
-        if (completionDate) updateData.completionDate = completionDate;
-
-        // Auto-set completion date if status is completed
-        if (status === 'completed' && !completionDate) {
-            updateData.completionDate = new Date();
-            updateData.progressPercentage = 100;
-        }
+    // Update fields
+    const updateData = {};
+    if (status) updateData.status = status;
 
         const updatedEnrollment = await Enrollment.findByIdAndUpdate(
             id,
             updateData,
             { new: true, runValidators: true }
-        ).populate('courseId', 'title instructor')
-         .populate('studentId', 'fullName email');
+    ).populate('courseId', 'title instructor')
+     .populate('studentId', 'fullName email');
 
         return res.status(200).json(
             successResponse(
@@ -229,49 +210,9 @@ const updateEnrollmentStatus = asyncHandler(async (req, res) => {
 });
 
 // ===============================
-// UPDATE PAYMENT STATUS
+// UPDATE PAYMENT STATUS (REMOVED: not in model)
 // ===============================
-const updatePaymentStatus = asyncHandler(async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { paymentStatus, transactionId, paymentMethod, paymentDate } = req.body;
-
-        const validPaymentStatuses = ["pending", "paid", "failed", "refunded"];
-        if (!validPaymentStatuses.includes(paymentStatus)) {
-            throw badRequest("Invalid payment status");
-        }
-
-        const enrollment = await Enrollment.findById(id);
-        if (!enrollment) {
-            throw notFound("Enrollment not found");
-        }
-
-        const updateData = { paymentStatus };
-        if (transactionId) updateData.transactionId = transactionId;
-        if (paymentMethod) updateData.paymentMethod = paymentMethod;
-        if (paymentDate) updateData.paymentDate = paymentDate;
-
-        // Auto-set payment date if status is paid
-        if (paymentStatus === 'paid' && !paymentDate) {
-            updateData.paymentDate = new Date();
-        }
-
-        const updatedEnrollment = await Enrollment.findByIdAndUpdate(
-            id,
-            updateData,
-            { new: true, runValidators: true }
-        ).populate('courseId', 'title price')
-         .populate('studentId', 'fullName email');
-
-        return res.status(200).json(
-            successResponse(
-                { enrollment: updatedEnrollment },
-                "Payment status updated successfully"
-            )
-        );
-    } catch (error) {throw internalServer("Failed to update payment status");
-    }
-});
+// This controller is removed because payment fields are not in the Enrollment model.
 
 // ===============================
 // GET COURSE ENROLLMENTS (Provider/Admin)
@@ -279,7 +220,7 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
 const getCourseEnrollments = asyncHandler(async (req, res) => {
     try {
         const { courseId } = req.params;
-        const { page = 1, limit = 10, status, paymentStatus } = req.query;
+    const { page = 1, limit = 10, status } = req.query;
         const userId = req.user._id;
         const userRole = req.user.role;
 
@@ -299,8 +240,7 @@ const getCourseEnrollments = asyncHandler(async (req, res) => {
         }
 
         const filter = { courseId };
-        if (status) filter.status = status;
-        if (paymentStatus) filter.paymentStatus = paymentStatus;
+    if (status) filter.status = status;
 
         const skip = (page - 1) * Math.min(limit, 100);
         const limitNum = Math.min(Number(limit), 100);
@@ -347,14 +287,12 @@ const getEnrollmentStatistics = asyncHandler(async (req, res) => {
         const userRole = req.user.role;
 
         let matchFilter = {};
-
         if (userRole === 'school') {
             // Get courses by this training provider
             const institute = await TrainingInstitute.findOne({ userId });
             if (!institute) {
                 throw notFound("Training institute not found");
             }
-            
             const courses = await Course.find({ trainingProvider: institute._id }).select('_id');
             const courseIds = courses.map(c => c._id);
             matchFilter = { courseId: { $in: courseIds } };
@@ -376,12 +314,7 @@ const getEnrollmentStatistics = asyncHandler(async (req, res) => {
                     activeEnrollments: {
                         $sum: { $cond: [{ $in: ["$status", ["enrolled", "in-progress"]] }, 1, 0] }
                     },
-                    paidEnrollments: {
-                        $sum: { $cond: [{ $eq: ["$paymentStatus", "paid"] }, 1, 0] }
-                    },
-                    totalRevenue: {
-                        $sum: { $cond: [{ $eq: ["$paymentStatus", "paid"] }, "$paymentAmount", 0] }
-                    }
+                    // paidEnrollments and totalRevenue removed (not in model)
                 }
             }
         ]);
@@ -389,9 +322,7 @@ const getEnrollmentStatistics = asyncHandler(async (req, res) => {
         const result = stats[0] || {
             totalEnrollments: 0,
             completedEnrollments: 0,
-            activeEnrollments: 0,
-            paidEnrollments: 0,
-            totalRevenue: 0
+            activeEnrollments: 0
         };
 
         return res.status(200).json(
@@ -401,9 +332,6 @@ const getEnrollmentStatistics = asyncHandler(async (req, res) => {
                         ...result,
                         completionRate: result.totalEnrollments > 0 
                             ? ((result.completedEnrollments / result.totalEnrollments) * 100).toFixed(2)
-                            : "0.00",
-                        paymentRate: result.totalEnrollments > 0
-                            ? ((result.paidEnrollments / result.totalEnrollments) * 100).toFixed(2)
                             : "0.00"
                     }
                 },
@@ -433,23 +361,15 @@ const withdrawFromCourse = asyncHandler(async (req, res) => {
         if (enrollment.studentId.toString() !== userId.toString()) {
             throw badRequest("Access denied");
         }
-
         if (enrollment.status === 'withdrawn') {
             throw badRequest("Already withdrawn from course");
         }
-
         if (enrollment.status === 'completed') {
             throw badRequest("Cannot withdraw from completed course");
         }
-
         // Update enrollment status
         enrollment.status = 'withdrawn';
         await enrollment.save();
-
-        // Decrease course enrollment count
-        await Course.findByIdAndUpdate(enrollment.courseId._id, {
-            $inc: { currentEnrollments: -1 }
-        });
 
         return res.status(200).json(
             successResponse(
@@ -466,7 +386,6 @@ export {
     getUserEnrollments,
     getEnrollmentById,
     updateEnrollmentStatus,
-    updatePaymentStatus,
     getCourseEnrollments,
     getEnrollmentStatistics,
     withdrawFromCourse

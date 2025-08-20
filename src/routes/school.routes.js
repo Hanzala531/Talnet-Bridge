@@ -22,7 +22,8 @@ const schoolRouter = express.Router();
  * @swagger
  * /api/v1/schools:
  *   get:
- *     summary: Get all training providers
+ *     summary: Retrieve a paginated list of all training providers
+ *     description: Returns a list of training providers (schools) with optional filtering by focus area and location. Supports pagination.
  *     tags: [Training Providers]
  *     parameters:
  *       - in: query
@@ -30,28 +31,63 @@ const schoolRouter = express.Router();
  *         schema:
  *           type: integer
  *           default: 1
- *         description: Page number for pagination
+ *         description: Page number for pagination. Default is 1.
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
- *         description: Number of providers per page
+ *         description: Number of providers per page. Default is 10.
  *       - in: query
  *         name: focusArea
  *         schema:
  *           type: string
- *         description: Filter by focus area
+ *         description: Filter providers by focus area
  *       - in: query
  *         name: location
  *         schema:
  *           type: string
- *         description: Filter by city/location
+ *         description: Filter providers by city or location
  *     responses:
  *       200:
  *         description: List of training providers retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 providers:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/TrainingProvider'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     total:
+ *                       type: integer
+ *                       example: 100
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 10
  *       404:
  *         description: No training providers found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 404
+ *               message: "No training providers found"
  */
 schoolRouter.get('/', requestLogger, getAllTrainingProviders);
 
@@ -59,7 +95,8 @@ schoolRouter.get('/', requestLogger, getAllTrainingProviders);
  * @swagger
  * /api/v1/schools/search:
  *   get:
- *     summary: Search training providers
+ *     summary: Search training providers by name, focus area, or city
+ *     description: Returns a list of training providers matching the search query and optional filters.
  *     tags: [Training Providers]
  *     parameters:
  *       - in: query
@@ -67,22 +104,42 @@ schoolRouter.get('/', requestLogger, getAllTrainingProviders);
  *         schema:
  *           type: string
  *         required: true
- *         description: Search query
+ *         description: Search query (e.g., provider name)
  *       - in: query
  *         name: focusArea
  *         schema:
  *           type: string
- *         description: Filter by focus area
+ *         description: Filter by focus area (e.g., "AI/ML")
  *       - in: query
  *         name: city
  *         schema:
  *           type: string
- *         description: Filter by city
+ *         description: Filter by city (e.g., "Lahore")
  *     responses:
  *       200:
  *         description: Search results retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 providers:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/TrainingProvider'
  *       400:
  *         description: Search query is required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 400
+ *               message: "Search query is required"
  */
 schoolRouter.get('/search', requestLogger, searchTrainingProviders);
 
@@ -90,19 +147,48 @@ schoolRouter.get('/search', requestLogger, searchTrainingProviders);
  * @swagger
  * /api/v1/schools/profile:
  *   get:
- *     summary: Get own training provider profile
+ *     summary: Get the authenticated training provider's profile
+ *     description: Returns the profile of the currently authenticated training provider (school).
  *     tags: [Training Providers]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TrainingProvider'
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 401
+ *               message: "Unauthorized"
  *       403:
  *         description: Access denied - Training provider only
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 403
+ *               message: "Access denied - Training provider only"
  *       404:
  *         description: Profile not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 404
+ *               message: "Profile not found"
  */
 schoolRouter.get('/profile', requestLogger, verifyJWT, authorizeRoles('school'), getProfile);
 
@@ -170,13 +256,41 @@ schoolRouter.get('/profile', requestLogger, verifyJWT, authorizeRoles('school'),
  *                 example: ["ISO 9001", "NVQL Certified"]
  *     responses:
  *       200:
- *         description: Profile updated successfully
+ *         description: Profile updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TrainingProvider'
  *       400:
- *         description: Validation error
+ *         description: Validation error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 400
+ *               message: "Validation error"
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 401
+ *               message: "Unauthorized"
  *       403:
- *         description: Access denied
+ *         description: Access denied.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 403
+ *               message: "Access denied"
  */
 schoolRouter.put('/profile', requestLogger, verifyJWT, authorizeRoles('school'), editProfile);
 
@@ -190,11 +304,38 @@ schoolRouter.put('/profile', requestLogger, verifyJWT, authorizeRoles('school'),
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Statistics retrieved successfully
+ *         description: Statistics retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 stats:
+ *                   type: object
+ *                   description: Statistics object
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 401
+ *               message: "Unauthorized"
  *       403:
- *         description: Access denied - Training provider only
+ *         description: Access denied. Only training providers can access this resource.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 403
+ *               message: "Access denied - Training provider only"
  */
 schoolRouter.get('/stats', requestLogger, verifyJWT, authorizeRoles('school'), getTrainingProviderStats);
 
@@ -217,7 +358,7 @@ schoolRouter.get('/stats', requestLogger, verifyJWT, authorizeRoles('school'), g
  *         description: Job ID to match students against
  *     responses:
  *       200:
- *         description: List of matched students with match percentage
+ *         description: List of matched students with match percentage.
  *         content:
  *           application/json:
  *             schema:
@@ -227,47 +368,40 @@ schoolRouter.get('/stats', requestLogger, verifyJWT, authorizeRoles('school'), g
  *                   type: boolean
  *                 job:
  *                   type: object
- *                   properties:
- *                     _id:
- *                       type: string
- *                     jobTitle:
- *                       type: string
- *                     requiredSkills:
- *                       type: array
- *                       items:
- *                         type: string
  *                 matchedStudents:
  *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       studentId:
- *                         type: string
- *                       user:
- *                         type: object
- *                         properties:
- *                           fullName:
- *                             type: string
- *                           email:
- *                             type: string
- *                       skills:
- *                         type: array
- *                         items:
- *                           type: string
- *                       matchedSkills:
- *                         type: array
- *                         items:
- *                           type: string
- *                       matchPercent:
- *                         type: integer
  *                 message:
  *                   type: string
  *       400:
- *         description: Missing or invalid jobId, or job has no required skills
+ *         description: Missing or invalid jobId, or job has no required skills.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 400
+ *               message: "Missing or invalid jobId, or job has no required skills."
  *       404:
- *         description: Job not found
+ *         description: Job not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 404
+ *               message: "Job not found."
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 401
+ *               message: "Unauthorized."
  */
 schoolRouter.get(
   '/match-students',
@@ -293,7 +427,7 @@ schoolRouter.get(
  *         description: The ID of the school (training provider)
  *     responses:
  *       200:
- *         description: Dashboard analytics fetched successfully
+ *         description: Dashboard analytics fetched successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -305,25 +439,26 @@ schoolRouter.get(
  *                   type: string
  *                 payload:
  *                   type: object
- *                   properties:
- *                     totalEnrollments:
- *                       type: integer
- *                     completedEnrollments:
- *                       type: integer
- *                     completionRate:
- *                       type: string
- *                     totalRevenue:
- *                       type: number
- *                     totalActiveCourses:
- *                       type: integer
- *                     activeCourses:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Course'
  *       400:
- *         description: schoolId query parameter is required
+ *         description: schoolId query parameter is required.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 400
+ *               message: "schoolId query parameter is required."
  *       500:
- *         description: Failed to fetch dashboard analytics
+ *         description: Failed to fetch dashboard analytics.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 500
+ *               message: "Failed to fetch dashboard analytics."
  */
 schoolRouter.get('/dashboard', requestLogger,verifyJWT , authorizeRoles('school' ), dashboardController);
 
@@ -357,7 +492,7 @@ schoolRouter.get('/dashboard', requestLogger,verifyJWT , authorizeRoles('school'
  *         description: Number of students per page
  *     responses:
  *       200:
- *         description: List of students retrieved successfully
+ *         description: List of students retrieved successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -367,40 +502,38 @@ schoolRouter.get('/dashboard', requestLogger,verifyJWT , authorizeRoles('school'
  *                   type: boolean
  *                 students:
  *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       studentId:
- *                         type: string
- *                       name:
- *                         type: string
- *                       email:
- *                         type: string
- *                       phone:
- *                         type: string
- *                       courses:
- *                         type: array
- *                         items:
- *                           type: string
- *                       status:
- *                         type: string
  *                 pagination:
  *                   type: object
- *                   properties:
- *                     page:
- *                       type: integer
- *                     limit:
- *                       type: integer
- *                     total:
- *                       type: integer
- *                     totalPages:
- *                       type: integer
  *       400:
- *         description: schoolId query parameter is required
+ *         description: schoolId query parameter is required.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 400
+ *               message: "schoolId query parameter is required."
  *       404:
- *         description: No students found for the given school
+ *         description: No students found for the given school.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 404
+ *               message: "No students found for the given school."
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               statusCode: 401
+ *               message: "Unauthorized."
  */
 schoolRouter.get(
   '/students-directory',

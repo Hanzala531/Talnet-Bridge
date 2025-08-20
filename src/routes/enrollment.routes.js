@@ -4,7 +4,6 @@ import {
     getUserEnrollments,
     getEnrollmentById,
     updateEnrollmentStatus,
-    updatePaymentStatus,
     getCourseEnrollments,
     getEnrollmentStatistics,
     withdrawFromCourse
@@ -223,58 +222,6 @@ enrollmentRouter.get('/:id', requestLogger, verifyJWT, getEnrollmentById);
  *         description: Enrollment not found
  */
 enrollmentRouter.patch('/:id/status', requestLogger, verifyJWT, updateEnrollmentStatus);
-
-/**
- * @swagger
- * /api/v1/enrollments/{id}/payment:
- *   patch:
- *     summary: Update payment status (Admin/Provider only)
- *     tags: [Enrollments]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Enrollment ID
- *         example: "64f123abc456def789012345"
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - paymentStatus
- *             properties:
- *               paymentStatus:
- *                 type: string
- *                 enum: [pending, paid, failed, refunded]
- *                 example: "paid"
- *               transactionId:
- *                 type: string
- *                 example: "txn_1234567890"
- *               paymentMethod:
- *                 type: string
- *                 enum: [stripe, paypal, bank_transfer, cash, free]
- *                 example: "stripe"
- *               paymentDate:
- *                 type: string
- *                 format: date-time
- *                 example: "2025-08-20T11:00:00.000Z"
- *     responses:
- *       200:
- *         description: Payment status updated successfully
- *       400:
- *         description: Invalid payment status
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Enrollment not found
- */
-enrollmentRouter.patch('/:id/payment', requestLogger, verifyJWT, authorizeRoles('admin', 'school'), updatePaymentStatus);
 
 /**
  * @swagger

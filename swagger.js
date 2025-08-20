@@ -105,6 +105,17 @@ const options = {
         }
       },
       schemas: {
+        EnrollmentRequest: {
+          type: 'object',
+          required: ['courseId'],
+          properties: {
+            courseId: {
+              type: 'string',
+              description: 'The ID of the course to enroll in',
+              example: '64f789abc123def456789012'
+            }
+          }
+        },
         User: {
           type: 'object',
           properties: {
