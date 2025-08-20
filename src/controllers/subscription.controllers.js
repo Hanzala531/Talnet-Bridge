@@ -580,19 +580,20 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
             throw notFound("Subscription not found or not pending", "SUBSCRIPTION_NOT_FOUND_OR_NOT_PENDING");
         }
 
-        if (!subscription.plan || !subscription.plan.price) {
+        // Fetch plan details from SubscriptionPlan
+        const plan = await SubscriptionPlan.findById(subscription.planId);
+        if (!plan || !plan.price) {
             throw badRequest("Invalid subscription plan data", "INVALID_PLAN_DATA");
         }
-
-        if (subscription.plan.price <= 0) {
+        if (plan.price <= 0) {
             throw badRequest("Invalid subscription price", "INVALID_PRICE");
         }
 
         try {
             // Create Stripe payment intent with only 'card' to avoid redirects
             const paymentIntent = await stripe.paymentIntents.create({
-                amount: Math.round(subscription.plan.price * 100), // cents
-                currency: (subscription.plan.currency || 'usd').toLowerCase(),
+                amount: Math.round(plan.price * 100), // cents
+                currency: (plan.currency || 'usd').toLowerCase(),
                 payment_method_types: ['card'], // ✅ Force only card payments
                 metadata: {
                     subscriptionId: subscription._id.toString(),
@@ -610,7 +611,7 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
             );
         } catch (stripeError) {
             console.error("Stripe payment intent creation error:", stripeError);
-            throw badRequest(`Stripe error: ${stripeError.message}`, "STRIPE_PAYMENT_INTENT_ERROR");
+            throw badRequest(`Stripe error: ${stripeError.message}", "STRIPE_PAYMENT_INTENT_ERROR");
         }
     } catch (error) {
         if (error instanceof ApiError) throw error;
@@ -662,9 +663,12 @@ const confirmPayment = asyncHandler(async (req, res) => {
                 );
             }
 
-            return res.status(400).json(
-                errorResponse(400, `Payment not successful. Status: ${paymentIntent.status}`, "PAYMENT_FAILED")
-            );
+            return res.status(400).json({
+                status: 400,
+                success: false,
+                message: `Payment not successful. Status: ${paymentIntent.status}`,
+                errorCode: "PAYMENT_FAILED"
+            });
 
         } catch (stripeError) {
             console.error("Stripe payment confirmation error:", stripeError);
