@@ -26,6 +26,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+app.set('trust proxy', true);
 
 import { connectRedis } from "./config/redis.config.js"; // adjust path
 
