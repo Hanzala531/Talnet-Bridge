@@ -357,13 +357,7 @@ const createSubscription = asyncHandler(async (req, res) => {
         // Create subscription
         const subscription = await Subscription.create({
             userId,
-            plan: {
-                _id: plan._id,
-                name: plan.name,
-                price: plan.price,
-                currency: plan.currency,
-                billingCycle: plan.billingCycle
-            },
+            planId: plan._id,
             billing: {
                 startDate,
                 endDate,
