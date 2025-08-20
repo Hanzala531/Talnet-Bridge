@@ -48,8 +48,22 @@ export const checkCourseLimit = asyncHandler(async (req, res, next) => {
             trainingProvider: userId
         });
 
-        if (currentCourses >= subscription.features.maxCourses) {
-            throw new ApiError(403, `Course limit reached. Your plan allows ${subscription.features.maxCourses} courses. Upgrade your plan to create more courses.`);
+        
+        // Determine maxCourses (example: based on plan name, or set a default)
+        let maxCourses = Infinity;
+        // if (subscription.planId) {
+        //     // Optionally fetch plan details for more advanced logic
+        //     // import SubscriptionPlan if needed
+        //     // const plan = await SubscriptionPlan.findById(subscription.planId);
+        //     // if (plan && plan.name === 'trainingInstitue') maxCourses = 10;
+        //     // else if (plan && plan.name === 'learner') maxCourses = 1;
+        //     // else if (plan && plan.name === 'employer') maxCourses = 0;
+        //     // For now, set a default or unlimited
+        //     maxCourses = 10; // Set your default or plan-based value here
+        // }
+
+        if (currentCourses >= maxCourses) {
+            throw new ApiError(403, `Course limit reached. Your plan allows ${maxCourses} courses. Upgrade your plan to create more courses.`);
         }
 
         next();

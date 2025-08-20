@@ -1,22 +1,98 @@
-import express from "express";
-import {
-    getProfile,
-    editProfile,
-    getAllTrainingProviders,
-    getTrainingProviderById,
-    updateTrainingProviderStatus,
-    deleteTrainingProvider,
-    searchTrainingProviders,
-    getTrainingProviderStats,
-    matchStudents,
-    studentsDirectory,
-    dashboardController
-} from '../controllers/school.controllers.js';
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
 import { authorizeRoles } from '../middlewares/Role.middlewares.js';
+import express from "express";
 
 const schoolRouter = express.Router();
+import {
+  getProfile,
+  editProfile,
+  createProfile,
+  getAllTrainingProviders,
+  getTrainingProviderById,
+  updateTrainingProviderStatus,
+  deleteTrainingProvider,
+  searchTrainingProviders,
+  getTrainingProviderStats,
+  matchStudents,
+  studentsDirectory,
+  dashboardController
+} from '../controllers/school.controllers.js';
+/**
+ * @swagger
+ * /api/v1/schools/profile:
+ *   post:
+ *     summary: Create a new training provider profile
+ *     tags: [Training Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               about:
+ *                 type: string
+ *                 example: "Leading technology training institute"
+ *               established:
+ *                 type: string
+ *                 format: date
+ *                 example: "2015-01-01"
+ *               focusAreas:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Web Development", "Data Science", "AI/ML"]
+ *               location:
+ *                 type: object
+ *                 properties:
+ *                   address:
+ *                     type: string
+ *                     example: "123 Training Street"
+ *                   city:
+ *                     type: string
+ *                     example: "Karachi"
+ *                   state:
+ *                     type: string
+ *                     example: "Sindh"
+ *                   country:
+ *                     type: string
+ *                     example: "Pakistan"
+ *                   postalCode:
+ *                     type: string
+ *                     example: "75000"
+ *               contact:
+ *                 type: object
+ *                 properties:
+ *                   phone:
+ *                     type: string
+ *                     example: "+92-300-1234567"
+ *                   email:
+ *                     type: string
+ *                     example: "info@traininginstitute.com"
+ *                   website:
+ *                     type: string
+ *                     example: "https://traininginstitute.com"
+ *               accreditation:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["ISO 9001", "NVQL Certified"]
+ *     responses:
+ *       201:
+ *         description: Training provider profile created successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied
+ *       409:
+ *         description: Profile already exists
+ */
+schoolRouter.post('/profile', requestLogger, verifyJWT, authorizeRoles('school'), createProfile);
 
 /**
  * @swagger

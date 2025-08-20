@@ -67,12 +67,6 @@ const instituteSchema = new mongoose.Schema({
         }
     },
     
-    // Owner/Admin Reference
-    owner: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
     
     // Statistics
     stats: {

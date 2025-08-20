@@ -266,53 +266,53 @@ courseRouter.post('/', requestLogger, verifyJWT, authorizeRoles('school'), requi
  */
 courseRouter.put('/:id', requestLogger, verifyJWT, authorizeRoles('school'), requireActiveSubscription, updateCourse);
 
-/**
- * @swagger
- * /api/v1/courses/{id}/status:
- *   patch:
- *     summary: Update course status (Admin only)
- *     tags: [Courses]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Course ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - status
- *             properties:
- *               status:
- *                 type: string
- *                 enum: ["draft", "pending_approval", "approved", "rejected", "archived"]
- *                 example: "approved"
- *     responses:
- *       200:
- *         description: Course status updated successfully
- *       400:
- *         description: Invalid status value
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Admin access required
- *       404:
- *         description: Course not found
- */
-courseRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('admin'), updateCourseStatus);
+// /**
+//  * @swagger
+//  * /api/v1/courses/{id}/status:
+//  *   patch:
+//  *     summary: Update course status (Admin only)
+//  *     tags: [Courses]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *         description: Course ID
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             type: object
+//  *             required:
+//  *               - status
+//  *             properties:
+//  *               status:
+//  *                 type: string
+//  *                 enum: ["draft", "pending_approval", "approved", "rejected", "archived"]
+//  *                 example: "approved"
+//  *     responses:
+//  *       200:
+//  *         description: Course status updated successfully
+//  *       400:
+//  *         description: Invalid status value
+//  *       401:
+//  *         description: Unauthorized
+//  *       403:
+//  *         description: Forbidden - Admin access required
+//  *       404:
+//  *         description: Course not found
+//  */
+// courseRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('school'), updateCourseStatus);
 
 /**
  * @swagger
  * /api/v1/courses/{id}:
  *   delete:
- *     summary: Delete a course (Admin only)
+ *     summary: Delete a course (school only)
  *     tags: [Courses]
  *     security:
  *       - bearerAuth: []
@@ -333,7 +333,7 @@ courseRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('admi
  *       404:
  *         description: Course not found
  */
-courseRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('admin'), deleteCourseById);
+courseRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('school'), deleteCourseById);
 
 // Export the router
 export default courseRouter;

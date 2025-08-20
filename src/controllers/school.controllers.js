@@ -1,3 +1,4 @@
+
 import { internalServer } from "../utils/ApiError.js";
 import {
   Job,
@@ -14,7 +15,54 @@ import {
   badRequestResponse,
   validationErrorResponse
 } from "../utils/ApiResponse.js";
+// Create training provider profile
+const createProfile = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const data = req.body;
 
+    // Check if profile already exists for this user
+    const existing = await TrainingInstitute.findOne({ userId });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "Training provider profile already exists",
+        payload: null
+      });
+    }
+
+
+    // Optionally validate required fields (e.g., name, about, etc.)
+    if (data.about && data.about.length > 1000) {
+      return res.status(400).json({
+        success: false,
+        message: "About section cannot exceed 1000 characters",
+        payload: null
+      });
+    }
+
+    // Add userId to the profile data
+    data.userId = userId;
+
+    const profile = new TrainingInstitute(data);
+    await profile.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Training provider profile created successfully",
+      payload: profile
+    });
+  } catch (error) {
+    if (error.name === "ValidationError") {
+      return res.status(422).json({
+        success: false,
+        message: "Validation failed",
+        payload: Object.values(error.errors).map((e) => e.message)
+      });
+    }
+    throw internalServer("Failed to create training provider profile");
+  }
+});
 // Get own profile controller
 const getProfile = asyncHandler(async (req, res) => {
   try {
@@ -23,9 +71,17 @@ const getProfile = asyncHandler(async (req, res) => {
     const profile = await TrainingInstitute.findOne({ userId: userId });
 
     if (!profile) {
-      return notFoundResponse("Training provider profile not found");
+      return res.status(404).json({
+        success: false,
+        message: "Training provider profile not found",
+        payload: null
+      });
     }
-    return successResponse(res, profile, "Profile fetched successfully");
+    return res.status(200).json({
+      success: true,
+      message: "Profile fetched successfully",
+      payload: profile
+    });
   } catch (error) {
     throw internalServer("Failed to fetch profile");
   }
@@ -39,7 +95,11 @@ const editProfile = asyncHandler(async (req, res) => {
 
     // Validate required fields if provided
     if (updates.about && updates.about.length > 1000) {
-      return badRequestResponse("About section cannot exceed 1000 characters");
+      return res.status(400).json({
+        success: false,
+        message: "About section cannot exceed 1000 characters",
+        payload: null
+      });
     }
 
     const updatedProfile = await TrainingInstitute.findOneAndUpdate(
@@ -49,13 +109,25 @@ const editProfile = asyncHandler(async (req, res) => {
     );
 
     if (!updatedProfile) {
-      return notFoundResponse("Profile not found");
+      return res.status(404).json({
+        success: false,
+        message: "Profile not found",
+        payload: null
+      });
     }
 
-    return successResponse(res, updatedProfile, "Profile updated successfully");
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      payload: updatedProfile
+    });
   } catch (error) {
     if (error.name === "ValidationError") {
-      return validationErrorResponse(Object.values(error.errors).map((e) => e.message));
+      return res.status(422).json({
+        success: false,
+        message: "Validation failed",
+        payload: Object.values(error.errors).map((e) => e.message)
+      });
     }
     throw internalServer("Failed to update profile");
   }
@@ -74,27 +146,38 @@ const getAllTrainingProviders = asyncHandler(async (req, res) => {
       filter["location.city"] = { $regex: location, $options: "i" };
     }
 
-    const skip = (page - 1) * limit;
-    const providers = await TrainingInstitute.find(filter)
-      .skip(skip)
-      .limit(Number(limit))
-      .sort({ createdAt: -1 });
-
-    if (!providers || providers.length === 0) {
-      return notFoundResponse("No training providers found");
+    const skip = (Number(page) - 1) * Number(limit);
+    let providers;
+    try {
+      providers = await TrainingInstitute.find(filter)
+        .skip(skip)
+        .limit(Number(limit))
+        .sort({ createdAt: -1 });
+    } catch (err) {
+      console.error("[ERROR] TrainingInstitute.find failed:", err);
+      throw internalServer("DB error in TrainingInstitute.find");
     }
 
-    const total = await TrainingInstitute.countDocuments(filter);
+    let total;
+    try {
+      total = await TrainingInstitute.countDocuments(filter);
+    } catch (err) {
+      throw internalServer("DB error in TrainingInstitute.countDocuments");
+    }
 
-    return successResponse(res, {
-      data: providers,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    }, "Training providers fetched successfully");
+    return res.status(200).json({
+      success: true,
+      message: "Training providers fetched successfully",
+      payload: {
+        data: providers,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          pages: Math.ceil(total / Number(limit)),
+        },
+      }
+    });
   } catch (error) {
     throw internalServer("Failed to fetch training providers");
   }
@@ -108,7 +191,11 @@ const getTrainingProviderById = asyncHandler(async (req, res) => {
     const provider = await TrainingInstitute.findById(id);
 
     if (!provider) {
-      return notFoundResponse("Training provider not found");
+      return res.status(404).json({
+        success: false,
+        message: "Training provider not found",
+        payload: null
+      });
     }
 
     // Get courses offered by this provider
@@ -116,10 +203,14 @@ const getTrainingProviderById = asyncHandler(async (req, res) => {
       .select("title instructor duration price category status")
       .limit(5);
 
-    return successResponse(res, {
-      ...provider.toObject(),
-      courses,
-    }, "Training provider fetched successfully");
+    return res.status(200).json({
+      success: true,
+      message: "Training provider fetched successfully",
+      payload: {
+        ...provider.toObject(),
+        courses,
+      }
+    });
   } catch (error) {
     throw internalServer("Failed to fetch training provider");
   }
@@ -131,7 +222,11 @@ const searchTrainingProviders = asyncHandler(async (req, res) => {
     const { q, focusArea, city, page = 1, limit = 10 } = req.query;
 
     if (!q) {
-      return badRequestResponse("Search query is required");
+      return res.status(400).json({
+        success: false,
+        message: "Search query is required",
+        payload: null
+      });
     }
 
     const searchFilter = {
@@ -160,15 +255,19 @@ const searchTrainingProviders = asyncHandler(async (req, res) => {
 
     const total = await TrainingInstitute.countDocuments(searchFilter);
 
-    return successResponse(res, {
-      data: providers,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    }, "Training providers search successful");
+    return res.status(200).json({
+      success: true,
+      message: "Training providers search successful",
+      payload: {
+        data: providers,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      }
+    });
   } catch (error) {
     throw internalServer("Failed to search training providers");
   }
@@ -182,7 +281,11 @@ const updateTrainingProviderStatus = asyncHandler(async (req, res) => {
 
     const validStatuses = ["active", "inactive", "suspended"];
     if (!validStatuses.includes(status)) {
-      return badRequestResponse("Invalid status value. Valid values are: active, inactive, suspended");
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value. Valid values are: active, inactive, suspended",
+        payload: null
+      });
     }
 
     const provider = await TrainingInstitute.findByIdAndUpdate(
@@ -192,10 +295,18 @@ const updateTrainingProviderStatus = asyncHandler(async (req, res) => {
     );
 
     if (!provider) {
-      return notFoundResponse("Training provider not found");
+      return res.status(404).json({
+        success: false,
+        message: "Training provider not found",
+        payload: null
+      });
     }
 
-    return successResponse(res, provider, "Training provider status updated successfully");
+    return res.status(200).json({
+      success: true,
+      message: "Training provider status updated successfully",
+      payload: provider
+    });
   } catch (error) {
     throw internalServer("Failed to update training provider status");
   }
@@ -209,13 +320,21 @@ const deleteTrainingProvider = asyncHandler(async (req, res) => {
     const provider = await TrainingInstitute.findByIdAndDelete(id);
 
     if (!provider) {
-      return notFoundResponse("Training provider not found");
+      return res.status(404).json({
+        success: false,
+        message: "Training provider not found",
+        payload: null
+      });
     }
 
     // Also delete associated courses
     await Course.deleteMany({ trainingProvider: provider.userId });
 
-    return successResponse(res, null, "Training provider and associated courses deleted successfully");
+    return res.status(200).json({
+      success: true,
+      message: "Training provider and associated courses deleted successfully",
+      payload: null
+    });
   } catch (error) {
     throw internalServer("Failed to delete training provider");
   }
@@ -230,7 +349,11 @@ const getTrainingProviderStats = asyncHandler(async (req, res) => {
     const provider = await TrainingInstitute.findOne({ userId });
 
     if (!provider) {
-      return notFoundResponse("Training provider profile not found");
+      return res.status(404).json({
+        success: false,
+        message: "Training provider profile not found",
+        payload: null
+      });
     }
 
     // Get course statistics
@@ -253,20 +376,24 @@ const getTrainingProviderStats = asyncHandler(async (req, res) => {
       { $sort: { count: -1 } },
     ]);
 
-    return successResponse(res, {
-      provider: {
-        id: provider._id,
-        status: provider.status,
-        established: provider.established,
-        focusAreas: provider.focusAreas,
-      },
-      courses: {
-        total: totalCourses,
-        active: activeCourses,
-        pending: pendingCourses,
-        byCategory: coursesByCategory,
-      },
-    }, "Training provider statistics fetched successfully");
+    return res.status(200).json({
+      success: true,
+      message: "Training provider statistics fetched successfully",
+      payload: {
+        provider: {
+          id: provider._id,
+          status: provider.status,
+          established: provider.established,
+          focusAreas: provider.focusAreas,
+        },
+        courses: {
+          total: totalCourses,
+          active: activeCourses,
+          pending: pendingCourses,
+          byCategory: coursesByCategory,
+        },
+      }
+    });
   } catch (error) {
     throw internalServer("Failed to fetch training provider statistics");
   }
@@ -277,13 +404,21 @@ const matchStudents = asyncHandler(async (req, res) => {
   try {
     const { jobId } = req.query;
     if (!jobId) {
-      return badRequestResponse("jobId query parameter is required");
+      return res.status(400).json({
+        success: false,
+        message: "jobId query parameter is required",
+        payload: null
+      });
     }
 
     // Fetch the job and required skills
     const job = await Job.findById(jobId).lean();
     if (!job) {
-      return notFoundResponse("Job not found");
+      return res.status(404).json({
+        success: false,
+        message: "Job not found",
+        payload: null
+      });
     }
     const requiredSkills = (job.skillsRequired || []).map((s) =>
       typeof s === "string"
@@ -291,7 +426,11 @@ const matchStudents = asyncHandler(async (req, res) => {
         : (s.skill || "").trim().toLowerCase()
     );
     if (!requiredSkills.length) {
-      return badRequestResponse("Job does not have any required skills defined");
+      return res.status(400).json({
+        success: false,
+        message: "Job does not have any required skills defined",
+        payload: null
+      });
     }
 
     // Fetch all students with skills
@@ -336,14 +475,18 @@ const matchStudents = asyncHandler(async (req, res) => {
       .filter((s) => s.matchPercent >= 80)
       .sort((a, b) => b.matchPercent - a.matchPercent);
 
-    return successResponse(res, {
-      job: {
-        _id: job._id,
-        jobTitle: job.jobTitle,
-        requiredSkills: job.skillsRequired,
-      },
-      matchedStudents: matched,
-    }, `Found ${matched.length} students matching at least 80% of required skills.`);
+    return res.status(200).json({
+      success: true,
+      message: `Found ${matched.length} students matching at least 80% of required skills.`,
+      payload: {
+        job: {
+          _id: job._id,
+          jobTitle: job.jobTitle,
+          requiredSkills: job.skillsRequired,
+        },
+        matchedStudents: matched,
+      }
+    });
   } catch (error) {
     console.error("Error in matchStudents:", error);
     throw internalServer("Failed to match students for the job");
@@ -357,7 +500,11 @@ const studentsDirectory = asyncHandler(async (req, res) => {
     const { schoolId, page = 1, limit = 20 } = req.query;
 
     if (!schoolId) {
-      return badRequestResponse("schoolId query parameter is required");
+      return res.status(400).json({
+        success: false,
+        message: "schoolId query parameter is required",
+        payload: null
+      });
     }
 
     // Pagination
@@ -371,7 +518,11 @@ const studentsDirectory = asyncHandler(async (req, res) => {
       .lean();
 
     if (!students.length) {
-      return notFoundResponse("No students found for the given school");
+      return res.status(404).json({
+        success: false,
+        message: "No students found for the given school",
+        payload: null
+      });
     }
 
     // Collect userIds for batch lookup
@@ -403,15 +554,19 @@ const studentsDirectory = asyncHandler(async (req, res) => {
     // Total count for pagination
     const total = await Student.countDocuments({ trainingInstitute: schoolId });
 
-    return successResponse(res, {
-      students: formatted,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        totalPages: Math.ceil(total / Number(limit)),
-      },
-    }, "Students directory fetched successfully");
+    return res.status(200).json({
+      success: true,
+      message: "Students directory fetched successfully",
+      payload: {
+        students: formatted,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          totalPages: Math.ceil(total / Number(limit)),
+        },
+      }
+    });
   } catch (error) {
     console.error("Error in studentsDirectory:", error);
     throw internalServer("Failed to fetch students directory");
@@ -435,7 +590,11 @@ const employerDirectory = asyncHandler(async (req, res) => {
       .lean();
 
     if (!employers.length) {
-      return notFoundResponse("No employers found");
+      return res.status(404).json({
+        success: false,
+        message: "No employers found",
+        payload: null
+      });
     }
 
     // Collect userIds for batch lookup
@@ -472,15 +631,19 @@ const employerDirectory = asyncHandler(async (req, res) => {
     // Total count for pagination
     const total = await Employer.countDocuments({});
 
-    return successResponse(res, {
-      employers: formatted,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        totalPages: Math.ceil(total / Number(limit)),
-      },
-    }, "Employers directory fetched successfully");
+    return res.status(200).json({
+      success: true,
+      message: "Employers directory fetched successfully",
+      payload: {
+        employers: formatted,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          totalPages: Math.ceil(total / Number(limit)),
+        },
+      }
+    });
   } catch (error) {
     console.error("Error in employerDirectory:", error);
     throw internalServer("Failed to fetch employers directory");
@@ -492,7 +655,11 @@ const dashboardController = asyncHandler(async (req, res) => {
   try {
     const { schoolId } = req.query;
     if (!schoolId) {
-      return badRequestResponse("schoolId query parameter is required");
+      return res.status(400).json({
+        success: false,
+        message: "schoolId query parameter is required",
+        payload: null
+      });
     }
     // Get all courses and active courses in one aggregation
     const coursesAgg = await Course.aggregate([
@@ -551,14 +718,18 @@ const dashboardController = asyncHandler(async (req, res) => {
     const totalRevenue = revenueStats[0]?.totalRevenue || 0;
 
     // Response
-    return successResponse(res, {
-      totalEnrollments,
-      completedEnrollments,
-      completionRate: completionRate.toFixed(2) + "%",
-      totalRevenue,
-      totalActiveCourses: activeCourses.length,
-      activeCourses
-    }, "Dashboard analytics fetched successfully (aggregation)");
+    return res.status(200).json({
+      success: true,
+      message: "Dashboard analytics fetched successfully (aggregation)",
+      payload: {
+        totalEnrollments,
+        completedEnrollments,
+        completionRate: completionRate.toFixed(2) + "%",
+        totalRevenue,
+        totalActiveCourses: activeCourses.length,
+        activeCourses
+      }
+    });
   } catch (error) {
     console.error("Error in dashboardController (aggregation):", error);
     throw internalServer("Failed to fetch dashboard analytics");
@@ -568,6 +739,7 @@ const dashboardController = asyncHandler(async (req, res) => {
 export {
   getProfile,
   editProfile,
+  createProfile,
   getAllTrainingProviders,
   getTrainingProviderById,
   searchTrainingProviders,

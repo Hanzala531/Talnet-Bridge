@@ -137,6 +137,7 @@ if (existingCourses) {
       category,
       trainingProvider,
       maxEnrollments: maxEnrollments ?? 50,
+      status: "approved"
     });
 
     return res.status(201).json(createdResponse({ course }, "Course created successfully"));
@@ -210,10 +211,6 @@ const updateCourseStatus = asyncHandler(async (req, res) => {
 // ===============================
 const deleteCourseById = asyncHandler(async (req, res) => {
   try {
-    if (req.user?.role !== "admin") {
-      throw badRequest("Only admin can delete courses");
-    }
-
     const { id } = req.params;
     const course = await Course.findByIdAndDelete(id);
 
