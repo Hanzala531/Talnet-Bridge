@@ -96,7 +96,7 @@ const courseSchema = new mongoose.Schema({
     // Enrollment Limits
     maxEnrollments: {
         type: Number,
-        default: 50
+        // default: 50
     },
     
     currentEnrollments: {

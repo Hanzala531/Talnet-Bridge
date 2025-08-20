@@ -335,10 +335,12 @@ const createSubscription = asyncHandler(async (req, res) => {
             endDate = new Date(startDate);
             endDate.setMonth(endDate.getMonth() + 1);
             nextBillingDate = endDate;
+        } else {
+            // For 'onetime', set endDate = startDate
+            endDate = new Date(startDate);
         }
-        // For 'onetime', endDate and nextBillingDate remain null
 
-        // Create subscription
+        // Create subscription (features removed, not in schema)
         const subscription = await Subscription.create({
             userId,
             planId: plan._id,
@@ -348,7 +350,6 @@ const createSubscription = asyncHandler(async (req, res) => {
                 nextBillingDate,
                 autoRenew: true
             },
-            features: plan.features,
             status: 'pending'
         });
 

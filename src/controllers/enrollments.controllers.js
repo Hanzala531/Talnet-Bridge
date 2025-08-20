@@ -46,6 +46,10 @@ const createEnrollment = asyncHandler(async (req, res) => {
             courseId
         });
 
+        if (enrollment) {
+    await Course.findByIdAndUpdate(courseId, { $inc: { currentEnrollments: 1 } });
+}
+
     // Optionally, update course enrollment count if you want to keep this logic
 
         // Populate enrollment with course and student details

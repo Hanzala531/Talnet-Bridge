@@ -540,12 +540,12 @@ const matchStudents = asyncHandler(async (req, res) => {
 // Student directory controller
 const studentsDirectory = asyncHandler(async (req, res) => {
   try {
-    // Query params: schoolId (required), page, limit
-    const {  page = 1, limit = 20 } = req.query;
+    // Query params: page, limit
+    const { page = 1, limit = 20 } = req.query;
 
+    // Find the school for the current user
     const school = await TrainingInstitute.findOne({ userId: req.user._id });
-    const schoolId = school._id
-
+    const schoolId = school?._id;
     if (!schoolId) {
       return res.status(400).json({
         success: false,
@@ -554,32 +554,56 @@ const studentsDirectory = asyncHandler(async (req, res) => {
       });
     }
 
-    // Pagination
-    const skip = (Number(page) - 1) * Number(limit);
-
-    // Find students for the school (without populate)
-    const students = await Student.find({ trainingInstitute: schoolId })
-      .select("_id userId courses")
-      .skip(skip)
-      .limit(Number(limit))
-      .lean();
-
-    if (!students.length) {
+    // Find all courses for this school
+    const courses = await Course.find({ trainingProvider: schoolId }).select('_id');
+    const courseIds = courses.map((c) => c._id);
+    if (!courseIds.length) {
       return res.status(404).json({
         success: false,
-        message: "No students found for the given school",
+        message: "No courses found for this school",
         payload: null,
       });
     }
 
-    // Collect userIds for batch lookup
-    const userIds = students.map((s) => s.userId);
+    // Find enrollments for these courses (status: enrolled/in-progress)
+    const enrollmentFilter = {
+      courseId: { $in: courseIds },
+      status: { $in: ["enrolled", "in-progress"] },
+    };
+    const skip = (Number(page) - 1) * Number(limit);
+    const enrollments = await Enrollment.find(enrollmentFilter)
+      .select("studentId courseId")
+      .skip(skip)
+      .limit(Number(limit))
+      .lean();
 
-    // Batch fetch user info
+    if (!enrollments.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No currently enrolled students found for this school",
+        payload: null,
+      });
+    }
+
+    // Collect unique studentIds
+    const studentIds = [...new Set(enrollments.map((e) => e.studentId?.toString()))];
+    if (!studentIds.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No currently enrolled students found for this school",
+        payload: null,
+      });
+    }
+
+
+    // Fetch Student and User info by userId (Enrollment.studentId is a User _id)
+    const students = await Student.find({ userId: { $in: studentIds } })
+      .select("_id userId courses")
+      .lean();
+    const userIds = students.map((s) => s.userId);
     const users = await User.find({ _id: { $in: userIds } })
       .select("fullName email phone location status")
       .lean();
-
     const usersMap = users.reduce((acc, user) => {
       acc[user._id.toString()] = user;
       return acc;
@@ -599,7 +623,7 @@ const studentsDirectory = asyncHandler(async (req, res) => {
     });
 
     // Total count for pagination
-    const total = await Student.countDocuments({ trainingInstitute: schoolId });
+    const total = await Enrollment.countDocuments(enrollmentFilter);
 
     return res.status(200).json({
       success: true,
@@ -614,7 +638,8 @@ const studentsDirectory = asyncHandler(async (req, res) => {
         },
       },
     });
-  } catch (error) {throw internalServer("Failed to fetch students directory");
+  } catch (error) {
+    throw internalServer("Failed to fetch students directory");
   }
 });
 
