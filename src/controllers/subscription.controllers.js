@@ -341,18 +341,14 @@ const createSubscription = asyncHandler(async (req, res) => {
 
         // Calculate billing dates
         const startDate = new Date();
-        const endDate = new Date();
-        
-        switch (plan.billingCycle) {
-            case 'onetime':
-                endDate.setMonth(endDate.getMonth() + 1);
-                break;
-            case 'monthly':
-                endDate.setMonth(endDate.getMonth() + 3);
-                break;
-            default:
-                throw badRequest("Invalid billing cycle in plan", "INVALID_BILLING_CYCLE");
+        let endDate = null;
+        let nextBillingDate = null;
+        if (plan.billingCycle === 'monthly') {
+            endDate = new Date(startDate);
+            endDate.setMonth(endDate.getMonth() + 1);
+            nextBillingDate = endDate;
         }
+        // For 'onetime', endDate and nextBillingDate remain null
 
         // Create subscription
         const subscription = await Subscription.create({
@@ -361,7 +357,8 @@ const createSubscription = asyncHandler(async (req, res) => {
             billing: {
                 startDate,
                 endDate,
-                nextBillingDate: endDate
+                nextBillingDate,
+                autoRenew: true
             },
             features: plan.features,
             status: 'pending'
@@ -580,13 +577,27 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
             throw notFound("Subscription not found or not pending", "SUBSCRIPTION_NOT_FOUND_OR_NOT_PENDING");
         }
 
-        // Fetch plan details from SubscriptionPlan
+        // Debug logging
+        console.log('DEBUG: subscription.planId =', subscription.planId);
         const plan = await SubscriptionPlan.findById(subscription.planId);
-        if (!plan || !plan.price) {
-            throw badRequest("Invalid subscription plan data", "INVALID_PLAN_DATA");
+        console.log('DEBUG: plan found =', plan);
+        if (!plan || plan.price === undefined || plan.price === null) {
+            throw badRequest(`Invalid subscription plan data for planId: ${subscription.planId}`, "INVALID_PLAN_DATA");
         }
-        if (plan.price <= 0) {
+        if (plan.price === undefined || plan.price === null || plan.price < 0) {
             throw badRequest("Invalid subscription price", "INVALID_PRICE");
+        }
+
+        // Handle free plans: skip Stripe, activate subscription immediately
+        if (plan.price === 0) {
+            subscription.status = 'active';
+            await subscription.save();
+            return res.status(200).json(
+                successResponse(200, {
+                    message: "Free plan: subscription activated without payment",
+                    subscriptionId: subscription._id
+                }, "Subscription activated for free plan")
+            );
         }
 
         try {
@@ -611,7 +622,7 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
             );
         } catch (stripeError) {
             console.error("Stripe payment intent creation error:", stripeError);
-            throw badRequest(`Stripe error: ${stripeError.message}", "STRIPE_PAYMENT_INTENT_ERROR"  `);
+            throw badRequest(`Stripe error: ${stripeError.message}", "STRIPE_PAYMENT_INTENT_ERROR"`);
         }
     } catch (error) {
         if (error instanceof ApiError) throw error;
