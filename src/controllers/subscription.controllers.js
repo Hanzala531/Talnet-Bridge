@@ -123,15 +123,16 @@ const getAllPlans = asyncHandler(async (req, res) => {
     try {
         const { active = true } = req.query;
         
-        const filter = {};
-        if (active !== undefined) {
-            if (active !== 'true' && active !== 'false') {
-                throw badRequest("Active parameter must be 'true' or 'false'", "INVALID_ACTIVE_PARAMETER");
-            }
-            filter.isActive = active === 'true';
-        }
+        // const filter = {};
+        // if (active !== undefined) {
+        //     if (active !== 'true' && active !== 'false') {
+        //         throw badRequest("Active parameter must be 'true' or 'false'", "INVALID_ACTIVE_PARAMETER");
+        //     }
+        //     filter.isActive = active === 'true';
+        // }
 
-        const plans = await SubscriptionPlan.find(filter).sort({ sortOrder: 1, createdAt: 1 });
+        // const plans = await SubscriptionPlan.find(filter).sort({ sortOrder: 1, createdAt: 1 });
+        const plans = await SubscriptionPlan.find({}).sort({ sortOrder: 1, createdAt: 1 });
 
         if (!plans || plans.length === 0) {
             return res.status(404).json(
@@ -343,14 +344,11 @@ const createSubscription = asyncHandler(async (req, res) => {
         const endDate = new Date();
         
         switch (plan.billingCycle) {
-            case 'monthly':
+            case 'onetime':
                 endDate.setMonth(endDate.getMonth() + 1);
                 break;
-            case 'quarterly':
+            case 'monthly':
                 endDate.setMonth(endDate.getMonth() + 3);
-                break;
-            case 'yearly':
-                endDate.setFullYear(endDate.getFullYear() + 1);
                 break;
             default:
                 throw badRequest("Invalid billing cycle in plan", "INVALID_BILLING_CYCLE");
