@@ -1,6 +1,7 @@
 // swagger.js
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
+import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -845,13 +846,16 @@ const swaggerUiOptions = {
 };
 
 function setupSwagger(app) {
+  // Serve swagger-ui assets locally
+  app.use('/swagger', express.static(path.join(__dirname, 'public/swagger')));
+  
   // Serve raw OpenAPI JSON
   app.get('/swagger.json', (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(swaggerSpec);
   });
 
-  // Serve CDN-based Swagger UI HTML to avoid asset issues on Vercel
+  // Serve local Swagger UI HTML with local assets
   app.get('/docs', (_req, res) => {
     const html = `<!DOCTYPE html>
     <html lang="en">
@@ -859,19 +863,23 @@ function setupSwagger(app) {
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>Talent Bridge API Documentation</title>
-      <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css" />
+      <link rel="stylesheet" href="/swagger/swagger-ui.css" />
       <style>.swagger-ui .topbar { display: none }</style>
     </head>
     <body>
       <div id="swagger-ui"></div>
-      <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+      <script src="/swagger/swagger-ui-bundle.js"></script>
+      <script src="/swagger/swagger-ui-standalone-preset.js"></script>
       <script>
         window.onload = function () {
           SwaggerUIBundle({
             url: '/swagger.json',
             dom_id: '#swagger-ui',
-            presets: [SwaggerUIBundle.presets.apis],
-            layout: 'BaseLayout',
+            presets: [
+              SwaggerUIBundle.presets.apis,
+              SwaggerUIStandalonePreset
+            ],
+            layout: 'StandaloneLayout',
             tagsSorter: function(a, b) {
               const order = ["Users", "Courses", "Training Providers", "Subscription Plans", "Subscriptions", "Payments", "Webhooks", "Notifications"];
               const indexA = order.indexOf(a);
