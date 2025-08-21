@@ -4,7 +4,7 @@ const studentSchema = new mongoose.Schema({
     userId : {
         type: mongoose.Schema.Types.ObjectId,
         ref : "User",
-        required: true, // student MUST be linked to a user
+        required: true, 
     },
     bio : {
         type : String,
@@ -15,11 +15,11 @@ const studentSchema = new mongoose.Schema({
     },
     website : {
         type: String,
-        match: [/^https?:\/\/.+/, "Invalid URL"], // ensure valid URLs
+        match: [/^https?:\/\/.+/, "Invalid URL"], 
     },
     certifications:[{
         type : mongoose.Schema.Types.ObjectId,
-        ref : 'Certification' // singular name is convention
+        ref : 'Certification' 
     }],
     kycVerification:[{
         type : mongoose.Schema.Types.ObjectId,
@@ -36,14 +36,15 @@ const studentSchema = new mongoose.Schema({
     }],
     gsceResult:[{
         subject: { type: String, required: true },
+        marks: { type: String, required: true },
         grade: { type: String, required: true },
     }]
-}, { timestamps: true }); // adds createdAt, updatedAt
+}, { timestamps: true });
 
 // ===== Indexes for Performance =====
-studentSchema.index({ userId: 1 }); // For quick user lookup
-studentSchema.index({ location: 1 }); // For location-based searches
-studentSchema.index({ skills: 1 }); // For skill-based searches
+studentSchema.index({ userId: 1 });
+studentSchema.index({ location: 1 });
+studentSchema.index({ skills: 1 });
 studentSchema.index({ createdAt: -1 });
 studentSchema.index({ location: 1, createdAt: -1 }); // Compound for filtering
 

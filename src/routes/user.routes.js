@@ -2,9 +2,11 @@ import express, { request } from "express";
 import {
     registerUser,
     loginUser,
-    logoutUser
+    logoutUser,
+    getAllUsers,
+    addPicture
 } from '../controllers/user.controllers.js';
-import { getAllUsers } from '../controllers/user.controllers.js';
+import { upload } from '../middlewares/Multer.middlewares.js';
 import {requestLogger} from '../middlewares/ReqLog.middlewares.js';
 import {verifyJWT} from '../middlewares/Auth.middlewares.js';
 import {verifyRegisterCredentials} from '../middlewares/check.role.js'
@@ -170,6 +172,72 @@ userRouter.post('/login', requestLogger, loginUser);
 
 
 userRouter.post('/logout', requestLogger, verifyJWT, logoutUser);
+
+/**
+ * @swagger
+ * /api/v1/users/profile-picture:
+ *   post:
+ *     summary: Upload or update user profile picture
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: The image file to upload (JPG, PNG, GIF, WEBP)
+ *     responses:
+ *       200:
+ *         description: Profile picture updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     imageUrl:
+ *                       type: string
+ *                       example: "https://res.cloudinary.com/demo/image/upload/v1620000000/sample.jpg"
+ *                 message:
+ *                   type: string
+ *                   example: "Profile picture updated successfully"
+ *       400:
+ *         description: Bad request - image not uploaded or invalid file type
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+userRouter.post('/profile-picture', requestLogger, verifyJWT, upload.single('image'), addPicture);
+
 
 /**
  * @swagger

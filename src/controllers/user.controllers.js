@@ -21,7 +21,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/contents/User.models.js";
 import { badRequest, notFound, internalServer, ApiError } from "../utils/ApiError.js";
 import { successResponse, createdResponse } from "../utils/ApiResponse.js";
-
+import { uploadOnCloudinary } from '../utils/cloudinary.js'
 /**
  * Generate access and refresh tokens for a user
  * 
@@ -308,7 +308,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     }
 });
 
-
+// Get all users controller
 const getAllUsers = asyncHandler(async (req, res) => {
   try {
     // Query params: page, limit, search, role
@@ -359,4 +359,58 @@ const getAllUsers = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser, loginUser, logoutUser, getAllUsers };
+// Add user profile picture controller
+const addPicture = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Check if the image is uploaded
+    if (!req.files || !req.files.image) {
+      throw badRequest(400, "Image is not uploaded");
+    }
+
+    // Get the image file (assuming multer is used and field name is 'image')
+    const imageFile = req.files.image;
+    const localImagePath = imageFile.path;
+
+    // Upload to cloudinary
+    const imageUrl = await uploadOnCloudinary(localImagePath);
+
+    if (!imageUrl) {
+      throw internalServer(500, "Error in uploading the image");
+    }
+
+    // Update user profile with image URL
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: { profilePicture: imageUrl } },
+      { new: true, projection: { password: 0, refreshToken: 0 } }
+    );
+
+    if (!updatedUser) {
+      throw notFound("User not found");
+    }
+
+    return res.status(200).json(
+      successResponse(
+        { user: updatedUser, imageUrl },
+        "Profile picture updated successfully"
+      )
+    );
+  } catch (error) {
+    // Handle errors
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Failed to update profile picture",
+    });
+  }
+});
+export { registerUser, loginUser, logoutUser, getAllUsers , addPicture };
