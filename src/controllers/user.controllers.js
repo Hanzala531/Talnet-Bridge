@@ -363,18 +363,14 @@ const getAllUsers = asyncHandler(async (req, res) => {
 const addPicture = asyncHandler(async (req, res) => {
   try {
     const userId = req.user._id;
-
+     const imageLocalPath = req.file?.path || req.files?.[0]?.path;
     // Check if the image is uploaded
-    if (!req.files || !req.files.image) {
-      throw badRequest(400, "Image is not uploaded");
+    if (!imageLocalPath) {
+      throw badRequest("Image is not uploaded");
     }
 
-    // Get the image file (assuming multer is used and field name is 'image')
-    const imageFile = req.files.image;
-    const localImagePath = imageFile.path;
-
     // Upload to cloudinary
-    const imageUrl = await uploadOnCloudinary(localImagePath);
+    const imageUrl = await uploadOnCloudinary(imageLocalPath);
 
     if (!imageUrl) {
       throw internalServer(500, "Error in uploading the image");
@@ -383,7 +379,7 @@ const addPicture = asyncHandler(async (req, res) => {
     // Update user profile with image URL
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { $set: { profilePicture: imageUrl } },
+      { $set: { profilePicture: imageUrl.secure_url } },
       { new: true, projection: { password: 0, refreshToken: 0 } }
     );
 

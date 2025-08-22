@@ -17,10 +17,6 @@ const certificationSchema = new mongoose.Schema({
   certificateFile: {
      type: String 
     },
-  extracted: { 
-    type: Boolean, 
-    default: false 
-},
 }, { timestamps: true });
 
 // ===== Indexes for Performance =====

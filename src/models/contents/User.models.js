@@ -36,17 +36,17 @@ const userSchema = new mongoose.Schema(
       default : "user"
     },
 
-    onboardingStage: {
-      type: String,
-      enum: [
-        "basic_info",
-        "payment_pending",
-        "kyc_pending",
-        "awaiting_approval",
-        "active",
-      ],
-      default: "basic_info",
-    },
+    // onboardingStage: {
+    //   type: String,
+    //   enum: [
+    //     "basic_info",
+    //     "payment_pending",
+    //     "kyc_pending",
+    //     "awaiting_approval",
+    //     "active",
+    //   ],
+    //   default: "basic_info",
+    // },
     
     // Payment Tracking
     subscription: {

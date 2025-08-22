@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 
 const experienceSchema = new mongoose.Schema(
-  {
+  { 
+    userId : {type: String, required:true},
     title: { type: String, required: true }, // e.g. "Software Intern"
     company: { type: String, required: true }, // e.g. "Google"
     startDate: { type: Date, required: true },

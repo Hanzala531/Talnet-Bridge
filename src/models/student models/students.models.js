@@ -28,8 +28,8 @@ const studentSchema = new mongoose.Schema({
     skills:[{
         type :String,
         required : true,
-        trim : true
-    }],
+        trim : true,
+     }],
     experience:[{
         type : mongoose.Schema.Types.ObjectId,
         ref: 'Experience'
@@ -38,6 +38,10 @@ const studentSchema = new mongoose.Schema({
         subject: { type: String, required: true },
         marks: { type: String, required: true },
         grade: { type: String, required: true },
+    }],
+    enrollments:[{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Enrollment'
     }]
 }, { timestamps: true });
 
@@ -46,6 +50,6 @@ studentSchema.index({ userId: 1 });
 studentSchema.index({ location: 1 });
 studentSchema.index({ skills: 1 });
 studentSchema.index({ createdAt: -1 });
-studentSchema.index({ location: 1, createdAt: -1 }); // Compound for filtering
+studentSchema.index({ location: 1, createdAt: -1 });
 
 export const Student = mongoose.model('Student' , studentSchema)

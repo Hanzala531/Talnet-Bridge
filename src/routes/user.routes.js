@@ -169,8 +169,6 @@ userRouter.post('/login', requestLogger, loginUser);
  *       401:
  *         description: Unauthorized
  */
-
-
 userRouter.post('/logout', requestLogger, verifyJWT, logoutUser);
 
 /**

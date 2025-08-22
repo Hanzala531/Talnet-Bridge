@@ -1,56 +1,85 @@
+import mongoose from "mongoose";
+import {uploadOnCloudinary} from '../utils/cloudinary.js'
 import { Certification } from "../models/student models/certification.models.js";
 import { successResponse, createdResponse, updatedResponse } from "../utils/ApiResponse.js";
 import { badRequest, internalServer, notFound, forbidden } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import mongoose from "mongoose";
+import { Student } from "../models/index.js";
 
 // =====================
 // CREATE CERTIFICATION
 // =====================
 const createCertification = asyncHandler(async (req, res) => {
     try {
-        const { name, issuedBy, issueDate, certificateFile } = req.body;
+        const { name, issuedBy, issueDate } = req.body;
 
         if (!name || !issuedBy) {
             throw badRequest("Name and issuedBy are required");
         }
 
-        // Check for duplicate certification
-        const existingCert = await Certification.findOne({ 
-            name: name.trim(), 
-            issuedBy: issuedBy.trim() 
-        }).lean();
+        // Duplicate check
+        const existingCert = await Certification.findOne({
+            name: name.trim(),
+            issuedBy: issuedBy.trim()
+        });
 
         if (existingCert) {
             throw badRequest("Certification with this name and issuer already exists");
         }
 
-        const certificationData = {
+        // File validation
+        const localImagePath = req.file?.path || req.files?.[0]?.path;
+        if (!localImagePath) {
+            throw badRequest("Certificate file is required");
+        }
+
+        // Upload to Cloudinary
+        const imageUrl = await uploadOnCloudinary(localImagePath).catch(() => null);
+        if (!imageUrl) {
+            throw internalServer("Failed to upload image to cloud");
+        }
+
+        // Save certification
+        const certification = await Certification.create({
             name: name.trim(),
             issuedBy: issuedBy.trim(),
-            issueDate: issueDate ? new Date(issueDate) : undefined,
-            certificateFile,
-            extracted: false
-        };
+            issueDate: issueDate || null,
+            certificateFile: imageUrl.secure_url
+        });
 
-        const certification = await Certification.create(certificationData);
+        if (!certification) {
+            throw internalServer("Failed to create certification");
+        }
+
+        // Link certification to student
+        // Assumes req.user.id is the student's user _id (adjust if needed)
+        const student = await Student.findOne({ userId: req.user.id });
+        if (!student) {
+            // Optionally, you may want to delete the created certification if student not found
+            await Certification.findByIdAndDelete(certification._id);
+            throw notFound("Student not found to link certification");
+        }
+        student.certifications = Array.isArray(student.certifications)
+            ? [...student.certifications, certification._id]
+            : [certification._id];
+        await student.save();
 
         return res.status(201).json(
             createdResponse(
-                { 
-                    certification: {
-                        _id: certification._id,
-                        name: certification.name,
-                        issuedBy: certification.issuedBy,
-                        issueDate: certification.issueDate
-                    }
-                },
-                "Certification created successfully"
+                certification ,
+                "Certification created and linked to student successfully"
             )
         );
-    } catch (error) {throw error;
+
+    } catch (error) {
+        console.error("Error in createCertification:", error.message || error);
+        if (error.statusCode) {
+            throw error;
+        }
+        throw internalServer("Something went wrong while creating certification");
     }
 });
+
 
 // ===============================
 // GET ALL CERTIFICATIONS

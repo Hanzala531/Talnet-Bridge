@@ -4,7 +4,7 @@ import express from "express";
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
 import { authorizeRoles } from '../middlewares/Role.middlewares.js';
-
+import { upload } from '../middlewares/Multer.middlewares.js'
 // ===== CONTROLLER IMPORTS =====
 // Student Controllers
 import {
@@ -15,7 +15,10 @@ import {
     updateStudentProfile,
     deleteStudentProfile,
     addCertification,
-    profileConpletion
+    profileConpletion,
+    addSkills,
+    removeSkill,
+    addResult
 } from '../controllers/student.controller.js';
 
 // Experience Controllers
@@ -692,6 +695,57 @@ studentRouter.post('/:id/certifications', requestLogger, verifyJWT, addCertifica
 
 /**
  * @swagger
+ * /api/v1/students/gsce-result:
+ *   post:
+ *     summary: Add or update GSCE results for the authenticated student
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - gsceResult
+ *             properties:
+ *               gsceResult:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/GSCEResult'
+ *     responses:
+ *       200:
+ *         description: GSCE results updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 statusCode:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     gsceResult:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/GSCEResult'
+ *                 message:
+ *                   type: string
+ *                   example: "GSCE results updated successfully"
+ *       400:
+ *         description: Invalid data
+ *       401:
+ *         description: Unauthorized
+ */
+studentRouter.post('/gsce-result', requestLogger, verifyJWT, addResult);
+
+
+/**
+ * @swagger
  * components:
  *   schemas:
  *     Experience:
@@ -795,68 +849,6 @@ studentRouter.post('/experiences', requestLogger, verifyJWT, createExperience);
 
 /**
  * @swagger
- * /api/v1/students/experiences:
- *   get:
- *     summary: Get all experiences (Admin only)
- *     tags: [Student Experiences]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number for pagination
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 20
- *           maximum: 100
- *         description: Number of records per page
- *       - in: query
- *         name: company
- *         schema:
- *           type: string
- *         description: Filter by company name (case-insensitive partial match)
- *       - in: query
- *         name: title
- *         schema:
- *           type: string
- *         description: Filter by job title (case-insensitive partial match)
- *       - in: query
- *         name: isCurrentJob
- *         schema:
- *           type: boolean
- *         description: Filter by current job status
- *       - in: query
- *         name: sort
- *         schema:
- *           type: string
- *           default: "-startDate"
- *         description: Sort field and order
- *       - in: query
- *         name: select
- *         schema:
- *           type: string
- *         description: Fields to select (comma-separated)
- *     responses:
- *       200:
- *         description: Experiences retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Experience'
- *       401:
- *         description: Unauthorized
- */
-studentRouter.get('/experiences', requestLogger, verifyJWT, authorizeRoles('admin'), getAllExperiences);
-
-/**
- * @swagger
  * /api/v1/students/experiences/search:
  *   get:
  *     summary: Search experiences
@@ -941,19 +933,15 @@ studentRouter.get('/experiences/company/:company', requestLogger, verifyJWT, get
 
 /**
  * @swagger
- * /api/v1/students/experiences/{id}:
+ * /api/v1/students/experiences/my:
  *   get:
- *     summary: Get experience by ID
+ *     summary: Get experience by user ID
  *     tags: [Student Experiences]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
  *         schema:
  *           type: string
- *         description: Experience ID
+ *         description: Experience 
  *     responses:
  *       200:
  *         description: Experience retrieved successfully
@@ -968,7 +956,7 @@ studentRouter.get('/experiences/company/:company', requestLogger, verifyJWT, get
  *       401:
  *         description: Unauthorized
  */
-studentRouter.get('/experiences/:id', requestLogger, verifyJWT, getExperienceById);
+studentRouter.get('/experiences/my', requestLogger, verifyJWT, getExperienceById);
 
 /**
  * @swagger
@@ -1083,9 +1071,10 @@ studentRouter.delete('/experiences/:id', requestLogger, verifyJWT, deleteExperie
  *                 type: string
  *                 format: date
  *                 example: "2023-06-15"
- *               certificateFile:
+ *               image:
  *                 type: string
- *                 example: "https://cloudinary.com/certificate.pdf"
+ *                 format: binary
+ *                 example: "certificate.jpg"
  *     responses:
  *       201:
  *         description: Certification created successfully
@@ -1098,7 +1087,7 @@ studentRouter.delete('/experiences/:id', requestLogger, verifyJWT, deleteExperie
  *       401:
  *         description: Unauthorized
  */
-studentRouter.post('/certifications', requestLogger, verifyJWT, createCertification);
+studentRouter.post('/certifications', requestLogger, verifyJWT, upload.single('image') , createCertification);
 
 /**
  * @swagger
@@ -1336,6 +1325,166 @@ studentRouter.put('/certifications/:id', requestLogger, verifyJWT, authorizeRole
  *         description: Forbidden - Admin access required
  */
 studentRouter.delete('/certifications/:id', requestLogger, verifyJWT, authorizeRoles('admin'), deleteCertification);
+
+// =============================================
+// ADDITIONAL ROUTES
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/students/skills:
+ *   post:
+ *     summary: Add skills to the authenticated student's profile (merges with existing skills)
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - skills
+ *             properties:
+ *               skills:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Skills to add (will be merged, not replaced)
+ *                 example: ["Node.js", "Express", "MongoDB"]
+ *     responses:
+ *       200:
+ *         description: Skills updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 status:
+ *                   type: integer
+ *                 message:
+ *                   type: string
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     skills:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+/**
+ * @swagger
+ * /api/v1/students/skills:
+ *   post:
+ *     summary: Add skills to student profile
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               skills:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["JavaScript", "React", "Node.js"]
+ *     responses:
+ *       200:
+ *         description: Skills added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                     skills:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                 message:
+ *                   type: string
+ *                   example: "Skills added successfully"
+ *       400:
+ *         description: Invalid data or skills already exist
+ *       401:
+ *         description: Unauthorized
+ */
+studentRouter.post('/skills', requestLogger, verifyJWT, addSkills);
+
+/**
+ * @swagger
+ * /api/v1/students/skills/{skill}:
+ *   delete:
+ *     summary: Remove a skill from the authenticated student's profile
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: skill
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Skill name to remove
+ *         example: "Java"
+ *     responses:
+ *       200:
+ *         description: Skill removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     skills:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["JavaScript", "React"]
+ *                 message:
+ *                   type: string
+ *                   example: "Skill 'Java' removed successfully"
+ *       400:
+ *         description: Invalid skill
+ *       404:
+ *         description: Student or skill not found
+ *       401:
+ *         description: Unauthorized
+ */
+studentRouter.delete('/skills/:skill', requestLogger, verifyJWT, removeSkill);
 
 // =============================================
 // EXPORT ROUTER
