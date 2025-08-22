@@ -1,7 +1,11 @@
-import { Course , TrainingInstitute} from "../models/index.js";
+import { Course, TrainingInstitute } from "../models/index.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { badRequest, notFound, internalServer } from "../utils/ApiError.js";
-import { successResponse, createdResponse, badRequestResponse } from "../utils/ApiResponse.js";
+import {
+  successResponse,
+  createdResponse,
+  badRequestResponse,
+} from "../utils/ApiResponse.js";
 
 // ===============================
 // GET ALL COURSES
@@ -27,8 +31,8 @@ const getCourses = asyncHandler(async (req, res) => {
           localField: "trainingProvider",
           foreignField: "_id",
           as: "provider",
-          pipeline: [{ $project: { name: 1, email: 1 } }]
-        }
+          pipeline: [{ $project: { name: 1, email: 1 } }],
+        },
       },
       {
         $project: {
@@ -40,17 +44,17 @@ const getCourses = asyncHandler(async (req, res) => {
           status: 1,
           createdAt: 1,
           updatedAt: 1,
-          trainingProvider: { $arrayElemAt: ["$provider", 0] }
-        }
+          trainingProvider: { $arrayElemAt: ["$provider", 0] },
+        },
       },
       { $sort: { createdAt: -1 } },
       { $skip: skip },
-      { $limit: limitNum }
+      { $limit: limitNum },
     ];
 
     const [courses, total] = await Promise.all([
       Course.aggregate(pipeline),
-      Course.countDocuments(filter)
+      Course.countDocuments(filter),
     ]);
 
     if (!courses.length) {
@@ -71,7 +75,8 @@ const getCourses = asyncHandler(async (req, res) => {
         "Courses fetched successfully"
       )
     );
-  } catch (error) {throw internalServer("Failed to fetch courses");
+  } catch (error) {
+    throw internalServer("Failed to fetch courses");
   }
 });
 
@@ -81,14 +86,16 @@ const getCourses = asyncHandler(async (req, res) => {
 const getCoursesById = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    const course = await Course.findById(id).populate("trainingProvider", "name email");
-
+    const course = await Course.findById(id)
     if (!course) {
       throw notFound("Course not found");
     }
 
-    return res.status(200).json(successResponse({ course }, "Course fetched successfully"));
-  } catch (error) {throw internalServer("Failed to fetch course");
+    return res
+      .status(200)
+      .json(successResponse({ course }, "Course fetched successfully"));
+  } catch (error) {
+    throw internalServer("Failed to fetch course");
   }
 });
 
@@ -97,29 +104,51 @@ const getCoursesById = asyncHandler(async (req, res) => {
 // ===============================
 const createCourse = asyncHandler(async (req, res) => {
   try {
-    const { title, instructor, duration, price, language, type, description, objectives, skills, category, maxEnrollments } = req.body;
-        const school = await TrainingInstitute.findOne({ userId: req.user._id });
+    const {
+      title,
+      instructor,
+      duration,
+      price,
+      language,
+      type,
+      description,
+      objectives,
+      skills,
+      category,
+      maxEnrollments,
+    } = req.body;
+    const school = await TrainingInstitute.findOne({ userId: req.user._id });
     const trainingProvider = school._id;
 
     // Schema-level validations already exist, but we also check at controller-level for clarity
-    if (!title || !instructor || !duration || price == null || !language || !type || !description || !objectives?.length || !skills?.length || !category) {
+    if (
+      !title ||
+      !instructor ||
+      !duration ||
+      price == null ||
+      !language ||
+      !type ||
+      !description ||
+      !objectives?.length ||
+      !skills?.length ||
+      !category
+    ) {
       throw badRequest("All required fields must be provided");
     }
-// Checking if the course already exists
-const existingCourses = await Course.findOne({
-    trainingProvider,
-    title,
-    instructor
-});
+    // Checking if the course already exists
+    const existingCourses = await Course.findOne({
+      trainingProvider,
+      title,
+      instructor,
+    });
 
-if (existingCourses) {
-  return res.status(409).json({
-    success: false,
-    status: 409,
-    message: "Course already exists"
-  });
-}
-
+    if (existingCourses) {
+      return res.status(409).json({
+        success: false,
+        status: 409,
+        message: "Course already exists",
+      });
+    }
 
     const course = await Course.create({
       title,
@@ -134,11 +163,14 @@ if (existingCourses) {
       category,
       trainingProvider,
       maxEnrollments: maxEnrollments ?? 50,
-      status: "approved"
+      status: "approved",
     });
 
-    return res.status(201).json(createdResponse({ course }, "Course created successfully"));
-  } catch (error) {throw internalServer("Failed to create course");
+    return res
+      .status(201)
+      .json(createdResponse({ course }, "Course created successfully"));
+  } catch (error) {
+    throw internalServer("Failed to create course");
   }
 });
 
@@ -160,13 +192,19 @@ const updateCourse = asyncHandler(async (req, res) => {
       throw badRequest("You can only update your own courses");
     }
 
-    const course = await Course.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
+    const course = await Course.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+    });
     if (!course) {
       throw notFound("Course update failed");
     }
 
-    return res.status(200).json(successResponse({ course }, "Course updated successfully"));
-  } catch (error) {throw internalServer("Failed to update course");
+    return res
+      .status(200)
+      .json(successResponse({ course }, "Course updated successfully"));
+  } catch (error) {
+    throw internalServer("Failed to update course");
   }
 });
 
@@ -187,13 +225,20 @@ const updateCourseStatus = asyncHandler(async (req, res) => {
       throw badRequest("Invalid status value");
     }
 
-    const course = await Course.findByIdAndUpdate(id, { status }, { new: true });
+    const course = await Course.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
     if (!course) {
       throw notFound("Course not found or update failed");
     }
 
-    return res.status(200).json(successResponse({ course }, "Course status updated successfully"));
-  } catch (error) {throw internalServer("Failed to update course status");
+    return res
+      .status(200)
+      .json(successResponse({ course }, "Course status updated successfully"));
+  } catch (error) {
+    throw internalServer("Failed to update course status");
   }
 });
 
@@ -209,8 +254,11 @@ const deleteCourseById = asyncHandler(async (req, res) => {
       throw notFound("Course not found or already deleted");
     }
 
-    return res.status(200).json(successResponse(null, "Course deleted successfully"));
-  } catch (error) {throw internalServer("Failed to delete course");
+    return res
+      .status(200)
+      .json(successResponse(null, "Course deleted successfully"));
+  } catch (error) {
+    throw internalServer("Failed to delete course");
   }
 });
 
@@ -229,7 +277,7 @@ const searchCourses = asyncHandler(async (req, res) => {
         { title: { $regex: q, $options: "i" } },
         { instructor: { $regex: q, $options: "i" } },
         { category: { $regex: q, $options: "i" } },
-        { location: { $regex: q, $options: "i" } }
+        { location: { $regex: q, $options: "i" } },
       ];
     } else {
       // Specific filtering when `q` is NOT passed
@@ -268,10 +316,10 @@ const searchCourses = asyncHandler(async (req, res) => {
         "Search results fetched successfully"
       )
     );
-  } catch (error) {throw internalServer("Failed to search courses");
+  } catch (error) {
+    throw internalServer("Failed to search courses");
   }
 });
-
 
 // ===============================
 // GET COURSES BY PROVIDER
@@ -307,7 +355,8 @@ const getCoursesByProvider = asyncHandler(async (req, res) => {
         "Courses by provider fetched successfully"
       )
     );
-  } catch (error) {throw internalServer("Failed to fetch courses by provider");
+  } catch (error) {
+    throw internalServer("Failed to fetch courses by provider");
   }
 });
 

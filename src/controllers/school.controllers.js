@@ -720,113 +720,41 @@ const employerDirectory = asyncHandler(async (req, res) => {
 
 // controller for dashboard (aggregation-based, no helper functions)
 const dashboardController = asyncHandler(async (req, res) => {
-  try {
-    // Find institute by userId
-    const school = await TrainingInstitute.findOne({ userId: req.user._id });
-    if (!school) {
-      return res.status(404).json({
-        success: false,
-        message: "Training institute not found for this user",
-        payload: null,
-      });
-    }
-    const schoolId = school._id;
+ try {
+    // Calculate total enrollments
+    const totalEnrollments = await Enrollment.countDocuments();
 
+    // Calculate completion rate
+    const completedEnrollments = await Enrollment.countDocuments({ status: "completed" });
+    const completionRate = totalEnrollments > 0 
+      ? ((completedEnrollments / totalEnrollments) * 100).toFixed(2) 
+      : 0;
 
-    // Courses aggregation
-    const coursesAgg = await Course.aggregate([
-      { $match: { trainingProvider: schoolId } },
-      {
-        $facet: {
-          allCourses: [{ $project: { _id: 1, price: 1, status: 1 } }],
-          activeCourses: [{ $match: { status: "approved" } }],
+    // Calculate monthly revenue
+    const enrollments = await Enrollment.find()
+      .populate("courseId", "price")
+      .lean();
+    const totalRevenue = enrollments.reduce((sum, enrollment) => {
+      return sum + (enrollment.courseId?.price || 0);
+    }, 0);
+
+    // Calculate active courses
+    const activeCourses = await Course.countDocuments({ status: "approved" });
+
+    return res.status(200).json(
+      successResponse(
+        {
+          totalEnrollments,
+          completionRate,
+          totalRevenue,
+          activeCourses,
         },
-      },
-    ]);
-
-    const allCourses = coursesAgg[0]?.allCourses || [];
-    const activeCourses = coursesAgg[0]?.activeCourses || [];
-    const courseIds = allCourses.map((c) => c._id);
-
-    // Agar courses hi nahi mile
-    if (courseIds.length === 0) {
-      return res.status(200).json({
-        success: true,
-        message: "Dashboard analytics fetched successfully",
-        payload: {
-          totalEnrollments: 0,
-          completedEnrollments: 0,
-          completionRate: "0%",
-          completionRateValue: 0,
-          totalRevenue: 0,
-          totalActiveCourses: 0,
-          activeCourses: [],
-        },
-      });
-    }
-
-    // Enrollment analytics
-    const enrollmentStats = await Enrollment.aggregate([
-      { $match: { course: { $in: courseIds } } },
-      {
-        $group: {
-          _id: null,
-          totalEnrollments: { $sum: 1 },
-          completedEnrollments: {
-            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
-          },
-        },
-      },
-    ]);
-
-    const totalEnrollments = enrollmentStats[0]?.totalEnrollments || 0;
-    const completedEnrollments = enrollmentStats[0]?.completedEnrollments || 0;
-    const completionRateValue =
-      totalEnrollments > 0
-        ? (completedEnrollments / totalEnrollments) * 100
-        : 0;
-
-    // Revenue analytics
-    const revenueStats = await Enrollment.aggregate([
-      { $match: { course: { $in: courseIds }, paymentStatus: "paid" } },
-      {
-        $lookup: {
-          from: "courses",
-          localField: "course",
-          foreignField: "_id",
-          as: "courseInfo",
-        },
-      },
-      { $unwind: "$courseInfo" },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: "$courseInfo.price" },
-        },
-      },
-    ]);
-
-    const totalRevenue = revenueStats[0]?.totalRevenue || 0;
-
-    // Response
-    return res.status(200).json({
-      success: true,
-      message: "Dashboard analytics fetched successfully",
-      payload: {
-        totalEnrollments,
-        completedEnrollments,
-        completionRate: completionRateValue.toFixed(2) + "%",
-        completionRateValue,
-        totalRevenue,
-        totalActiveCourses: activeCourses.length,
-        activeCourses,
-      },
-    });
-  } catch (error) {return res.status(500).json({
-      success: false,
-      message: "Failed to fetch dashboard analytics",
-      payload: null,
-    });
+        "Dashboard statistics calculated successfully"
+      )
+    );
+  } catch (error) {
+    console.error("Error in dashboardController:", error);
+    throw internalServer("Failed to calculate dashboard statistics");
   }
 });
 

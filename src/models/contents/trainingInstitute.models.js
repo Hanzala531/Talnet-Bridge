@@ -1,6 +1,12 @@
 import mongoose from "mongoose";
 
 const instituteSchema = new mongoose.Schema({
+    // Basic Information
+   userId:{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+   },
     name: {
         type: String,
         required: true,
@@ -17,12 +23,6 @@ const instituteSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    // Basic Information
-   userId:{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-   },
     picture : {
       type: String,
       default: "https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg",

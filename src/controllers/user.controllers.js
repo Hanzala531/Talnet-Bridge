@@ -19,9 +19,12 @@
 
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/contents/User.models.js";
-import { badRequest, notFound, internalServer, ApiError } from "../utils/ApiError.js";
+import { badRequest, notFound, internalServer, ApiError, unauthorized } from "../utils/ApiError.js";
 import { successResponse, createdResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from '../utils/cloudinary.js'
+import jwt from "jsonwebtoken";
+
+
 /**
  * Generate access and refresh tokens for a user
  * 
@@ -38,8 +41,10 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js'
 // Access and Refresh Tokens
 const generateAccessAndRefreshTokens = async (userid) => {
   try {
+    console.log("Generating tokens for user ID:", userid);
     const user = await User.findById(userid);
     if (!user) {
+      console.error("User not found for ID:", userid);
       throw new ApiError(404, "User not found");
     }
 
@@ -47,11 +52,15 @@ const generateAccessAndRefreshTokens = async (userid) => {
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
+    console.log("Generated access token:", accessToken ? "Yes" : "No");
+    console.log("Generated refresh token:", refreshToken ? "Yes" : "No");
+
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
     return { accessToken, refreshToken };
-  } catch (error) {// Log the error
+  } catch (error) {
+    console.error("Error in generateAccessAndRefreshTokens:", error);
     throw new ApiError(500, "Something went wrong while generating tokens");
   }
 };
@@ -409,4 +418,65 @@ const addPicture = asyncHandler(async (req, res) => {
     });
   }
 });
-export { registerUser, loginUser, logoutUser, getAllUsers , addPicture };
+
+// Refresh Access token
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    
+    let incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+
+    if (!incomingRefreshToken) {
+        throw unauthorized("Unauthorized request - No refresh token provided")
+    }
+
+    // Clean the token - remove any cookie attributes if present
+    if (typeof incomingRefreshToken === 'string') {
+        incomingRefreshToken = incomingRefreshToken.split(';')[0].trim();
+    }
+    
+
+    try {
+        
+        const decodedToken = jwt.verify(
+            incomingRefreshToken,
+            process.env.REFRESH_TOKEN_SECRET
+        )
+        
+    
+        const user = await User.findById(decodedToken?._id)
+    
+        if (!user) {
+            console.error("User not found for token");
+            throw unauthorized("Invalid refresh token - User not found")
+        }
+        
+    
+        if (incomingRefreshToken !== user?.refreshToken) {
+            throw unauthorized("Refresh token is expired or used")
+        }
+    
+        const options = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production"
+        }
+        
+        const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user._id)    
+        return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            successResponse(
+                {accessToken},
+                "Access token refreshed"
+            )
+        )
+    } catch (error) {
+        // console.error("Error in refreshAccessToken:", error.message);
+        throw new ApiError(401, error?.message || "Invalid refresh token")
+    }
+})
+
+
+export { registerUser, loginUser, logoutUser, getAllUsers , addPicture , refreshAccessToken };
+
+

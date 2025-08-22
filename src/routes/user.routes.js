@@ -4,7 +4,8 @@ import {
     loginUser,
     logoutUser,
     getAllUsers,
-    addPicture
+    addPicture,
+    refreshAccessToken
 } from '../controllers/user.controllers.js';
 import { upload } from '../middlewares/Multer.middlewares.js';
 import {requestLogger} from '../middlewares/ReqLog.middlewares.js';
@@ -236,6 +237,72 @@ userRouter.post('/logout', requestLogger, verifyJWT, logoutUser);
  */
 userRouter.post('/profile-picture', requestLogger, verifyJWT, upload.single('image'), addPicture);
 
+
+/**
+ * @swagger
+ * /api/v1/users/refresh-token:
+ *   post:
+ *     summary: Refresh access token
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: The refresh token to exchange for a new access token
+ *                 example: "d1b55f3e4c6e4f3e8a6e4c6e4f3e8a6"
+ *     responses:
+ *       200:
+ *         description: Access token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                     refreshToken:
+ *                       type: string
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 message:
+ *                   type: string
+ *                   example: "Access token refreshed successfully"
+ *       400:
+ *         description: Bad request - invalid or missing refresh token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized - Invalid or expired refresh token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+userRouter.post("/refresh-token", refreshAccessToken);
 
 /**
  * @swagger
