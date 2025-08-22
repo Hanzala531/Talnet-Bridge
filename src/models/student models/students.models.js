@@ -21,10 +21,10 @@ const studentSchema = new mongoose.Schema({
         type : mongoose.Schema.Types.ObjectId,
         ref : 'Certification' 
     }],
-    kycVerification:[{
+    kycVerification:{
         type : mongoose.Schema.Types.ObjectId,
         ref : 'KYC'
-    }],
+    },
     skills:[{
         type :String,
         required : true,

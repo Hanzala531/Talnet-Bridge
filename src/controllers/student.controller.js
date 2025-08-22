@@ -543,7 +543,7 @@ const profileConpletion = asyncHandler(async (req, res) => {
     }
 
     // 2. KYC verification (20%)
-    if (Array.isArray(student.kycVerification) && student.kycVerification.length > 0) {
+    if (student.kycVerification && student.kycVerification.status === "verified") {
       percent += 20;
       steps.push("KYC verification completed");
     } else {

@@ -1,6 +1,10 @@
 import express from "express";
 import {
     uploadDocs,
+    updatePersonalInfo,
+    submitInitialKYC,
+    uploadEducationalCertificates,
+    addDocuments,
     getAllKYCDocs,
     getKYCById,
     getMyKYC,
@@ -11,7 +15,7 @@ import {
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
 import { authorizeRoles } from '../middlewares/Role.middlewares.js';
-
+import { upload } from "../middlewares/Multer.middlewares.js";
 const kycRouter = express.Router();
 
 /**
@@ -26,8 +30,8 @@ const kycRouter = express.Router();
  *       properties:
  *         docType:
  *           type: string
- *           enum: ["CNIC", "studentId", "transcript", "degree", "other"]
- *           example: "CNIC"
+ *           enum: ["addressProof", "govtId", "electricityBill", "bankStatement", "educationalCertificates", "other"]
+ *           example: "addressProof"
  *         docUrl:
  *           type: string
  *           example: "https://cloudinary.com/image.jpg"
@@ -76,16 +80,65 @@ const kycRouter = express.Router();
 
 /**
  * @swagger
- * /api/v1/kyc:
+ * /api/v1/kyc/initial:
  *   post:
- *     summary: Upload KYC documents
+ *     summary: Submit initial KYC information
  *     tags: [KYC]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fullLegalName
+ *               - dateOfBirth
+ *               - documents
+ *             properties:
+ *               fullLegalName:
+ *                 type: string
+ *                 example: "John Doe"
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: "1990-01-15"
+ *               nationalInsuranceNumber:
+ *                 type: string
+ *                 example: "AB123456C"
+ *               educationalQualifications:
+ *                 type: string
+ *                 description: JSON string of educational qualifications array
+ *                 example: '[{"level":"Bachelors Degree","institution":"University","year":2020}]'
+ *               documents:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 minItems: 1
+ *     responses:
+ *       201:
+ *         description: Initial KYC information submitted successfully
+ *       400:
+ *         description: Invalid document data
+ *       401:
+ *         description: Unauthorized
+ */
+kycRouter.post('/initial', requestLogger, verifyJWT, upload.array('documents', 10), submitInitialKYC);
+
+/**
+ * @swagger
+ * /api/v1/kyc/certificates:
+ *   post:
+ *     summary: Upload educational certificates
+ *     tags: [KYC]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -94,17 +147,51 @@ const kycRouter = express.Router();
  *               documents:
  *                 type: array
  *                 items:
- *                   $ref: '#/components/schemas/KYCDocument'
+ *                   type: string
+ *                   format: binary
  *                 minItems: 1
  *     responses:
  *       201:
- *         description: KYC documents uploaded successfully
+ *         description: Educational certificates uploaded successfully
  *       400:
- *         description: Invalid document data or KYC already exists
+ *         description: Invalid document data
  *       401:
  *         description: Unauthorized
  */
-kycRouter.post('/', requestLogger, verifyJWT, uploadDocs);
+kycRouter.post('/certificates', requestLogger, verifyJWT, upload.array('certificates', 10), uploadEducationalCertificates);
+
+/**
+ * @swagger
+ * /api/v1/kyc/documents:
+ *   post:
+ *     summary: Add additional documents to KYC
+ *     tags: [KYC]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - documents
+ *             properties:
+ *               documents:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 minItems: 1
+ *     responses:
+ *       200:
+ *         description: Additional documents added successfully
+ *       400:
+ *         description: Invalid document data
+ *       401:
+ *         description: Unauthorized
+ */
+kycRouter.post('/documents', requestLogger, verifyJWT, upload.array('documents', 10), addDocuments);
 
 /**
  * @swagger
@@ -281,6 +368,92 @@ kycRouter.patch('/:id/verify', requestLogger, verifyJWT, authorizeRoles('admin')
  *         description: Unauthorized
  */
 kycRouter.put('/:id', requestLogger, verifyJWT, updateKYCDocs);
+
+/**
+ * @swagger
+ * /api/v1/kyc/upload-docs:
+ *   post:
+ *     summary: Upload documents to existing KYC
+ *     tags: [KYC]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - documents
+ *             properties:
+ *               documents:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/KYCDocument'
+ *                 minItems: 1
+ *     responses:
+ *       200:
+ *         description: Documents uploaded successfully
+ *       400:
+ *         description: Invalid document data
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: KYC record not found
+ */
+kycRouter.post('/upload-docs', requestLogger, verifyJWT, uploadDocs);
+
+/**
+ * @swagger
+ * /api/v1/kyc/personal-info:
+ *   put:
+ *     summary: Update personal information in KYC
+ *     tags: [KYC]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fullLegalName
+ *               - dateOfBirth
+ *             properties:
+ *               fullLegalName:
+ *                 type: string
+ *                 example: "John Doe"
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: "1990-01-15"
+ *               nationalInsuranceNumber:
+ *                 type: string
+ *                 example: "AB123456C"
+ *               educationalQualifications:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     level:
+ *                       type: string
+ *                       enum: ["High School Diploma/Gcse", "A-Levels", "Bachelors Degree", "Masters Degree", "Professional Diploma", "Trade Certificate", "Other"]
+ *                     institution:
+ *                       type: string
+ *                     year:
+ *                       type: number
+ *     responses:
+ *       200:
+ *         description: Personal information updated successfully
+ *       400:
+ *         description: Invalid data
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: KYC record not found
+ */
+kycRouter.put('/personal-info', requestLogger, verifyJWT, updatePersonalInfo);
 
 /**
  * @swagger
