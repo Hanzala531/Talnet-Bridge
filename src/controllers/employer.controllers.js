@@ -1,5 +1,5 @@
 import { TrainingInstitute , Employer , User } from "../models/index.js";
-import { successResponse , badRequestResponse ,notFoundResponse } from "../utils/ApiResponse.js";
+import { successResponse ,createdResponse, badRequestResponse ,notFoundResponse } from "../utils/ApiResponse.js";
 import { badRequest , notFound , internalServer } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -8,9 +8,9 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 const creatCompanyProfile = asyncHandler(async (req, res) => {
     try {
         const userId = req.user._id;
-        const { name, companySize, industry, websiteLink } = req.body;
-        if (!name || !companySize || !industry || !websiteLink) {
-            throw badRequest("All fields (name, companySize, industry, websiteLink) are required.");
+        const { name, companySize, industry, websiteLink, location } = req.body;
+        if (!name || !companySize || !industry || !websiteLink || !location) {
+            throw badRequest("All fields (name, companySize, industry, websiteLink, location) are required.");
         }
         // Check if employer already exists for this user
         const existing = await Employer.findOne({ userId });
@@ -27,7 +27,8 @@ const creatCompanyProfile = asyncHandler(async (req, res) => {
             name: name.trim(),
             companySize: companySize.trim(),
             industry: industry.trim(),
-            websiteLink: websiteLink.trim()
+            websiteLink: websiteLink.trim(),
+            location: location.trim()
         });
         if (!employer) throw internalServer("Failed to create employer profile.");
         return res.status(201).json(createdResponse(employer, "Employer profile created successfully."));
@@ -87,6 +88,7 @@ const updateCompanyDetails = asyncHandler(async (req, res) => {
         if (updates.companySize) updates.companySize = updates.companySize.trim();
         if (updates.industry) updates.industry = updates.industry.trim();
         if (updates.websiteLink) updates.websiteLink = updates.websiteLink.trim();
+        if (updates.location) updates.location = updates.location.trim();
         const updated = await Employer.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
         return res.status(200).json(successResponse(updated, "Company profile updated successfully."));
     } catch (error) {

@@ -117,7 +117,7 @@ app.use("/api/v1/courses", courseRouter);
 app.use("/api/v1/schools", schoolRouter);
 
 // company routes
-app.use("/api/v1/employer", employerRouter);
+app.use("/api/v1/employers", employerRouter);
 
 // jobs routes
 app.use("/api/v1/jobs", jobsRouter);

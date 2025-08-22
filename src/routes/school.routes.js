@@ -10,7 +10,8 @@ import {
     getTrainingProviderStats,
     matchStudents,
     studentsDirectory,
-    dashboardController
+    dashboardController,
+    employerDirectory
 } from '../controllers/school.controllers.js';
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
@@ -634,6 +635,64 @@ schoolRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('admi
  */
 schoolRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('admin'), deleteTrainingProvider);
 
+// Route for employer directory
+/**
+ * @swagger
+ * /api/v1/schools/employers:
+ *   get:
+ *     summary: Retrieve a list of employers
+ *     description: Returns a list of employers with optional filters and pagination.
+ *     tags: [Employers]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination. Default is 1.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of employers per page. Default is 10.
+ *       - in: query
+ *         name: location
+ *         schema:
+ *           type: string
+ *         description: Filter employers by location.
+ *     responses:
+ *       200:
+ *         description: List of employers retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 employers:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Employer'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     total:
+ *                       type: integer
+ *                       example: 100
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 10
+ */
+schoolRouter.get('/employers/dir', requestLogger, verifyJWT, authorizeRoles('school'), employerDirectory);
 
 // Export the router
 export default schoolRouter;

@@ -41,10 +41,10 @@ import jwt from "jsonwebtoken";
 // Access and Refresh Tokens
 const generateAccessAndRefreshTokens = async (userid) => {
   try {
-    console.log("Generating tokens for user ID:", userid);
+    // console.log("Generating tokens for user ID:", userid);
     const user = await User.findById(userid);
     if (!user) {
-      console.error("User not found for ID:", userid);
+      // console.error("User not found for ID:", userid);
       throw new ApiError(404, "User not found");
     }
 
@@ -52,15 +52,12 @@ const generateAccessAndRefreshTokens = async (userid) => {
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
-    console.log("Generated access token:", accessToken ? "Yes" : "No");
-    console.log("Generated refresh token:", refreshToken ? "Yes" : "No");
-
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
     return { accessToken, refreshToken };
   } catch (error) {
-    console.error("Error in generateAccessAndRefreshTokens:", error);
+    // console.error("Error in generateAccessAndRefreshTokens:", error);
     throw new ApiError(500, "Something went wrong while generating tokens");
   }
 };
@@ -210,7 +207,7 @@ const loginUser = asyncHandler(async (req, res) => {
     }
 
     // Find user and select password
-    const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email });
     if (!user) {
       throw  notFound("User not found");
     }

@@ -649,23 +649,36 @@ const employerDirectory = asyncHandler(async (req, res) => {
     // Query params: page, limit
     const { page = 1, limit = 20 } = req.query;
 
+    // Validate and sanitize pagination parameters
+    const pageNum = Math.max(Number(page) || 1, 1);
+    const limitNum = Math.min(Math.max(Number(limit) || 20, 1), 100); // Enforce a max limit of 100
+
     // Pagination
-    const skip = (Number(page) - 1) * Number(limit);
+    const skip = (pageNum - 1) * limitNum;
 
     // Find all employers (without populate)
     const employers = await Employer.find({})
       .select("_id userId companyName companyLocation industry")
       .skip(skip)
-      .limit(Number(limit))
+      .limit(limitNum)
       .lean();
 
     if (!employers.length) {
-      return res.status(404).json({
-        success: false,
-        message: "No employers found",
-        payload: null,
-      });
-    }
+      return res.status(404).json(
+        successResponse(
+          {
+            employers: [],
+            pagination: {
+              page: pageNum,
+              limit: limitNum,
+              total: 0,
+              totalPages: 0,
+            },
+          },
+          "No employers found"
+        )
+      );
+    }  
 
     // Collect userIds for batch lookup
     const userIds = employers.map((e) => e.userId);
@@ -701,20 +714,23 @@ const employerDirectory = asyncHandler(async (req, res) => {
     // Total count for pagination
     const total = await Employer.countDocuments({});
 
-    return res.status(200).json({
-      success: true,
-      message: "Employers directory fetched successfully",
-      payload: {
-        employers: formatted,
-        pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          total,
-          totalPages: Math.ceil(total / Number(limit)),
+    return res.status(200).json(
+      successResponse(
+        {
+          employers: formatted,
+          pagination: {
+            page: pageNum,
+            limit: limitNum,
+            total,
+            totalPages: Math.ceil(total / limitNum),
+          },
         },
-      },
-    });
-  } catch (error) {throw internalServer("Failed to fetch employers directory");
+        "Employers directory fetched successfully"
+      )
+    );
+  } catch (error) {
+    console.error("Error in employerDirectory:", error);
+    throw internalServer("Failed to fetch employers directory");
   }
 });
 
@@ -771,4 +787,5 @@ export {
   matchStudents,
   studentsDirectory,
   dashboardController,
+  employerDirectory
 };
