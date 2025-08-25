@@ -89,7 +89,7 @@ const userRouter = express.Router();
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 
-userRouter.post('/register', requestLogger, verifyJWT , registerUser);
+userRouter.post('/register', requestLogger, verifyRegisterCredentials, verifyJWT, registerUser);
 /**
  * @swagger
  * /api/v1/users/login:

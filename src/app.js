@@ -146,10 +146,14 @@ app.use("/api/v1/webhooks", webhookRouter);
 // Notification routes
 app.use("/api/v1/notifications", notificationRouter);
 
+// email routes
+app.use('/api/v1/queiry' , emailRouter)
+
 // CHAT FEATURE: mount chat routes
 import chatConversationRouter from "./routes/chat.conversation.routes.js";
 import chatMessageRouter from "./routes/chat.message.routes.js";
 import adminRouter from "./routes/admin.routes.js";
+import emailRouter from "./routes/email.routes.js";
 app.use("/api/v1/chat", chatConversationRouter);
 app.use("/api/v1/chat", chatMessageRouter);
 
