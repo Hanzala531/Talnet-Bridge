@@ -1,18 +1,19 @@
 import express from "express";
 import {
-    getProfile,
-    editProfile,
-    addPicture,
-    getAllTrainingProviders,
-    getTrainingProviderById,
-    updateTrainingProviderStatus,
-    deleteTrainingProvider,
-    searchTrainingProviders,
-    getTrainingProviderStats,
-    matchStudents,
-    studentsDirectory,
-    dashboardController,
-    employerDirectory
+     getProfile,
+  editProfile,
+  createProfile,
+  addPicture,
+  getAllTrainingProviders,
+  getTrainingProviderById,
+  searchTrainingProviders,
+  updateTrainingProviderStatus,
+  deleteTrainingProvider,
+  getTrainingProviderStats,
+  matchStudents,
+  studentsDirectory,
+  dashboardController,
+  employerDirectory
 } from '../controllers/school.controllers.js';
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
@@ -280,6 +281,74 @@ schoolRouter.get('/profile', requestLogger, verifyJWT, authorizeRoles('school'),
  *               message: "Access denied"
  */
 schoolRouter.put('/profile', requestLogger, verifyJWT, authorizeRoles('school'), editProfile);
+
+/**
+ * @swagger
+ * /api/v1/schools/profile:
+ *   post:
+ *     summary: Create a new training provider profile
+ *     description: Allows a school to create its training provider profile. Only accessible to authenticated users with the 'school' role.
+ *     tags: [Training Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - phone
+ *               - about
+ *               - established
+ *               - location
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "ABC Institute"
+ *               email:
+ *                 type: string
+ *                 example: "info@abcinstitute.com"
+ *               phone:
+ *                 type: string
+ *                 example: "+1234567890"
+ *               about:
+ *                 type: string
+ *                 example: "A leading provider of technical education."
+ *               established:
+ *                 type: string
+ *                 example: "2005"
+ *               location:
+ *                 type: string
+ *                 example: "123 Main St, City, Country"
+ *     responses:
+ *       201:
+ *         description: Training provider profile created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Training provider profile created successfully
+ *                 payload:
+ *                   $ref: '#/components/schemas/TrainingInstitute'
+ *       400:
+ *         description: Validation error or missing required fields
+ *       409:
+ *         description: Profile already exists for this user
+ *       422:
+ *         description: Validation failed
+ *       500:
+ *         description: Internal server error
+ */
+schoolRouter.post('/profile', requestLogger, verifyJWT, authorizeRoles('school'), createProfile);
 
 /**
  * @swagger
