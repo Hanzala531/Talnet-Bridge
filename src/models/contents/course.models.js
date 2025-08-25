@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 
 const courseSchema = new mongoose.Schema({
+    // course image
+    coverImage :{
+        type : String,
+        required : true
+    },
     // Course Title
     title: {
         type: String,
@@ -27,7 +32,7 @@ const courseSchema = new mongoose.Schema({
             type: Number,
             required: true,
             min: 0
-        },
+    },
 
     // Language
     language: {

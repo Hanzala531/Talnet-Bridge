@@ -13,6 +13,7 @@ import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
 import { authorizeRoles } from '../middlewares/Role.middlewares.js';
 import { requireActiveSubscription, checkCourseLimit } from '../middlewares/subscription.middlewares.js';
+import { upload } from '../middlewares/Multer.middlewares.js'
 import { coursesCache, invalidateUserCache } from '../middlewares/redis.middlewares.js';
 
 const courseRouter = express.Router();
@@ -367,10 +368,11 @@ courseRouter.get('/:id', requestLogger, coursesCache, getCoursesById);
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
+ *               - coverImage
  *               - title
  *               - instructor
  *               - duration
@@ -382,51 +384,44 @@ courseRouter.get('/:id', requestLogger, coursesCache, getCoursesById);
  *               - skills
  *               - category
  *             properties:
+ *               coverImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: Course cover image file
  *               title:
  *                 type: string
- *                 description: Course title
- *                 example: "Web Development Fundamentals"
+ *                 example: "Golang -Go beigner to Advance"
  *               instructor:
  *                 type: string
- *                 description: Instructor name
- *                 example: "John Doe"
+ *                 example: "John ven"
  *               duration:
  *                 type: string
- *                 description: Course duration
  *                 example: "8 weeks"
  *               price:
  *                 type: number
- *                 minimum: 0
- *                 description: Course price in PKR
  *                 example: 299.99
  *               language:
  *                 type: string
- *                 description: Course language
  *                 example: "English"
  *               type:
  *                 type: string
- *                 enum: ["online", "offline", "hybrid"]
- *                 description: Course delivery type
- *                 example: "online"
- *               description:
- *                 type: string
- *                 description: Detailed course description
- *                 example: "Learn the fundamentals of web development including HTML, CSS, and JavaScript"
+ *                 enum: ["online", "oncampus", "hybrid"]
+ *                 example: "oncampus"
  *               objectives:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Course learning objectives
- *                 example: ["Learn HTML structure and semantics", "Master CSS styling and layouts", "Understand JavaScript fundamentals"]
+ *                 example: ["Learn HTML,Learn CSS,Learn JavaScript"]
+ *               description:
+ *                 type: string
+ *                 example: "Learn the fundamentals of web development"
  *               skills:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Skills gained from this course
- *                 example: ["Frontend Development", "Responsive Design", "JavaScript Programming"]
+ *                 example: ["Frontend Development,Responsive Design"]
  *               category:
  *                 type: string
- *                 description: Course category
  *                 example: "Technology"
  *     responses:
  *       201:
@@ -442,14 +437,34 @@ courseRouter.get('/:id', requestLogger, coursesCache, getCoursesById);
  *                 statusCode:
  *                   type: integer
  *                   example: 201
- *                 data:
- *                   type: object
- *                   properties:
- *                     course:
- *                       $ref: '#/components/schemas/Course'
  *                 message:
  *                   type: string
  *                   example: "Course created successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     course:
+ *                       type: object
+ *                       example:
+ *                         coverImage: "http://res.cloudinary.com/hanzalascloud/image/upload/v1756104538/loopwin-products/otiyhb0xg2k2vly4hcfv.jpg"
+ *                         title: "Golang -Go beigner to Advance"
+ *                         instructor: "John ven"
+ *                         duration: "8 weeks"
+ *                         price: 299.99
+ *                         language: "English"
+ *                         type: "oncampus"
+ *                         objectives: ["Learn HTML,Learn CSS,Learn JavaScript"]
+ *                         description: "Learn the fundamentals of web development"
+ *                         skills: ["Frontend Development,Responsive Design"]
+ *                         trainingProvider: "68a592c676bf09279c431214"
+ *                         category: "Technology"
+ *                         status: "approved"
+ *                         maxEnrollments: 50
+ *                         currentEnrollments: 0
+ *                         _id: "68ac075a03b1574c514c9fbb"
+ *                         createdAt: "2025-08-25T06:48:58.537Z"
+ *                         updatedAt: "2025-08-25T06:48:58.537Z"
+ *                         __v: 0
  *       400:
  *         description: Missing required fields or validation error
  *         content:
@@ -481,7 +496,7 @@ courseRouter.get('/:id', requestLogger, coursesCache, getCoursesById);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-courseRouter.post('/', requestLogger, verifyJWT, authorizeRoles('school'), requireActiveSubscription, checkCourseLimit, createCourse);
+courseRouter.post('/', requestLogger, verifyJWT, authorizeRoles('school'), requireActiveSubscription, checkCourseLimit, upload.single('coverImage'), createCourse);
 
 /**
  * @swagger

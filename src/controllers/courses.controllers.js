@@ -6,6 +6,7 @@ import {
   createdResponse,
   badRequestResponse,
 } from "../utils/ApiResponse.js";
+import { uploadOnCloudinary } from '../utils/cloudinary.js'
 
 // ===============================
 // GET ALL COURSES
@@ -150,7 +151,17 @@ const createCourse = asyncHandler(async (req, res) => {
       });
     }
 
+    // checking if image is uploaded
+    const imageLocalPath = req.file?.path;
+    if(!imageLocalPath) throw badRequest("Course image is not uploaded")
+      // upload image to cloudinary
+    const imageUploadPath = await uploadOnCloudinary(imageLocalPath)
+    if (!imageUploadPath) throw internalServer("Failed to upload course image due to some issue")
+
+    
+
     const course = await Course.create({
+      coverImage: imageUploadPath.url,
       title,
       instructor,
       duration,
