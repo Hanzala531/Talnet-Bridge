@@ -110,6 +110,9 @@ app.get("/", (req, res) => {
 // User routes
 app.use("/api/v1/users", userRouter);
 
+// admin register
+app.use("/api/v1/appAdmin" , adminRouter)
+
 // Course routes
 app.use("/api/v1/courses", courseRouter);
 
@@ -146,6 +149,7 @@ app.use("/api/v1/notifications", notificationRouter);
 // CHAT FEATURE: mount chat routes
 import chatConversationRouter from "./routes/chat.conversation.routes.js";
 import chatMessageRouter from "./routes/chat.message.routes.js";
+import adminRouter from "./routes/admin.routes.js";
 app.use("/api/v1/chat", chatConversationRouter);
 app.use("/api/v1/chat", chatMessageRouter);
 
