@@ -65,6 +65,14 @@ const userSchema = new mongoose.Schema(
       type : Boolean,
       default : false
     },
+    isFake :{
+      type : Boolean,
+      default : false
+    },
+    hasMultipleAccounts : {
+      type : Boolean, 
+      default : false
+    },
     refreshToken:{
       type:String
     }
