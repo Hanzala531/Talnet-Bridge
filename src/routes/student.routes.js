@@ -218,15 +218,6 @@ const studentRouter = express.Router();
  *               website:
  *                 type: string
  *                 example: "https://myportfolio.com"
- *               skills:
- *                 type: array
- *                 items:
- *                   type: string
- *                 example: ["JavaScript", "React", "Node.js"]
- *               gsceResult:
- *                 type: array
- *                 items:
- *                   $ref: '#/components/schemas/GSCEResult'
  *     responses:
  *       201:
  *         description: Student profile created successfully
@@ -652,46 +643,46 @@ studentRouter.put('/update', requestLogger, verifyJWT, updateStudentProfile);
 */
 studentRouter.delete('/:id', requestLogger, verifyJWT, deleteStudentProfile);
 
-/**
- * @swagger
- * /api/v1/students/{id}/certifications:
- *   post:
- *     summary: Add certification to student profile
- *     tags: [Students]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Student ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - certificationId
- *             properties:
- *               certificationId:
- *                 type: string
- *                 example: "60f0f4f4f4f4f4f4f4f4f4f4"
- *     responses:
- *       200:
- *         description: Certification added successfully
- *       400:
- *         description: Invalid ID or certification already added
- *       404:
- *         description: Student not found
- *       403:
- *         description: Access denied
- *       401:
- *         description: Unauthorized
- */
-studentRouter.post('/:id/certifications', requestLogger, verifyJWT, addCertification);
+// /**
+//  * @swagger
+//  * /api/v1/students/{id}/certifications:
+//  *   post:
+//  *     summary: Add certification to student profile
+//  *     tags: [Students]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *         description: Student ID
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             type: object
+//  *             required:
+//  *               - certificationId
+//  *             properties:
+//  *               certificationId:
+//  *                 type: string
+//  *                 example: "60f0f4f4f4f4f4f4f4f4f4f4"
+//  *     responses:
+//  *       200:
+//  *         description: Certification added successfully
+//  *       400:
+//  *         description: Invalid ID or certification already added
+//  *       404:
+//  *         description: Student not found
+//  *       403:
+//  *         description: Access denied
+//  *       401:
+//  *         description: Unauthorized
+//  */
+// studentRouter.post('/:id/certifications', requestLogger, verifyJWT, addCertification);
 
 /**
  * @swagger
