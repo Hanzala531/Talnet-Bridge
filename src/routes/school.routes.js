@@ -2,6 +2,7 @@ import express from "express";
 import {
     getProfile,
     editProfile,
+    addPicture,
     getAllTrainingProviders,
     getTrainingProviderById,
     updateTrainingProviderStatus,
@@ -16,6 +17,7 @@ import {
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
 import { authorizeRoles } from '../middlewares/Role.middlewares.js';
+import { upload } from "../middlewares/Multer.middlewares.js";
 
 const schoolRouter = express.Router();
 
@@ -221,23 +223,7 @@ schoolRouter.get('/profile', requestLogger, verifyJWT, authorizeRoles('school'),
  *                   type: string
  *                 example: ["Web Development", "Data Science", "AI/ML"]
  *               location:
- *                 type: object
- *                 properties:
- *                   address:
- *                     type: string
- *                     example: "123 Training Street"
- *                   city:
- *                     type: string
- *                     example: "Karachi"
- *                   state:
- *                     type: string
- *                     example: "Sindh"
- *                   country:
- *                     type: string
- *                     example: "Pakistan"
- *                   postalCode:
- *                     type: string
- *                     example: "75000"
+ *                 type: string                   
  *               contact:
  *                 type: object
  *                 properties:
@@ -693,6 +679,40 @@ schoolRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('admin'), d
  *                       example: 10
  */
 schoolRouter.get('/employers/dir', requestLogger, verifyJWT, authorizeRoles('school'), employerDirectory);
+
+/**
+ * @swagger
+ * /api/v1/schools/profile/picture:
+ *   post:
+ *     summary: Upload or update training provider profile picture
+ *     tags: [Training Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               picture:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Profile picture uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TrainingProvider'
+ *       400:
+ *         description: Invalid file type or size
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied - Training provider only
+ */
+schoolRouter.post('/profile/picture', requestLogger, verifyJWT, authorizeRoles('school'),upload.single('image'), addPicture);
 
 // Export the router
 export default schoolRouter;

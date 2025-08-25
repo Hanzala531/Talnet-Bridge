@@ -137,7 +137,8 @@ const getAllJobs = asyncHandler(async (req, res) => {
                 "Jobs fetched successfully."
             )
         );
-    } catch (error) {throw error;
+    } catch (error) {
+        throw internalServer("Error in fetching jobs");
     }
 });
 

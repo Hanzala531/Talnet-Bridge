@@ -9,6 +9,7 @@ import {
   TrainingInstitute,
 } from "../models/index.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import {
   successResponse,
   notFoundResponse,
@@ -774,10 +775,61 @@ const dashboardController = asyncHandler(async (req, res) => {
   }
 });
 
+// Add user profile picture controller
+const addPicture = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const imageLocalPath = req.file?.path || req.files?.[0]?.path;
+    if (!imageLocalPath) {
+      return res.status(400).json({
+        success: false,
+        message: "Image is not uploaded",
+      });
+    }
+
+    // Upload to cloudinary
+    const imageUrl = await uploadOnCloudinary(imageLocalPath);
+    if (!imageUrl || !imageUrl.secure_url) {
+      return res.status(500).json({
+        success: false,
+        message: "Error in uploading the image",
+      });
+    }
+
+    // Update profile by userId (not _id)
+    const updatedUser = await TrainingInstitute.findOneAndUpdate(
+      { userId },
+      { $set: { picture: imageUrl.secure_url } },
+      { new: true, projection: { password: 0, refreshToken: 0 } }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json(
+      successResponse(
+        { user: updatedUser, imageUrl: imageUrl.secure_url },
+        "Profile picture updated successfully"
+      )
+    );
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update profile picture",
+    });
+  }
+});
+
+
 export {
   getProfile,
   editProfile,
   createProfile,
+  addPicture,
   getAllTrainingProviders,
   getTrainingProviderById,
   searchTrainingProviders,

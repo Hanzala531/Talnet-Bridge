@@ -48,26 +48,25 @@ const instituteSchema = new mongoose.Schema({
             required: true,
             trim: true
         },
-    
-    // Accreditation & Verification
-    accreditation: {
-        status: {
-            type: String,
-            enum: ['pending', 'verified', 'rejected'],
-            default: 'pending'
-        },
-        certificates: [{
-            name: String,
-            issuedBy: String,
-            validUntil: Date,
-            documentUrl: String
-        }],
-        verifiedAt: Date,
-        verifiedBy: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'User'
-        }
-    },
+    // // Accreditation & Verification
+    // accreditation: {
+    //     status: {
+    //         type: String,
+    //         enum: ['pending', 'verified', 'rejected'],
+    //         default: 'pending'
+    //     },
+    //     certificates: [{
+    //         name: String,
+    //         issuedBy: String,
+    //         validUntil: Date,
+    //         documentUrl: String
+    //     }],
+    //     verifiedAt: Date,
+    //     verifiedBy: {
+    //         type: mongoose.Schema.Types.ObjectId,
+    //         ref: 'User'
+    //     }
+    // },
     
     
     // Statistics
