@@ -109,7 +109,7 @@ const courseRouter = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-courseRouter.get('/', requestLogger, coursesCache, getCourses);
+courseRouter.get('/', requestLogger,verifyJWT , coursesCache, getCourses);
 
 /**
  * @swagger

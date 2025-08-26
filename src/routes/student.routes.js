@@ -230,7 +230,7 @@ const studentRouter = express.Router();
  *       401:
  *         description: Unauthorized
  */
-studentRouter.post('/', requestLogger, verifyJWT, createStudentProfile);
+studentRouter.post('/', requestLogger, verifyJWT,authorizeRoles('student'), createStudentProfile);
 
 /**
  * @swagger
@@ -370,7 +370,7 @@ studentRouter.get('/', requestLogger, verifyJWT, authorizeRoles('admin'), getAll
  *       401:
  *         description: Unauthorized
 */
-studentRouter.get('/my', requestLogger, verifyJWT, getMyStudentProfile);
+studentRouter.get('/my', requestLogger, verifyJWT,authorizeRoles('student'), getMyStudentProfile);
 
 /**
  * @swagger
@@ -395,7 +395,7 @@ studentRouter.get('/my', requestLogger, verifyJWT, getMyStudentProfile);
  *       401:
  *         description: Unauthorized
 */
-studentRouter.get('/:id', requestLogger, verifyJWT, getStudentById);
+studentRouter.get('/:id', requestLogger, verifyJWT,authorizeRoles('school'), getStudentById);
 /**
  * @swagger
  * /api/v1/students/profile/completion:
@@ -527,7 +527,7 @@ studentRouter.get('/:id', requestLogger, verifyJWT, getStudentById);
  *       401:
  *         description: Unauthorized
 */
-studentRouter.get('/profile/completion', requestLogger, verifyJWT, profileConpletion);
+studentRouter.get('/profile/completion', requestLogger,authorizeRoles('student'), verifyJWT, profileConpletion);
 
 /**
  * @swagger
@@ -613,7 +613,7 @@ studentRouter.get('/profile/completion', requestLogger, verifyJWT, profileConple
  *       401:
  *         description: Unauthorized
 */
-studentRouter.put('/update', requestLogger, verifyJWT, updateStudentProfile);
+studentRouter.put('/update', requestLogger, verifyJWT,authorizeRoles('student'), updateStudentProfile);
 
 
 /**
@@ -641,7 +641,7 @@ studentRouter.put('/update', requestLogger, verifyJWT, updateStudentProfile);
  *       401:
  *         description: Unauthorized
 */
-studentRouter.delete('/:id', requestLogger, verifyJWT, deleteStudentProfile);
+studentRouter.delete('/:id', requestLogger, verifyJWT,authorizeRoles('admin'), deleteStudentProfile);
 
 // /**
 //  * @swagger
@@ -732,7 +732,7 @@ studentRouter.delete('/:id', requestLogger, verifyJWT, deleteStudentProfile);
  *       401:
  *         description: Unauthorized
  */
-studentRouter.post('/gsce-result', requestLogger, verifyJWT, addResult);
+studentRouter.post('/gsce-result', requestLogger, verifyJWT,authorizeRoles('student'), addResult);
 
 
 /**
@@ -836,7 +836,7 @@ studentRouter.post('/gsce-result', requestLogger, verifyJWT, addResult);
  *       401:
  *         description: Unauthorized
  */
-studentRouter.post('/experiences', requestLogger, verifyJWT, createExperience);
+studentRouter.post('/experiences', requestLogger, verifyJWT,authorizeRoles('student'), createExperience);
 
 /**
  * @swagger
@@ -875,7 +875,7 @@ studentRouter.post('/experiences', requestLogger, verifyJWT, createExperience);
  *       401:
  *         description: Unauthorized
  */
-studentRouter.get('/experiences/search', requestLogger, verifyJWT, searchExperiences);
+studentRouter.get('/experiences/search', requestLogger, verifyJWT,authorizeRoles('student'), searchExperiences);
 
 /**
  * @swagger
@@ -920,7 +920,7 @@ studentRouter.get('/experiences/search', requestLogger, verifyJWT, searchExperie
  *       401:
  *         description: Unauthorized
  */
-studentRouter.get('/experiences/company/:company', requestLogger, verifyJWT, getExperiencesByCompany);
+studentRouter.get('/experiences/company/:company', requestLogger, verifyJWT,authorizeRoles('student'), getExperiencesByCompany);
 
 /**
  * @swagger
@@ -947,7 +947,7 @@ studentRouter.get('/experiences/company/:company', requestLogger, verifyJWT, get
  *       401:
  *         description: Unauthorized
  */
-studentRouter.get('/experiences/my', requestLogger, verifyJWT, getExperienceById);
+studentRouter.get('/experiences/my', requestLogger, verifyJWT,authorizeRoles('student'), getExperienceById);
 
 /**
  * @swagger
@@ -1003,7 +1003,7 @@ studentRouter.get('/experiences/my', requestLogger, verifyJWT, getExperienceById
  *       401:
  *         description: Unauthorized
  */
-studentRouter.put('/experiences/:id', requestLogger, verifyJWT, updateExperience);
+studentRouter.put('/experiences/:id', requestLogger, verifyJWT,authorizeRoles('student'), updateExperience);
 
 /**
  * @swagger
@@ -1028,7 +1028,7 @@ studentRouter.put('/experiences/:id', requestLogger, verifyJWT, updateExperience
  *       401:
  *         description: Unauthorized
  */
-studentRouter.delete('/experiences/:id', requestLogger, verifyJWT, deleteExperience);
+studentRouter.delete('/experiences/:id', requestLogger, verifyJWT,authorizeRoles('student'), deleteExperience);
 
 // =============================================
 // CERTIFICATION ROUTES (Student-related)
@@ -1078,7 +1078,7 @@ studentRouter.delete('/experiences/:id', requestLogger, verifyJWT, deleteExperie
  *       401:
  *         description: Unauthorized
  */
-studentRouter.post('/certifications', requestLogger, verifyJWT, upload.single('image') , createCertification);
+studentRouter.post('/certifications', requestLogger, verifyJWT,authorizeRoles('student'), upload.single('image') , createCertification);
 
 /**
  * @swagger
@@ -1131,7 +1131,7 @@ studentRouter.post('/certifications', requestLogger, verifyJWT, upload.single('i
  *               items:
  *                 $ref: '#/components/schemas/Certification'
  */
-studentRouter.get('/certifications', requestLogger, getAllCertifications);
+studentRouter.get('/certifications', requestLogger,authorizeRoles('student'), getAllCertifications);
 
 /**
  * @swagger
@@ -1166,7 +1166,7 @@ studentRouter.get('/certifications', requestLogger, getAllCertifications);
  *       400:
  *         description: Search query too short
  */
-studentRouter.get('/certifications/search', requestLogger, searchCertifications);
+studentRouter.get('/certifications/search', requestLogger,authorizeRoles('student'), searchCertifications);
 
 /**
  * @swagger
@@ -1207,7 +1207,7 @@ studentRouter.get('/certifications/search', requestLogger, searchCertifications)
  *       400:
  *         description: Issuer name too short
  */
-studentRouter.get('/certifications/issuer/:issuer', requestLogger, getCertificationsByIssuer);
+studentRouter.get('/certifications/issuer/:issuer', requestLogger,verifyJWT , authorizeRoles('student'),  getCertificationsByIssuer);
 
 /**
  * @swagger
@@ -1234,7 +1234,7 @@ studentRouter.get('/certifications/issuer/:issuer', requestLogger, getCertificat
  *       400:
  *         description: Invalid certification ID
  */
-studentRouter.get('/certifications/:id', requestLogger, getCertificationById);
+studentRouter.get('/certifications/:id', requestLogger,verifyJWT , authorizeRoles('student'),  getCertificationById);
 
 /**
  * @swagger

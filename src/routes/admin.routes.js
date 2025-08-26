@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { registerAdmin } from "../controllers/admin.Controller.js";
 import { requestLogger } from "../middlewares/ReqLog.middlewares.js";
-
+import { authorizeRoles } from "../middlewares/Role.middlewares.js"
 const adminRouter = Router();
 
 /**
@@ -81,6 +81,6 @@ const adminRouter = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-adminRouter.post('/registerAdmin' , requestLogger , registerAdmin)
+adminRouter.post('/registerAdmin' , requestLogger ,  registerAdmin)
 
 export default adminRouter

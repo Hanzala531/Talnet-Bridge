@@ -42,7 +42,33 @@ const studentSchema = new mongoose.Schema({
     enrollments:[{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Enrollment'
-    }]
+    }],
+    isPublic : {
+        type : Boolean,
+        default : false
+    },
+    isOpenToWork : {
+        type : Boolean,
+        default : false
+    },
+    isContactPublic : {
+        type : Boolean,
+        default : false
+    },
+    isProgressPublic : {
+        type : Boolean,
+        default : false
+    },
+    communicationPreferences :{
+        isCourseRecomendations : {
+        type : Boolean,
+        default : false
+        },
+        isMarketingCommunications :{
+        
+        }
+    }
+    
 }, { timestamps: true });
 
 // ===== Indexes for Performance =====
