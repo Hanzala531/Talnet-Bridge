@@ -154,7 +154,8 @@ const registerUser = asyncHandler(async (req, res) => {
       .status(201)
       .json(createdResponse({ user: createdUser, accessToken }, "User registered successfully"));
 
-  } catch (error) {throw  internalServer("Failed to register user");
+  } catch (error) {
+    throw  internalServer("Failed to register user");
   }
 });
 

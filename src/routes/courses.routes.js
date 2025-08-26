@@ -109,7 +109,7 @@ const courseRouter = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-courseRouter.get('/', requestLogger,verifyJWT , coursesCache, getCourses);
+courseRouter.get('/', requestLogger,verifyJWT , authorizeRoles('school' , 'student'), coursesCache, getCourses);
 
 /**
  * @swagger
@@ -219,7 +219,7 @@ courseRouter.get('/', requestLogger,verifyJWT , coursesCache, getCourses);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-courseRouter.get('/search', requestLogger, coursesCache, searchCourses);
+courseRouter.get('/search', requestLogger,authorizeRoles('school' , 'student'), coursesCache, searchCourses);
 
 /**
  * @swagger
@@ -302,7 +302,7 @@ courseRouter.get('/search', requestLogger, coursesCache, searchCourses);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-courseRouter.get('/provider/:providerId', requestLogger, getCoursesByProvider);
+courseRouter.get('/provider/:providerId', requestLogger,authorizeRoles('school'), getCoursesByProvider);
 
 /**
  * @swagger
@@ -354,7 +354,7 @@ courseRouter.get('/provider/:providerId', requestLogger, getCoursesByProvider);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-courseRouter.get('/:id', requestLogger, coursesCache, getCoursesById);
+courseRouter.get('/:id', requestLogger,authorizeRoles('school' , 'student'), coursesCache, getCoursesById);
 
 /**
  * @swagger

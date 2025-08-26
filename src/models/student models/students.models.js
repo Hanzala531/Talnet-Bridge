@@ -65,7 +65,8 @@ const studentSchema = new mongoose.Schema({
         default : false
         },
         isMarketingCommunications :{
-        
+        type : Boolean,
+        default : false
         }
     }
     
