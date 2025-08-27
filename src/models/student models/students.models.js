@@ -6,6 +6,22 @@ const studentSchema = new mongoose.Schema({
         ref : "User",
         required: true, 
     },
+    firstName: {
+        type : String,
+        required : true
+    },
+    lastName: {
+        type : String,
+        required : true
+    },
+    email: {
+        type : String,
+        required : true
+    },
+    phone: {
+        type : String,
+        required : true
+    },
     bio : {
         type : String,
         trim: true,
@@ -38,11 +54,16 @@ const studentSchema = new mongoose.Schema({
         subject: { type: String, required: true },
         marks: { type: String, required: true },
         grade: { type: String, required: true },
+        percentage : { type: String, required: true }
     }],
     enrollments:[{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Enrollment'
     }],
+    isKycApproved :{
+        type : Boolean,
+        default : false
+    },
     isPublic : {
         type : Boolean,
         default : false

@@ -859,6 +859,243 @@ const options = {
               example: 8
             }
           }
+        },
+        Student: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Student unique identifier',
+              example: '64f123abc456def789012345'
+            },
+            userId: {
+              type: 'string',
+              description: 'Associated user ID (required)',
+              example: '64f123abc456def789012345'
+            },
+            bio: {
+              type: 'string',
+              description: 'Student biography',
+              example: 'Passionate about technology and learning'
+            },
+            location: {
+              type: 'string',
+              description: 'Student location',
+              example: 'Lahore, Pakistan'
+            },
+            website: {
+              type: 'string',
+              description: 'Student personal website URL',
+              example: 'https://myportfolio.com'
+            },
+            skills: {
+              type: 'array',
+              items: {
+                type: 'string'
+              },
+              description: 'Student skills (required)',
+              example: ['JavaScript', 'React', 'Node.js', 'MongoDB']
+            },
+            certifications: {
+              type: 'array',
+              items: {
+                type: 'string',
+                description: 'Certification ID reference'
+              },
+              description: 'Array of certification IDs',
+              example: ['64f0f4f4f4f4f4f4f4f4f4f4']
+            },
+            kycVerification: {
+              type: 'array',
+              items: {
+                type: 'string',
+                description: 'KYC document ID reference'
+              },
+              description: 'Array of KYC verification document IDs',
+              example: ['64f0f4f4f4f4f4f4f4f4f4f5']
+            },
+            experience: {
+              type: 'array',
+              items: {
+                type: 'string',
+                description: 'Experience ID reference'
+              },
+              description: 'Array of experience IDs',
+              example: ['64f0f4f4f4f4f4f4f4f4f4f6']
+            },
+            gsceResult: {
+              type: 'array',
+              items: {
+                $ref: '#/components/schemas/GSCEResult'
+              },
+              description: 'GSCE examination results',
+              example: [
+                {
+                  subject: 'Mathematics',
+                  marks: '85',
+                  grade: 'A'
+                },
+                {
+                  subject: 'English',
+                  marks: '78',
+                  grade: 'B'
+                }
+              ]
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Profile creation timestamp',
+              example: '2025-08-15T10:30:00.000Z'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Profile last update timestamp',
+              example: '2025-08-19T14:20:00.000Z'
+            }
+          }
+        },
+        GSCEResult: {
+          type: 'object',
+          required: ['subject', 'marks', 'grade'],
+          properties: {
+            subject: {
+              type: 'string',
+              description: 'Subject name',
+              example: 'Mathematics'
+            },
+            marks: {
+              type: 'string',
+              description: 'Marks obtained',
+              example: '85'
+            },
+            grade: {
+              type: 'string',
+              description: 'Grade achieved',
+              example: 'A'
+            }
+          }
+        },
+        Experience: {
+          type: 'object',
+          required: ['title', 'company', 'startDate'],
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Experience unique identifier',
+              example: '64f0f4f4f4f4f4f4f4f4f4f4'
+            },
+            title: {
+              type: 'string',
+              description: 'Job title',
+              example: 'Software Engineer'
+            },
+            company: {
+              type: 'string',
+              description: 'Company name',
+              example: 'Google'
+            },
+            startDate: {
+              type: 'string',
+              format: 'date',
+              description: 'Employment start date',
+              example: '2022-01-15'
+            },
+            endDate: {
+              type: 'string',
+              format: 'date',
+              nullable: true,
+              description: 'Employment end date (null if current job)',
+              example: '2023-06-30'
+            },
+            description: {
+              type: 'string',
+              description: 'Job description and responsibilities',
+              example: 'Developed web applications using React and Node.js'
+            },
+            isCurrentJob: {
+              type: 'boolean',
+              readOnly: true,
+              description: 'Whether this is the current job',
+              example: false
+            },
+            duration: {
+              type: 'string',
+              readOnly: true,
+              description: 'Calculated duration of employment',
+              example: '1 year 5 months'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Record creation timestamp',
+              example: '2025-08-15T10:30:00.000Z'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Record last update timestamp',
+              example: '2025-08-19T14:20:00.000Z'
+            }
+          }
+        },
+        Certification: {
+          type: 'object',
+          required: ['name', 'issuedBy'],
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Certification unique identifier',
+              example: '64f0f4f4f4f4f4f4f4f4f4f4'
+            },
+            name: {
+              type: 'string',
+              description: 'Certification name',
+              example: 'AWS Certified Solutions Architect'
+            },
+            issuedBy: {
+              type: 'string',
+              description: 'Issuing organization',
+              example: 'Amazon Web Services'
+            },
+            issueDate: {
+              type: 'string',
+              format: 'date',
+              description: 'Date when certification was issued',
+              example: '2023-06-15'
+            },
+            expiryDate: {
+              type: 'string',
+              format: 'date',
+              nullable: true,
+              description: 'Certification expiry date (null if no expiry)',
+              example: '2026-06-15'
+            },
+            certificateFile: {
+              type: 'string',
+              description: 'URL to certificate file',
+              example: 'https://cloudinary.com/certificate.pdf'
+            },
+            extracted: {
+              type: 'boolean',
+              default: false,
+              description: 'Whether certification details were extracted from file',
+              example: false
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Record creation timestamp',
+              example: '2025-08-15T10:30:00.000Z'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Record last update timestamp',
+              example: '2025-08-19T14:20:00.000Z'
+            }
+          }
         }
       },
       responses: {

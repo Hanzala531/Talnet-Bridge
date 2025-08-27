@@ -1,6 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiError } from "../utils/ApiError.js";
-import { successResponse } from "../utils/ApiResponse.js";
+import { ApiError, internalServer } from "../utils/ApiError.js";
+import { serverErrorResponse, successResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { 
   appendMessage, 
@@ -101,7 +101,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
         const cloudinaryResult = await uploadOnCloudinary(file.path);
         
         if (!cloudinaryResult) {
-          throw new ApiError(500, `Failed to upload file: ${file.originalname}`);
+         return res.json(serverErrorResponse(`Failed to upload file: ${file.originalname}`));
         }
         
         // Determine file type
@@ -124,7 +124,8 @@ export const sendMessage = asyncHandler(async (req, res) => {
           size: file.size,
           mimeType: file.mimetype,
         });
-      } catch (error) {throw new ApiError(500, `Failed to upload file: ${file.originalname}`);
+      } catch (error) {
+        throw new internalServer(`Failed to upload file: ${file.originalname}`);
       }
     }
   }
@@ -160,7 +161,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
     });
   }
   
-  res.status(200).json(
+  res.json(
     successResponse(
       { message },
       "Message sent successfully"
@@ -243,9 +244,10 @@ export const getMessages = asyncHandler(async (req, res) => {
     cursor,
   });
   
-  res.status(200).json(
+  res.json(
     successResponse(
-      result,
+      {result}
+      ,
       "Messages retrieved successfully"
     )
   );
@@ -333,7 +335,7 @@ export const markMessagesAsRead = asyncHandler(async (req, res) => {
     });
   }
   
-  res.status(200).json(
+  res.json(
     successResponse(
       {
         conversationId,
@@ -417,7 +419,7 @@ export const sendTypingIndicator = asyncHandler(async (req, res) => {
     });
   }
   
-  res.status(200).json(
+  res.json(
     successResponse(
       {
         conversationId,

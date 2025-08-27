@@ -101,17 +101,9 @@ const jobsRouter = express.Router();
  *                   type: string
  *                   example: "Jobs retrieved successfully"
  *       404:
- *         description: No jobs found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 jobsRouter.get('/', requestLogger, jobsCache, getAllJobs);
 
@@ -136,34 +128,11 @@ jobsRouter.get('/', requestLogger, jobsCache, getAllJobs);
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 statusCode:
- *                   type: integer
- *                   example: 200
- *                 data:
- *                   type: object
- *                   properties:
- *                     job:
- *                       $ref: '#/components/schemas/Job'
- *                 message:
- *                   type: string
- *                   example: "Job retrieved successfully"
+ *               $ref: '#/components/schemas/Job'
  *       404:
- *         description: Job not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
 
@@ -265,46 +234,15 @@ jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 statusCode:
- *                   type: integer
- *                   example: 201
- *                 data:
- *                   type: object
- *                   properties:
- *                     job:
- *                       $ref: '#/components/schemas/Job'
- *                 message:
- *                   type: string
- *                   example: "Job created successfully"
+ *               $ref: '#/components/schemas/Job'
  *       400:
- *         description: Missing required fields or validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/ValidationError'
  *       401:
- *         description: Unauthorized - Invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         description: Forbidden - Only verified employers can create jobs
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/ForbiddenError'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 jobsRouter.post('/', requestLogger, verifyJWT, authorizeRoles('employer'), createJobPost);
 
@@ -370,12 +308,16 @@ jobsRouter.post('/', requestLogger, verifyJWT, authorizeRoles('employer'), creat
  *     responses:
  *       200:
  *         description: Job updated successfully
- *       404:
- *         description: Job not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Job'
  *       401:
- *         description: Unauthorized
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         description: Forbidden - Only the job creator can update
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
  */
 jobsRouter.put('/:id', requestLogger, verifyJWT, authorizeRoles('employer'), updateJobPost);
 
@@ -397,19 +339,23 @@ jobsRouter.put('/:id', requestLogger, verifyJWT, authorizeRoles('employer'), upd
  *     responses:
  *       200:
  *         description: Job deleted successfully
- *       404:
- *         description: Job not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
  *       401:
- *         description: Unauthorized
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         description: Forbidden - Only the job creator can delete
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
  */
 jobsRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('employer'), deleteJobPost);
 
 // Additional routes
 /**
  * @swagger
- * /api/v1/jobs/search:
+ * /api/v1/jobs/search/advanced:
  *   get:
  *     summary: Search jobs with advanced filtering
  *     tags: [Jobs]
@@ -449,6 +395,34 @@ jobsRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('employer'), 
  *         schema:
  *           type: string
  *         description: Comma-separated skills filter
+ *     responses:
+ *       200:
+ *         description: Jobs retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     jobs:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Job'
+ *                     pagination:
+ *                       $ref: '#/components/schemas/PaginationInfo'
+ *                 message:
+ *                   type: string
+ *                   example: "Jobs retrieved successfully"
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 jobsRouter.get('/search/advanced', requestLogger, jobsCache, searchJobs);
 
@@ -460,6 +434,38 @@ jobsRouter.get('/search/advanced', requestLogger, jobsCache, searchJobs);
  *     tags: [Jobs]
  *     security:
  *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Jobs retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     jobs:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Job'
+ *                     pagination:
+ *                       $ref: '#/components/schemas/PaginationInfo'
+ *                 message:
+ *                   type: string
+ *                   example: "Jobs retrieved successfully"
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 jobsRouter.get('/my/posts', requestLogger, verifyJWT, authorizeRoles('employer'), getMyJobs);
 
@@ -487,6 +493,21 @@ jobsRouter.get('/my/posts', requestLogger, verifyJWT, authorizeRoles('employer')
  *               status:
  *                 type: string
  *                 enum: ["active", "closed", "expired"]
+ *     responses:
+ *       200:
+ *         description: Job status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Job'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
  */
 jobsRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('employer', 'admin'), updateJobStatus);
 

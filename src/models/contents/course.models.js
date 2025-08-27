@@ -38,7 +38,6 @@ const courseSchema = new mongoose.Schema({
     language: {
         type: String,
         required: true,
-        enum: ["English", "Urdu", "Spanish", "French", "German", "Other"]
     },
 
     // Course Type 
@@ -66,7 +65,6 @@ const courseSchema = new mongoose.Schema({
         required: true,
         maxLength: 1000
     },
-
     // Skills to Learn
     skills: {
         type: [String], // Array of skills

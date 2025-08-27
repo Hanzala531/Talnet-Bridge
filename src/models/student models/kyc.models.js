@@ -37,23 +37,10 @@ const kycSchema = new mongoose.Schema({
             }
         }
     ],
-    educationalQualifications: [
-        {
-            level: {
-                type: String,
-                required: true,
-                enum: [
-                    "High School Diploma/Gcse",
-                    "A-Levels",
-                    "Bachelors Degree",
-                    "Masters Degree",
-                    "Professional Diploma",
-                    "Trade Certificate",
-                    "Other"
-                ]
-            }
-        }
-    ],
+    educationalQualifications: {
+        type :[String],
+        required : true
+    },
     status: {
         type: String,
         enum: ["pending", "verified", "rejected"],

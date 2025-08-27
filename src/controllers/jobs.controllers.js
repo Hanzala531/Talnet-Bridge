@@ -21,7 +21,7 @@
 import { Job } from "../models/index.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { badRequest, notFound, internalServer, forbidden } from "../utils/ApiError.js";
-import { successResponse, createdResponse, badRequestResponse } from "../utils/ApiResponse.js";
+import { successResponse, createdResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from "../utils/ApiResponse.js";
 
 
 
@@ -120,10 +120,10 @@ const getAllJobs = asyncHandler(async (req, res) => {
         ]);
 
         if (!jobs || jobs.length === 0) {
-            throw notFound("No jobs found.");
+            return res.json(notFoundResponse("No jobs found."));
         }
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 {
                     jobs,
@@ -146,15 +146,15 @@ const getAllJobs = asyncHandler(async (req, res) => {
 const getJobById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        if (!id) throw badRequest("Job ID is required.");
+        if (!id) return res.json(badRequestResponse("Job ID is required."));
         const job = await Job.findById(id).populate({
             path: 'postedBy',
             select: 'fullName email role'
         });
-        if (!job) throw notFound("Job not found.");
-        return res.status(200).json(successResponse(job, "Job fetched successfully."));
+        if (!job) return res.json(notFoundResponse("Job not found."));
+        return res.json(successResponse(job, "Job fetched successfully."));
     } catch (error) {
-        return res.status(error.statusCode || 500).json(badRequestResponse(error.message));
+       throw internalServer(error.message);
     }
 });
 
@@ -202,7 +202,7 @@ const createJobPost = asyncHandler(async (req, res) => {
         const { jobTitle, department, location, employmentType, salary, jobDescription, skillsRequired, benefits, category, applicationDeadline } = req.body;
         const postedBy = req.user?._id;
         if (!jobTitle || !department || !location || !employmentType || !jobDescription || !category) {
-            throw badRequest("Missing required fields: jobTitle, department, location, employmentType, jobDescription, category");
+            return res.json(badRequestResponse("Missing required fields: jobTitle, department, location, employmentType, jobDescription, category"));
         }
         const job = await Job.create({
             jobTitle,
@@ -218,9 +218,9 @@ const createJobPost = asyncHandler(async (req, res) => {
             applicationDeadline
         });
         if (!job) throw internalServer("Failed to create job");
-        return res.status(201).json(createdResponse(job, "Job created successfully."));
+        return res.json(createdResponse(job, "Job created successfully."));
     } catch (error) {
-        return res.status(error.statusCode || 500).json(badRequestResponse(error.message));
+        throw internalServer(error.message);
     }
 });
 
@@ -229,17 +229,17 @@ const updateJobPost = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
-        if (!id) throw badRequest("Job ID is required.");
+        if (!id) return res.json(badRequestResponse("Job ID is required."));
         const job = await Job.findById(id);
-        if (!job) throw notFound("Job not found.");
+        if (!job) return res.json(notFoundResponse("Job not found."));
         // Only allow the user who posted the job to update
         if (job.postedBy.toString() !== req.user._id.toString()) {
-            throw forbidden("You are not authorized to update this job post.");
+            return res.json(forbiddenResponse("You are not authorized to update this job post."));
         }
         const updated = await Job.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
-        return res.status(200).json(successResponse(updated, "Job updated successfully."));
+        return res.json(successResponse(updated, "Job updated successfully."));
     } catch (error) {
-        return res.status(error.statusCode || 500).json(badRequestResponse(error.message));
+        throw internalServer(error.message);
     }
 });
 
@@ -247,17 +247,17 @@ const updateJobPost = asyncHandler(async (req, res) => {
 const deleteJobPost = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        if (!id) throw badRequest("Job ID is required.");
+        if (!id) return res.json(badRequestResponse("Job ID is required."));
         const job = await Job.findById(id);
-        if (!job) throw notFound("Job not found or already deleted.");
+        if (!job) return res.json(notFoundResponse("Job not found or already deleted."));
         // Only allow the user who posted the job to delete
         if (job.postedBy.toString() !== req.user._id.toString()) {
-            throw forbidden("You are not authorized to delete this job post.");
+            return res.json(forbiddenResponse("You are not authorized to delete this job post."));
         }
         await Job.findByIdAndDelete(id);
-        return res.status(200).json(successResponse(null, "Job deleted successfully."));
+        return res.json(successResponse(null, "Job deleted successfully."));
     } catch (error) {
-        return res.status(error.statusCode || 500).json(badRequestResponse(error.message));
+        throw internalServer(error.message)
     }
 });
 
@@ -343,7 +343,7 @@ const searchJobs = asyncHandler(async (req, res) => {
             Job.countDocuments(filter)
         ]);
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 {
                     jobs,
@@ -392,7 +392,7 @@ const getMyJobs = asyncHandler(async (req, res) => {
             Job.countDocuments(filter)
         ]);
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 {
                     jobs,
@@ -429,17 +429,17 @@ const updateJobStatus = asyncHandler(async (req, res) => {
 
         const validStatuses = ['active', 'closed', 'expired'];
         if (!validStatuses.includes(status)) {
-            throw badRequest("Invalid status. Must be one of: active, closed, expired");
+            return res.json(badRequestResponse("Invalid status. Must be one of: active, closed, expired"));
         }
 
         const job = await Job.findById(id);
         if (!job) {
-            throw notFound("Job not found");
+            return res.json(notFoundResponse("Job not found"));
         }
 
         // Check authorization
         if (job.postedBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            throw forbidden("You are not authorized to update this job status");
+            return res.json(forbiddenResponse("You are not authorized to update this job status"));
         }
 
         job.status = status;
@@ -449,13 +449,13 @@ const updateJobStatus = asyncHandler(async (req, res) => {
 
         await job.save();
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 { job: { _id: job._id, status: job.status, closedAt: job.closedAt } },
                 `Job status updated to ${status} successfully`
             )
         );
-    } catch (error) {throw error;
+    } catch (error) {throw internalServer(error.message);
     }
 });
 

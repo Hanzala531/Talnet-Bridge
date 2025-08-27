@@ -125,7 +125,15 @@ const kycRouter = express.Router();
  *       401:
  *         description: Unauthorized
  */
-kycRouter.post('/initial', requestLogger, verifyJWT, upload.array('documents', 10), submitInitialKYC);
+kycRouter.post('/initial', requestLogger, verifyJWT, 
+    upload.fields([
+    { name: "addressProof", maxCount: 1 },
+    { name: "govtId", maxCount: 1 },
+    { name: "electricityBill", maxCount: 1 },
+    { name: "bankStatement", maxCount: 1 },
+    { name: "educationalCertificates", maxCount: 1 },
+  ])
+, submitInitialKYC);
 
 /**
  * @swagger

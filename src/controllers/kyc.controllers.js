@@ -1,6 +1,6 @@
 import { User } from "../models/contents/User.models.js";
 import { KYC } from "../models/student models/kyc.models.js";
-import { successResponse, badRequestResponse, createdResponse, updatedResponse } from "../utils/ApiResponse.js";
+import { successResponse, badRequestResponse, createdResponse, updatedResponse, notFoundResponse, forbiddenResponse } from "../utils/ApiResponse.js";
 import { badRequest, internalServer, notFound, forbidden } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import mongoose from "mongoose";
@@ -16,30 +16,30 @@ const uploadDocs = asyncHandler(async (req, res) => {
         const { documents } = req.body;
 
         if (!documents || !Array.isArray(documents) || documents.length === 0) {
-            throw badRequest("Documents array is required");
+            return res.json(badRequestResponse("Documents array is required"));
         }
 
         // Validate document types (aligned with KYC model)
         const validDocTypes = ['addressProof', 'govtId', 'electricityBill', 'bankStatement', 'educationalCertificates', 'other'];
         for (const doc of documents) {
             if (!doc.docType || !validDocTypes.includes(doc.docType)) {
-                throw badRequest(`Invalid document type: ${doc.docType}. Valid types: ${validDocTypes.join(', ')}`);
+                return res.json(badRequestResponse(`Invalid document type: ${doc.docType}. Valid types: ${validDocTypes.join(', ')}`));
             }
             if (!doc.docUrl) {
-                throw badRequest("Document URL is required");
+                return res.json(badRequestResponse("Document URL is required"));
             }
         }
 
         const kyc = await KYC.findOne({ userId });
         if (!kyc) {
-            throw notFound("KYC record not found");
+            return res.json( notFoundResponse("KYC record not found"));
         }
 
         kyc.documents = [...kyc.documents, ...documents];
         kyc.status = 'pending'; // Reset to pending after document upload
         await kyc.save();
 
-        return res.status(200).json(
+        return res.json(
             updatedResponse(
                 { kyc: { _id: kyc._id, status: kyc.status, documentsCount: kyc.documents.length } },
                 "Documents uploaded successfully"
@@ -57,10 +57,10 @@ const updatePersonalInfo = asyncHandler(async (req, res) => {
         const { fullLegalName, dateOfBirth, nationalInsuranceNumber, educationalQualifications } = req.body;
 
         if (!fullLegalName || !dateOfBirth) {
-            throw badRequest("Full legal name and date of birth are required");
+            return res.json(badRequestResponse("Full legal name and date of birth are required"));
         }
 
-        // Validate educational qualifications
+        // Validate and normalize educational qualifications
         const validLevels = [
             "High School Diploma/Gcse",
             "A-Levels",
@@ -70,10 +70,17 @@ const updatePersonalInfo = asyncHandler(async (req, res) => {
             "Trade Certificate",
             "Other"
         ];
+        let normalizedQualifications = educationalQualifications;
         if (educationalQualifications) {
-            for (const qualification of educationalQualifications) {
+            // If a string is sent, convert to array of objects
+            if (typeof educationalQualifications === "string") {
+                normalizedQualifications = [{ level: educationalQualifications }];
+            } else if (Array.isArray(educationalQualifications) && typeof educationalQualifications[0] === "string") {
+                normalizedQualifications = educationalQualifications.map(lvl => ({ level: lvl }));
+            }
+            for (const qualification of normalizedQualifications) {
                 if (!validLevels.includes(qualification.level)) {
-                    throw badRequest(`Invalid educational qualification level: ${qualification.level}`);
+                    return res.json(badRequestResponse(`Invalid educational qualification level: ${qualification.level}`));
                 }
             }
         }
@@ -83,109 +90,164 @@ const updatePersonalInfo = asyncHandler(async (req, res) => {
             throw notFound("KYC record not found");
         }
 
-        kyc.fullLegalName = fullLegalName;
-        kyc.dateOfBirth = dateOfBirth;
-        kyc.nationalInsuranceNumber = nationalInsuranceNumber;
-        kyc.educationalQualifications = educationalQualifications;
-        kyc.status = 'pending'; // Reset to pending after updates
-        await kyc.save();
+    kyc.fullLegalName = fullLegalName;
+    kyc.dateOfBirth = dateOfBirth;
+    kyc.nationalInsuranceNumber = nationalInsuranceNumber;
+    kyc.educationalQualifications = normalizedQualifications;
+    kyc.status = 'pending'; // Reset to pending after updates
+    await kyc.save();
 
-        return res.status(200).json(
+        return res.json(
             updatedResponse(
                 { kyc: { _id: kyc._id, status: kyc.status } },
                 "Personal information updated successfully"
             )
         );
-    } catch (error) {throw error;}
+    } catch (error) {
+        throw internalServer(error.message);}
 });
 
 // ===============================
 // INITIAL KYC SUBMISSION
 // ===============================
+// ===============================
+// KYC SUBMISSION (Initial + Educational Certificates)
+// ===============================
 const submitInitialKYC = asyncHandler(async (req, res) => {
-    try {
-        const userId = req.user._id;
-        const { fullLegalName, dateOfBirth, nationalInsuranceNumber, educationalQualifications } = req.body;
+  try {
+    const userId = req.user._id;
+    const {
+      fullLegalName,
+      dateOfBirth,
+      nationalInsuranceNumber,
+      educationalQualifications,
+    } = req.body;
 
-        if (!fullLegalName || !dateOfBirth || !req.files || req.files.length === 0) {
-            throw badRequest("Full legal name, date of birth, and documents are required");
-        }
+    // Check if a KYC record exists already
+    let kyc = await KYC.findOne({ userId });
 
-        // Convert dateOfBirth to a valid format
-        const parsedDateOfBirth = new Date(dateOfBirth);
-        if (isNaN(parsedDateOfBirth)) {
-            throw badRequest("Invalid date format for dateOfBirth. Use YYYY-MM-DD.");
-        }
+    // ======================================================
+    // CASE 1: Initial KYC Submission
+    // ======================================================
+    if (!kyc) {
+      if (!fullLegalName || !dateOfBirth || !req.files || Object.keys(req.files).length === 0) {
+        return res.json(badRequestResponse("Full legal name, date of birth, and documents are required for initial KYC."));
+      }
 
-        // Validate educational qualifications
-        const validLevels = [
-            "High School Diploma/Gcse",
-            "A-Levels",
-            "Bachelors Degree",
-            "Masters Degree",
-            "Professional Diploma",
-            "Trade Certificate",
-            "Other"
-        ];
-        if (educationalQualifications) {
-            for (const qualification of educationalQualifications) {
-                if (!validLevels.includes(qualification.level)) {
-                    throw badRequest(`Invalid educational qualification level: ${qualification.level}`);
+      // Validate date
+      const parsedDateOfBirth = new Date(dateOfBirth);
+      if (isNaN(parsedDateOfBirth)) {
+        return res.json(badRequestResponse("Invalid date format for dateOfBirth. Use YYYY-MM-DD."));
+      }
+
+            // Validate and normalize educational qualifications (if provided)
+            const validLevels = [
+                "High School Diploma/Gcse",
+                "A-Levels",
+                "Bachelors Degree",
+                "Masters Degree",
+                "Professional Diploma",
+                "Trade Certificate",
+                "Other"
+            ];
+            let normalizedQualifications = educationalQualifications;
+            if (educationalQualifications) {
+                if (typeof educationalQualifications === "string") {
+                    normalizedQualifications = [{ level: educationalQualifications }];
+                } else if (Array.isArray(educationalQualifications) && typeof educationalQualifications[0] === "string") {
+                    normalizedQualifications = educationalQualifications.map(lvl => ({ level: lvl }));
+                }
+                for (const qualification of normalizedQualifications) {
+                    if (!validLevels.includes(qualification.level)) {
+                        return res.json(badRequestResponse(`Invalid educational qualification level: ${qualification.level}`));
+                    }
                 }
             }
+
+      // Upload documents
+      const documents = [];
+      const validDocTypes = [
+        "addressProof",
+        "govtId",
+        "electricityBill",
+        "bankStatement",
+        "educationalCertificates", // optional
+        "other",
+      ];
+
+      for (const field in req.files) {
+        for (const file of req.files[field]) {
+          const uploadResult = await uploadOnCloudinary(file.path);
+          let docType = file.fieldname;
+          if (!validDocTypes.includes(docType)) {
+            docType = "other";
+          }
+          documents.push({ docType, docUrl: uploadResult.secure_url });
         }
+      }
 
-        // Upload documents to Cloudinary
-        const documents = [];
-        const validDocTypes = ['addressProof', 'govtId', 'electricityBill', 'bankStatement', 'educationalCertificates', 'other'];
-        
-        for (const file of req.files) {
-            const uploadResult = await uploadOnCloudinary(file.path);
-            
-            let docType = file.fieldname;
-            if (!validDocTypes.includes(docType)) {
-                docType = 'other'; // Default to 'other' if invalid
-            }
-            
-            documents.push({
-                docType: docType,
-                docUrl: uploadResult.secure_url
-            });
-        }
+            // Create KYC
+            const kycData = {
+                userId,
+                fullLegalName,
+                dateOfBirth: parsedDateOfBirth,
+                nationalInsuranceNumber,
+                documents,
+                educationalQualifications: normalizedQualifications,
+                status: "pending",
+            };
 
-        // Check if KYC already exists
-        const existingKYC = await KYC.findOne({ userId }).lean();
-        if (existingKYC) {
-            throw badRequest("KYC already submitted. Use update controllers for modifications.");
-        }
+            kyc = await KYC.create(kycData);
 
+      // Link to student profile
+      const student = await Student.findOne({ userId });
+      if (student) {
+        student.kycVerification = kyc._id;
+        await student.save();
+      }
 
-
-        // Create new KYC record
-        const kycData = {
-            userId,
-            fullLegalName,
-            dateOfBirth: parsedDateOfBirth, // Use the parsed date
-            nationalInsuranceNumber,
-            documents,
-            educationalQualifications,
-            status: "pending"
-        };
-
-        const kyc = await KYC.create(kycData);
-
-        // update the student profile
-        const student = await Student.findOne({userId: userId})
-        student.kycVerification=kycData._id
-        return res.status(201).json(
-            createdResponse(
-                { kyc: { _id: kyc._id, status: kyc.status, documentsCount: documents.length } },
-                "KYC submitted successfully"
-            )
-        );
-    } catch (error) {
-        throw error;
+      return res.json(
+        createdResponse(
+          { kyc: { _id: kyc._id, status: kyc.status, documentsCount: documents.length } },
+          "KYC submitted successfully"
+        )
+      );
     }
+
+    // ======================================================
+    // CASE 2: Upload Additional Educational Certificates
+    // ======================================================
+    if (!req.files || Object.keys(req.files).length === 0) {
+      return res.json(badRequestResponse("Certificates are required for update."));
+    }
+
+    const certificates = [];
+    if (req.files.educationalCertificates) {
+      for (const file of req.files.educationalCertificates) {
+        const uploadResult = await uploadOnCloudinary(file.path);
+        certificates.push({
+          docType: "educationalCertificates",
+          docUrl: uploadResult.secure_url,
+        });
+      }
+    }
+
+    // Append certificates
+    if (certificates.length > 0) {
+      kyc.documents = [...kyc.documents, ...certificates];
+      kyc.status = "pending"; // Reset status on new uploads
+      await kyc.save();
+    }
+
+    return res.json(
+      updatedResponse(
+        { kyc: { _id: kyc._id, status: kyc.status, certificatesCount: certificates.length } },
+        "Educational certificates uploaded successfully"
+      )
+    );
+  } catch (error) {
+    throw error;
+  }
 });
 
 // ===============================
@@ -196,7 +258,7 @@ const uploadEducationalCertificates = asyncHandler(async (req, res) => {
         const userId = req.user._id;
 
         if (!req.files || req.files.length === 0) {
-            throw badRequest("Certificates are required");
+            return res.json(badRequestResponse("Certificates are required"));
         }
 
         const kyc = await KYC.findOne({ userId });
@@ -218,7 +280,7 @@ const uploadEducationalCertificates = asyncHandler(async (req, res) => {
         kyc.status = 'pending'; // Reset to pending after certificate upload
         await kyc.save();
 
-        return res.status(200).json(
+        return res.json(
             updatedResponse(
                 { kyc: { _id: kyc._id, status: kyc.status, certificatesCount: certificates.length } },
                 "Educational certificates uploaded successfully"
@@ -235,12 +297,12 @@ const addDocuments = asyncHandler(async (req, res) => {
         const userId = req.user._id;
 
         if (!req.files || req.files.length === 0) {
-            throw badRequest("Documents are required");
+            return res.json(badRequestResponse("Documents are required"));
         }
 
         const kyc = await KYC.findOne({ userId });
         if (!kyc) {
-            throw notFound("KYC record not found");
+            return res.json (notFoundResponse("KYC record not found"));
         }
 
         // Upload documents to Cloudinary
@@ -266,7 +328,7 @@ const addDocuments = asyncHandler(async (req, res) => {
         kyc.status = 'pending'; // Reset to pending after document upload
         await kyc.save();
 
-        return res.status(200).json(
+        return res.json(
             updatedResponse(
                 { kyc: { _id: kyc._id, status: kyc.status, documentsCount: kyc.documents.length } },
                 "Documents added successfully"
@@ -302,7 +364,7 @@ const getAllKYCDocs = asyncHandler(async (req, res) => {
             KYC.countDocuments(filter)
         ]);
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 {
                     kycDocs,
@@ -327,7 +389,7 @@ const getKYCById = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw badRequest("Invalid KYC ID");
+            return res.json(badRequestResponse("Invalid KYC ID"));
         }
 
         const kyc = await KYC.findById(id)
@@ -336,15 +398,15 @@ const getKYCById = asyncHandler(async (req, res) => {
             .lean();
 
         if (!kyc) {
-            throw notFound("KYC record not found");
+            return res.json(notFoundResponse("KYC record not found"));
         }
 
         // Check if user can access this KYC
         if (req.user.role !== 'admin' && kyc.userId._id.toString() !== req.user._id.toString()) {
-            throw forbidden("Access denied");
+            return res.json(forbiddenResponse("Access denied"));
         }
 
-        return res.status(200).json(successResponse({ kyc }, "KYC retrieved successfully"));
+        return res.json(successResponse({ kyc }, "KYC retrieved successfully"));
     } catch (error) {throw error;}
 });
 
@@ -361,10 +423,10 @@ const getMyKYC = asyncHandler(async (req, res) => {
             .lean();
 
         if (!kyc) {
-            throw notFound("No KYC record found");
+            return res.json (notFoundResponse("No KYC record found"));
         }
 
-        return res.status(200).json(successResponse({ kyc }, "KYC retrieved successfully"));
+        return res.json(successResponse({ kyc }, "KYC retrieved successfully"));
     } catch (error) {throw internalServer("Failed to fetch KYC");}
 });
 
@@ -377,15 +439,15 @@ const verifyKYC = asyncHandler(async (req, res) => {
         const { status, rejectionReason } = req.body;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw badRequest("Invalid KYC ID");
+            return res.json(badRequestResponse("Invalid KYC ID"));
         }
 
         if (!['verified', 'rejected'].includes(status)) {
-            throw badRequest("Status must be 'verified' or 'rejected'");
+            return res.json(badRequestResponse("Status must be 'verified' or 'rejected'"));
         }
 
         if (status === 'rejected' && !rejectionReason) {
-            throw badRequest("Rejection reason is required when rejecting KYC");
+            return res.json(badRequestResponse("Rejection reason is required when rejecting KYC"));
         }
 
         const updateData = {
@@ -403,16 +465,16 @@ const verifyKYC = asyncHandler(async (req, res) => {
             .lean();
 
         if (!kyc) {
-            throw notFound("KYC record not found");
+            return res.json (notFoundResponse("KYC record not found"));
         }
 
-        return res.status(200).json(
+        return res.json(
             updatedResponse(
                 { kyc: { _id: kyc._id, status: kyc.status, verifiedAt: kyc.verifiedAt } },
                 `KYC ${status} successfully`
             )
         );
-    } catch (error) {throw error;}
+    } catch (error) {throw internalServer(error);}
 });
 
 // ===============================
@@ -424,26 +486,26 @@ const updateKYCDocs = asyncHandler(async (req, res) => {
         const { documents } = req.body;
 
         if (!documents || !Array.isArray(documents) || documents.length === 0) {
-            throw badRequest("Documents array is required");
+            return res.json(badRequestResponse("Documents array is required"));
         }
 
         const kyc = await KYC.findOne({ userId });
         if (!kyc) {
-            throw notFound("KYC record not found");
+            return res.json (notFoundResponse("KYC record not found"));
         }
 
         if (kyc.status === 'verified') {
-            throw badRequest("Cannot update verified KYC documents");
+            return res.json(badRequestResponse("Cannot update verified KYC documents"));
         }
 
         // Validate document types (aligned with KYC model)
         const validDocTypes = ['addressProof', 'govtId', 'electricityBill', 'bankStatement', 'educationalCertificates', 'other'];
         for (const doc of documents) {
             if (!doc.docType || !validDocTypes.includes(doc.docType)) {
-                throw badRequest(`Invalid document type: ${doc.docType}. Valid types: ${validDocTypes.join(', ')}`);
+                return res.json(badRequestResponse(`Invalid document type: ${doc.docType}. Valid types: ${validDocTypes.join(', ')}`));
             }
             if (!doc.docUrl) {
-                throw badRequest("Document URL is required");
+                return res.json(badRequestResponse("Document URL is required"));
             }
         }
 
@@ -461,7 +523,7 @@ const updateKYCDocs = asyncHandler(async (req, res) => {
                 "KYC documents updated successfully"
             )
         );
-    } catch (error) {throw error;}
+    } catch (error) {throw internalServer(error);}
 });
 
 // ===============================
@@ -472,15 +534,15 @@ const deleteKYC = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw badRequest("Invalid KYC ID");
+            return res.json(badRequestResponse("Invalid KYC ID"));
         }
 
         const kyc = await KYC.findByIdAndDelete(id);
         if (!kyc) {
-            throw notFound("KYC record not found");
+            return res.json (notFoundResponse("KYC record not found"));
         }
 
-        return res.status(200).json(successResponse(null, "KYC record deleted successfully"));
+        return res.json(successResponse(null, "KYC record deleted successfully"));
     } catch (error) {throw internalServer("Failed to delete KYC record");}
 });
 

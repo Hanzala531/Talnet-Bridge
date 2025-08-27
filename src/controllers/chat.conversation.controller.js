@@ -1,6 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
-import { successResponse } from "../utils/ApiResponse.js";
+import { notFoundResponse, serverErrorResponse, successResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/index.js";
 import { 
   findOrCreateDm, 
@@ -73,18 +73,18 @@ export const startConversation = asyncHandler(async (req, res) => {
   
   // For now, only support DM conversations
   if (isGroup) {
-    throw new ApiError(501, "Group conversations are not implemented yet");
+    return res.json (serverErrorResponse("Group conversations are not implemented yet"));
   }
   
   // Validate that initiator is not trying to message themselves
   if (initiatorId.toString() === targetUserId.toString()) {
-    throw new ApiError(400, "Cannot start conversation with yourself");
+    return res.json(notFoundResponse( "Cannot start conversation with yourself"));
   }
   
   // Find target user and verify they exist
   const targetUser = await User.findById(targetUserId).select("fullName email role");
   if (!targetUser) {
-    throw new ApiError(404, "Target user not found");
+    return res.json(notFoundResponse( "Target user not found"));
   }
   
   // Create or find existing conversation
@@ -98,7 +98,7 @@ export const startConversation = asyncHandler(async (req, res) => {
   // Get preview for the current user
   const conversationPreview = conversation.getPreviewForUser(initiatorId);
   
-  res.status(200).json(
+  res.json(
     successResponse(
       { conversation: conversationPreview },
       "Conversation retrieved successfully"
@@ -174,7 +174,7 @@ export const listConversations = asyncHandler(async (req, res) => {
     search,
   });
   
-  res.status(200).json(
+  res.json(
     successResponse(
       result,
       "Conversations retrieved successfully"
@@ -233,7 +233,7 @@ export const getConversationDetails = asyncHandler(async (req, res) => {
   const conversation = await getConversationWithAccess(conversationId, userId);
   const conversationPreview = conversation.getPreviewForUser(userId);
   
-  res.status(200).json(
+  res.json(
     successResponse(
       { conversation: conversationPreview },
       "Conversation details retrieved successfully"

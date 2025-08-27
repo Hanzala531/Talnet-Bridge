@@ -3,13 +3,11 @@ import {
   successResponse,
   createdResponse,
   updatedResponse,
+  badRequestResponse,
+  notFoundResponse,
 } from "../utils/ApiResponse.js";
 import {
-  badRequest,
   internalServer,
-  notFound,
-  forbidden,
-  conflict,
 } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import mongoose from "mongoose";
@@ -23,23 +21,23 @@ const createExperience = asyncHandler(async (req, res) => {
     const { title, company, startDate, endDate, description } = req.body;
 
     if (!title || !company || !startDate) {
-      throw badRequest("Title, company, and startDate are required");
+      return res.json (badRequestResponse("Title, company, and startDate are required"));
     }
 
     // Validate dates
     const start = new Date(startDate);
     if (isNaN(start.getTime())) {
-      throw badRequest("Invalid start date");
+      return res.json (badRequestResponse("Invalid start date"));
     }
 
     let end = null;
     if (endDate) {
       end = new Date(endDate);
       if (isNaN(end.getTime())) {
-        throw badRequest("Invalid end date");
+        return res.json (badRequestResponse("Invalid end date"));
       }
       if (end < start) {
-        throw badRequest("End date cannot be before start date");
+        return res.json (badRequestResponse("End date cannot be before start date"));
       }
     }
 
@@ -53,7 +51,7 @@ const createExperience = asyncHandler(async (req, res) => {
     });
 
     if (existingExperience) {
-      throw conflict("The experience with this data has already been added");
+      return res.json (conflictResponse("The experience with this data has already been added"));
     }
 
     const experienceData = {
@@ -72,7 +70,7 @@ const createExperience = asyncHandler(async (req, res) => {
     if (!student) {
       // Delete the created experience if student not found
       await Experience.findByIdAndDelete(experience._id);
-      throw notFound("Student not found to link experience");
+      return res.json(notFoundResponse("Student not found to link experience"));
     }
     // Ensure student.experience is an array, then push new experience
     student.experience = Array.isArray(student.experience)
@@ -80,7 +78,7 @@ const createExperience = asyncHandler(async (req, res) => {
       : [experience._id];
     await student.save();
 
-    return res.status(201).json(
+    return res.json(
       createdResponse(
         {
           experience: {
@@ -97,7 +95,7 @@ const createExperience = asyncHandler(async (req, res) => {
       )
     );
   } catch (error) {
-    throw error;
+    throw internalServer("Error in adding experience");
   }
 });
 
@@ -164,7 +162,7 @@ const getAllExperiences = asyncHandler(async (req, res) => {
       duration: calculateDuration(exp.startDate, exp.endDate),
     }));
 
-    return res.status(200).json(
+    return res.json(
       successResponse(
         {
           experiences: enhancedExperiences,
@@ -192,7 +190,7 @@ const getExperienceById = asyncHandler(async (req, res) => {
     const experience = await Experience.find({ userId }).lean();
 
     if (!experience) {
-      throw notFound("Experience not found");
+      return res.json(notFoundResponse("Experience not found"));
     }
 
     // Add computed fields
@@ -203,7 +201,6 @@ const getExperienceById = asyncHandler(async (req, res) => {
     };
 
     return res
-      .status(200)
       .json(
         successResponse(
           { experience: enhancedExperience },
@@ -211,7 +208,7 @@ const getExperienceById = asyncHandler(async (req, res) => {
         )
       );
   } catch (error) {
-    throw error;
+    throw internalServer("Error in retrieving experience");
   }
 });
 
@@ -224,12 +221,12 @@ const updateExperience = asyncHandler(async (req, res) => {
     const { title, company, startDate, endDate, description } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw badRequest("Invalid experience ID");
+      return res.json (badRequestResponse("Invalid experience ID"));
     }
 
     const experience = await Experience.findById(id);
     if (!experience) {
-      throw notFound("Experience not found");
+      return res.json(notFoundResponse("Experience not found"));
     }
 
     // Validate dates if provided
@@ -239,7 +236,7 @@ const updateExperience = asyncHandler(async (req, res) => {
     if (startDate) {
       start = new Date(startDate);
       if (isNaN(start.getTime())) {
-        throw badRequest("Invalid start date");
+        return res.json (badRequestResponse("Invalid start date"));
       }
     }
 
@@ -249,10 +246,10 @@ const updateExperience = asyncHandler(async (req, res) => {
       } else {
         end = new Date(endDate);
         if (isNaN(end.getTime())) {
-          throw badRequest("Invalid end date");
+          return res.json (badRequestResponse("Invalid end date"));
         }
         if (end < start) {
-          throw badRequest("End date cannot be before start date");
+          return res.json (badRequestResponse("End date cannot be before start date"));
         }
       }
     }
@@ -268,7 +265,7 @@ const updateExperience = asyncHandler(async (req, res) => {
     Object.assign(experience, updateData);
     await experience.save();
 
-    return res.status(200).json(
+    return res.json(
       updatedResponse(
         {
           experience: {
@@ -288,7 +285,7 @@ const updateExperience = asyncHandler(async (req, res) => {
       )
     );
   } catch (error) {
-    throw error;
+    throw internalServer("Error in updating experience");
   }
 });
 
@@ -300,16 +297,15 @@ const deleteExperience = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw badRequest("Invalid experience ID");
+      return res.json (badRequestResponse("Invalid experience ID"));
     }
 
     const experience = await Experience.findByIdAndDelete(id);
     if (!experience) {
-      throw notFound("Experience not found");
+      return res.json(notFoundResponse("Experience not found"));
     }
 
     return res
-      .status(200)
       .json(successResponse(null, "Experience deleted successfully"));
   } catch (error) {
     throw internalServer("Failed to delete experience");
@@ -324,7 +320,7 @@ const searchExperiences = asyncHandler(async (req, res) => {
     const { q, limit = 20 } = req.query;
 
     if (!q || q.trim().length < 2) {
-      throw badRequest("Search query must be at least 2 characters");
+      return res.json (badRequestResponse("Search query must be at least 2 characters"));
     }
 
     const searchTerm = q.trim();
@@ -349,7 +345,7 @@ const searchExperiences = asyncHandler(async (req, res) => {
       duration: calculateDuration(exp.startDate, exp.endDate),
     }));
 
-    return res.status(200).json(
+    return res.json(
       successResponse(
         {
           experiences: enhancedExperiences,
@@ -360,7 +356,7 @@ const searchExperiences = asyncHandler(async (req, res) => {
       )
     );
   } catch (error) {
-    throw error;
+    throw internalServer("Error in searching experience");
   }
 });
 
@@ -373,7 +369,7 @@ const getExperiencesByCompany = asyncHandler(async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
 
     if (!company || company.trim().length < 2) {
-      throw badRequest("Company name must be at least 2 characters");
+      return res.json (badRequestResponse("Company name must be at least 2 characters"));
     }
 
     const skip = (page - 1) * Math.min(limit, 100);
@@ -398,7 +394,7 @@ const getExperiencesByCompany = asyncHandler(async (req, res) => {
       duration: calculateDuration(exp.startDate, exp.endDate),
     }));
 
-    return res.status(200).json(
+    return res.json(
       successResponse(
         {
           experiences: enhancedExperiences,
@@ -414,7 +410,7 @@ const getExperiencesByCompany = asyncHandler(async (req, res) => {
       )
     );
   } catch (error) {
-    throw error;
+    throw internalServer("Error in retrieving experience by company");
   }
 });
 

@@ -5,14 +5,13 @@ import {
     createdResponse,
   updatedResponse,
   badRequestResponse,
+  unauthorizedResponse,
+  forbiddenResponse,
+  notFoundResponse,
+  conflictResponse,
 } from "../utils/ApiResponse.js";
 import {
-    badRequest,
     internalServer,
-    notFound,
-    forbidden,
-    unauthorized,
-    conflict
 } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import mongoose from "mongoose";
@@ -24,48 +23,58 @@ const createStudentProfile = asyncHandler(async (req, res) => {
     try {
         const user = req.user;
         if (!user || user.role !== "student") {
-      throw unauthorized(
+      return res.json(unauthorizedResponse(
         "You do not have permission to create a student profile"
-    );
+    ));
     }
 
     // Check if student profile already exists
     const existingStudent = await Student.findOne({ userId: user._id });
     if (existingStudent) {
-        throw badRequest("Student profile already exists");
+        return res.json(badRequestResponse("Student profile already exists"));
     }
-    const basicDetails = await User.findById(user._id).select(
-        "fullName email phone profilePicture"
-    );
     
-    // Extract student-specific fields from the request body
-    const { bio, location, website } = req.body;
+    // Extract all fields from the request body
+    const { 
+        firstName, 
+        lastName, 
+        email, 
+        phone, 
+        bio, 
+        location, 
+        website        
+    } = req.body;
     
-    // Create the student profile
+    // Validate required fields
+    if (!firstName || !lastName || !email || !phone) {
+        return res.json(badRequestResponse("firstName, lastName, email, and phone are required"));
+    }
+    
+    // Create the student profile with all required fields
     const studentProfile = await Student.create({
         userId: user._id,
+        firstName,
+        lastName,
+        email,
+        phone,
         bio,
         website,
-        location,
+        location
     });
-    
-    const { firstName, lastName } = splitFullName(basicDetails.fullName);
 
     const response = {
         studentId: studentProfile._id,
         userId: user._id,
-      firstName,
-      lastName,
-      email: basicDetails.email,
-      phone: basicDetails.phone,
-      profilePicture: basicDetails.profilePicture,
-      location,
-      website,
-      bio,
+        firstName: studentProfile.firstName,
+        lastName: studentProfile.lastName,
+        email: studentProfile.email,
+        phone: studentProfile.phone,
+        location: studentProfile.location,
+        website: studentProfile.website,
+        bio: studentProfile.bio
     };
 
     return res
-      .status(201)
       .json(successResponse(response, "Student profile created successfully"));
   } catch (error) {
       console.error("Error in createStudentProfile:", error);
@@ -85,10 +94,10 @@ const getAllStudents = asyncHandler(async (req, res) => {
       skills,
       sort = "-createdAt",
       select,
-      fullName,
+      firstName,
+      lastName,
       email,
       phone,
-      status,
     } = req.query;
 
     // Parse pagination
@@ -96,17 +105,10 @@ const getAllStudents = asyncHandler(async (req, res) => {
     const limitNum = Math.min(100, parseInt(limit, 10) || 10);
     const skip = (pageNum - 1) * limitNum;
     
-    // Base filter → only students
-    const userFilter = { role: "student" };
-
-    // User-level filters
-    if (fullName) userFilter.fullName = { $regex: fullName, $options: "i" };
-    if (email) userFilter.email = { $regex: email, $options: "i" };
-    if (phone) userFilter.phone = { $regex: phone, $options: "i" };
-    if (status) userFilter.status = status;
-
-    // Student-level filters (need to join with Student)
+    // Build filter for Student collection
     const studentFilter = {};
+
+    // Student-level filters
     if (location) {
       studentFilter.location = { $regex: location, $options: "i" };
     }
@@ -117,48 +119,48 @@ const getAllStudents = asyncHandler(async (req, res) => {
         .filter(Boolean);
       if (skillsArray.length) studentFilter.skills = { $in: skillsArray };
     }
+    if (firstName) {
+      studentFilter.firstName = { $regex: firstName, $options: "i" };
+    }
+    if (lastName) {
+      studentFilter.lastName = { $regex: lastName, $options: "i" };
+    }
+    if (email) {
+      studentFilter.email = { $regex: email, $options: "i" };
+    }
+    if (phone) {
+      studentFilter.phone = { $regex: phone, $options: "i" };
+    }
 
     // Build projection
-    let projection = "fullName email role status phone";
+    let projection = "firstName lastName email phone location bio skills createdAt updatedAt";
     if (select && select.trim()) {
       projection = select.split(",").join(" ");
     }
 
-    // Fetch matching users with role=student
-    const [users, total] = await Promise.all([
-      User.find(userFilter)
+    // Fetch students with filters
+    const [students, total] = await Promise.all([
+      Student.find(studentFilter)
+        .populate("userId", "role status profilePicture")
+        .populate("certifications", "name")
+        .populate("experience", "title")
         .select(projection)
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
         .lean(),
-      User.countDocuments(userFilter),
+      Student.countDocuments(studentFilter),
     ]);
 
-    // If student-specific filters exist → enrich with Student collection
-    let resultUsers = users;
-    if (Object.keys(studentFilter).length > 0) {
-      const userIds = users.map((u) => u._id);
-      const students = await Student.find({
-        userId: { $in: userIds },
-        ...studentFilter,
-      })
-        .select("userId bio location skills createdAt updatedAt")
-        .lean();
-        
-      const studentMap = new Map(students.map((s) => [s.userId.toString(), s]));
-      resultUsers = users
-      .map((u) => ({
-          ...u,
-          studentInfo: studentMap.get(u._id.toString()) || null,
-        }))
-        .filter((u) => u.studentInfo); // remove users that didn’t match student filters
-    }
+    // Filter out students whose user role is not "student" (additional safety check)
+    const validStudents = students.filter(student => 
+      student.userId && student.userId.role === "student"
+    );
 
     return res.status(200).json(
       successResponse(
         {
-          students: resultUsers,
+          students: validStudents,
           pagination: {
             page: pageNum,
             limit: limitNum,
@@ -170,6 +172,7 @@ const getAllStudents = asyncHandler(async (req, res) => {
       )
     );
   } catch (error) {
+    console.error("Error in getAllStudents:", error);
     throw internalServer("Failed to fetch students");
   }
 });
@@ -182,18 +185,18 @@ const getStudentById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw badRequest("Invalid student ID");
+      return res.json(badRequestResponse("Invalid student ID"));
     }
 
     const student = await Student.findById(id)
-      .populate("userId", "fullName email phone role status")
+      .populate("userId", "role status profilePicture")
       .populate("certifications")
       .populate("experience")
       .populate("kycVerification")
       .lean();
 
     if (!student) {
-      throw notFound("Student not found");
+      return res.json(notFoundResponse("Student not found"));
     }
 
     // Check access permissions
@@ -204,16 +207,21 @@ const getStudentById = asyncHandler(async (req, res) => {
       // Return limited info for non-admin, non-owner access
       const publicInfo = {
           _id: student._id,
+          firstName: student.firstName,
+          lastName: student.lastName,
           bio: student.bio,
         location: student.location,
         skills: student.skills,
         certifications: student.certifications,
-        user: {
-            fullName: student.userId.fullName,
-        },
+        isPublic: student.isPublic,
+        // Only show contact info if contact is public
+        ...(student.isContactPublic && {
+          email: student.email,
+          phone: student.phone,
+          website: student.website
+        })
       };
       return res
-        .status(200)
         .json(
           successResponse(
             { student: publicInfo },
@@ -222,9 +230,8 @@ const getStudentById = asyncHandler(async (req, res) => {
         );
     }
     
-    return res
-    .status(200)
-      .json(successResponse({ student }, "Student retrieved successfully"));
+    // return res
+    //   .json(successResponse({ student }, "Student retrieved successfully"));
     } catch (error) {
     throw error;
   }
@@ -235,82 +242,60 @@ const getMyStudentProfile = asyncHandler(async (req, res) => {
   try {
     const reqUser = req.user;
     if (!reqUser || reqUser.role !== "student") {
-      throw unauthorized("You do not have permission to view student profile");
+      return res.json(unauthorizedResponse("You do not have permission to view student profile"));
     }
-    
-    // Fetch freshest user record (exclude sensitive fields)
-    const user = await User.findById(reqUser._id)
-      .select("-password -refreshToken")
-      .lean();
-    if (!user) {
-      throw notFound("Linked user not found");
-    }
-    
-    // Load student profile (lean) and populate certifications (only _id and name)
-    const studentProfile = await Student.findOne({ userId: user._id })
+
+    // Try to load student profile and populate related data
+    let studentProfile = await Student.findOne({ userId: reqUser._id })
       .populate("kycVerification")
       .populate({ path: "certifications", select: "_id name" })
-      .populate({path:"experience" , select: "_id title"})
+      .populate({ path: "experience", select: "_id title" })
       .populate("enrollments")
       .lean();
-    
-    // If student profile does not exist, return basic user details so frontend can show user info
+
+    // If student profile does not exist, return null
     if (!studentProfile) {
-      const basic = {
-        studentId: null,
-        user: {
-          _id: user._id,
-          userName: user.userName,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phone: user.phone,
-          profilePicture: user.profilePicture,
-          status: user.status,
-          role: user.role,
-        },
-    };
+      return res.json(successResponse({ studentId: null }, "Student profile not found."));
+    }
 
-      return res
-      .status(200)
-        .json(
-          successResponse(
-            basic,
-            "Student profile not found. Returning basic user details"
-        )
-    );
-}
+    // Get user profile picture from User model
+    const userDetails = await User.findById(reqUser._id).select("profilePicture").lean();
 
-    // Only return _id and name for certifications
+    // Only return _id and name for certifications if populated
     const certifications = Array.isArray(studentProfile?.certifications)
-      ? studentProfile.certifications.map(c => ({ _id: c._id, name: c.name }))
+      ? studentProfile.certifications.map((c) => ({ _id: c._id, name: c.name }))
       : [];
 
+    // Compose the response with student details
     const completeProfile = {
-      ...studentProfile,
-      certifications, // overwrite with just _id and name
-      user: {
-        _id: user._id,
-        userName: user.userName,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone,
-        isEmailVerified: user.isEmailVerified,
-        profilePicture: user.profilePicture,
-        status: user.status,
-        role: user.role,
-      },
+      studentId: studentProfile._id,
+      userId: studentProfile.userId,
+      firstName: studentProfile.firstName,
+      lastName: studentProfile.lastName,
+      email: studentProfile.email,
+      phone: studentProfile.phone,
+      profilePicture: userDetails?.profilePicture,
+      status: reqUser.status,
+      role: "student",
+      bio: studentProfile.bio,
+      location: studentProfile.location,
+      website: studentProfile.website,
+      certifications,
+      kycVerification: studentProfile.kycVerification,
+      experience: studentProfile.experience,
+      enrollments: studentProfile.enrollments,
+      skills: studentProfile.skills,
+      gsceResult: studentProfile.gsceResult,
+      isPublic: studentProfile.isPublic,
+      isOpenToWork: studentProfile.isOpenToWork,
+      isContactPublic: studentProfile.isContactPublic,
+      isProgressPublic: studentProfile.isProgressPublic,
+      communicationPreferences: studentProfile.communicationPreferences,
+      createdAt: studentProfile.createdAt,
+      updatedAt: studentProfile.updatedAt,
     };
 
-    return res
-      .status(200)
-      .json(
-        successResponse(
-          completeProfile,
-          "Student profile retrieved successfully"
-        )
-      );
+    return res.json(successResponse(completeProfile, "Student profile retrieved successfully"));
   } catch (error) {
       console.error("Error in getMyStudentProfile:", error);
       throw internalServer(error.message || "Failed to retrieve student profile");
@@ -324,13 +309,19 @@ const updateStudentProfile = asyncHandler(async (req, res) => {
   try {
       const user = req.user;
     if (!user || user.role !== "student") {
-      throw unauthorized(
+      return res.json(unauthorizedResponse(
         "You do not have permission to update student profile"
-      );
+      ));
+    }
+
+    // Get current student profile
+    const currentStudent = await Student.findOne({ userId: user._id });
+    if (!currentStudent) {
+      return res.json(notFoundResponse("Student profile not found"));
     }
 
     // Separate user fields from student fields
-    const userFields = ["firstName", "lastName", "phone", "userName"];
+    const userFields = ["profilePicture"];
     const userUpdates = {};
     const studentUpdates = { ...req.body };
 
@@ -342,13 +333,20 @@ const updateStudentProfile = asyncHandler(async (req, res) => {
       }
     });
 
-    // Don't allow updating certain user fields
-    delete studentUpdates.email;
-    delete studentUpdates.password;
-    delete studentUpdates.role;
-    delete studentUpdates.status;
+    // Handle fullName update - split and update firstName/lastName in student
+    if (req.body.fullName) {
+      const { firstName, lastName } = splitFullName(req.body.fullName);
+      studentUpdates.firstName = firstName;
+      studentUpdates.lastName = lastName;
+      // Also update User's fullName
+      userUpdates.fullName = req.body.fullName;
+      delete studentUpdates.fullName;
+    }
 
-    // Update user fields if any
+    // Don't allow updating certain sensitive fields directly
+    delete studentUpdates.userId;
+
+    // Update user fields if any (mainly profilePicture and fullName)
     let updatedUser = user;
     if (Object.keys(userUpdates).length > 0) {
       updatedUser = await User.findByIdAndUpdate(
@@ -365,26 +363,32 @@ const updateStudentProfile = asyncHandler(async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    if (!updatedStudent) {
-      throw notFound("Student profile not found");
-    }
-
-    const { firstName, lastName } = splitFullName(updatedUser.fullName);
-
-
     // Merge updated user data with student profile
     const completeProfile = {
-      firstName,
-      lastName,
-      email: updatedUser.email,
-      phone: updatedUser.phone,
+      studentId: updatedStudent._id,
+      userId: updatedStudent.userId,
+      firstName: updatedStudent.firstName,
+      lastName: updatedStudent.lastName,
+      email: updatedStudent.email,
+      phone: updatedStudent.phone,
       profilePicture: updatedUser.profilePicture,
       status: updatedUser.status,
-      ...updatedStudent.toObject(),
+      role: updatedUser.role,
+      bio: updatedStudent.bio,
+      location: updatedStudent.location,
+      website: updatedStudent.website,
+      skills: updatedStudent.skills,
+      gsceResult: updatedStudent.gsceResult,
+      isPublic: updatedStudent.isPublic,
+      isOpenToWork: updatedStudent.isOpenToWork,
+      isContactPublic: updatedStudent.isContactPublic,
+      isProgressPublic: updatedStudent.isProgressPublic,
+      communicationPreferences: updatedStudent.communicationPreferences,
+      createdAt: updatedStudent.createdAt,
+      updatedAt: updatedStudent.updatedAt,
     };
 
     return res
-      .status(200)
       .json(successResponse(completeProfile, "Student profile updated successfully"));
 } catch (error) {
     console.error("Error in updateStudentProfile:", error);
@@ -394,18 +398,18 @@ const updateStudentProfile = asyncHandler(async (req, res) => {
 
 // ===============================
 // DELETE STUDENT PROFILE
-// ======================
+// ===============================
 const deleteStudentProfile = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
         
     if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw badRequest("Invalid student ID");
+        return res.json(badRequestResponse("Invalid student ID"));
     }
     
     const student = await Student.findById(id);
     if (!student) {
-        throw notFound("Student not found");
+        return res.json(notFoundResponse("Student not found"));
     }
 
     // Check permissions
@@ -413,15 +417,15 @@ const deleteStudentProfile = asyncHandler(async (req, res) => {
       req.user.role !== "admin" &&
       student.userId.toString() !== req.user._id.toString()
     ) {
-      throw forbidden("Access denied");
+      return res.json(forbiddenResponse("Access denied"));
     }
 
     await Student.findByIdAndDelete(id);
 
     return res
-    .status(200)
       .json(successResponse(null, "Student profile deleted successfully"));
     } catch (error) {
+        console.error("Error in deleteStudentProfile:", error);
         throw internalServer("Failed to delete student profile");
   }
 });
@@ -438,12 +442,12 @@ const addCertification = asyncHandler(async (req, res) => {
       !mongoose.Types.ObjectId.isValid(id) ||
       !mongoose.Types.ObjectId.isValid(certificationId)
     ) {
-      throw badRequest("Invalid ID");
+      return res.json(badRequestResponse("Invalid ID"));
     }
 
     const student = await Student.findById(id);
     if (!student) {
-      throw notFound("Student not found");
+      return res.json(notFoundResponse("Student not found"));
     }
 
     // Check permissions
@@ -451,19 +455,18 @@ const addCertification = asyncHandler(async (req, res) => {
       req.user.role !== "admin" &&
       student.userId.toString() !== req.user._id.toString()
     ) {
-      throw forbidden("Access denied");
+      return res.json(forbiddenResponse("Access denied"));
     }
 
     // Check if certification is already added
     if (student.certifications.includes(certificationId)) {
-        throw badRequest("Certification already added to profile");
+        return res.json(badRequestResponse("Certification already added to profile"));
     }
     
     student.certifications.push(certificationId);
     await student.save();
     
     return res
-    .status(200)
     .json(
         updatedResponse(
             { certificationsCount: student.certifications.length },
@@ -483,7 +486,7 @@ const profileConpletion = asyncHandler(async (req, res) => {
     const userId = req.user._id;
     const user = await User.findById(userId).lean();
     if (!user || user.role !== "student") {
-      throw badRequest("User is not a student");
+      return res.json (badRequestResponse("User is not a student"));
     }
 
     // Always start with 5% for being registered as a student
@@ -499,7 +502,7 @@ const profileConpletion = asyncHandler(async (req, res) => {
 
     // If student profile does not exist, return 5% completion
     if (!student) {
-      return res.status(200).json(
+      return res.json(
         successResponse(
           {
             percent,
@@ -520,7 +523,7 @@ const profileConpletion = asyncHandler(async (req, res) => {
       );
     }
 
-    // 1. Basic info (20%)
+    // 1. Basic info (20%) - updated field list based on new schema
     const basicFields = ["bio", "location", "skills", "website", "gsceResult"];
     let filledCount = 0;
 
@@ -566,7 +569,7 @@ const profileConpletion = asyncHandler(async (req, res) => {
       missingSteps.push("Add experience");
     }
 
-    // 5. Profile picture (20%)
+    // 5. Profile picture (20%) - check from User model
     const defaultPic =
       "https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg";
 
@@ -580,7 +583,7 @@ const profileConpletion = asyncHandler(async (req, res) => {
     // Cap at 100
     percent = Math.min(percent, 100);
 
-    return res.status(200).json(
+    return res.json(
       successResponse(
         {
           percent: Math.round(percent), // rounded for clean UI
@@ -593,45 +596,35 @@ const profileConpletion = asyncHandler(async (req, res) => {
       )
     );
   } catch (error) {
-    console.error(error);
+    console.error("Error in profileConpletion:", error);
     throw internalServer(error.message || "Failed to calculate profile completion");
   }
 });
-
-
-
 
 // Controller to add skills
 const addSkills = asyncHandler(async (req, res) => {
   try {
     const user = req.user;
     if (!user || user.role !== "student") {
-      throw unauthorized("You do not have permission to add skills");
+      return res.json (unauthorizedResponse("You do not have permission to add skills"));
     }
 
     const { skills } = req.body;
     if (!Array.isArray(skills) || skills.length === 0) {
-      throw badRequest("Skills must be a non-empty array");
+     return res.json (badRequestResponse("Skills must be a non-empty array"));
     }
 
     // Validate each skill
     for (const skill of skills) {
       if (!skill || typeof skill !== "string" || !skill.trim()) {
-        throw badRequest("Each skill must be a non-empty string");
+       return res.json (badRequestResponse("Each skill must be a non-empty string"));
       }
     }
 
     // Fetch student
     let student = await Student.findOne({ userId: user._id });
     if (!student) {
-      // If student profile does not exist, create it with the provided skills
-      student = await Student.create({ userId: user._id, skills: skills.map(s => s.trim()) });
-      return res.status(201).json(
-        successResponse(
-          { skills: student.skills },
-          "Student profile created and skills added successfully"
-        )
-      );
+      return res.json (notFoundResponse("Student profile not found. Please create a student profile first."));
     }
 
     // Existing skills (case-insensitive set)
@@ -643,7 +636,7 @@ const addSkills = asyncHandler(async (req, res) => {
     const newSkills = [];
     for (const skill of skills) {
       if (existingSkills.has(skill.toLowerCase())) {
-        throw conflict(`Skill '${skill}' already exists`);
+        return res.json (conflictResponse(`Skill '${skill}' already exists`));
       }
       newSkills.push(skill.trim());
     }
@@ -652,7 +645,7 @@ const addSkills = asyncHandler(async (req, res) => {
     student.skills = [...(student.skills || []), ...newSkills];
     await student.save();
 
-    return res.status(200).json(
+    return res.json(
       successResponse(
         { skills: student.skills },
         "Skills updated successfully"
@@ -670,22 +663,22 @@ const removeSkill = asyncHandler(async (req, res) => {
     const userId = req.user._id;
     const skill = req.params.skill;
     if (!skill || typeof skill !== "string" || !skill.trim()) {
-      throw badRequest("Skill must be a non-empty string");
+      return res.json (badRequestResponse("Skill must be a non-empty string"));
     }
     // find student (do NOT use .lean())
     const student = await Student.findOne({ userId: userId });
     if (!student) {
-      throw notFound("Student not found in the db");
+      return res.json (notFoundResponse("Student profile not found"));
     }
     const skillLength = student.skills.length;
     student.skills = student.skills.filter(
       (s) => s.toLowerCase() !== skill.toLowerCase()
     );
     if (student.skills.length === skillLength) {
-      throw notFound("Skill not found");
+      return res.json (notFoundResponse("Skill not found"));
     }
     await student.save();
-    return res.status(200).json(
+    return res.json(
       successResponse(
         { skills: student.skills },
         `Skill '${skill}' removed successfully`
@@ -697,39 +690,36 @@ const removeSkill = asyncHandler(async (req, res) => {
   }
 });
 
-
 // Add or update GSCE results for the authenticated student
 const addResult = asyncHandler(async (req, res) => {
   try {
     const user = req.user;
     if (!user || user.role !== "student") {
-      throw unauthorized("You do not have permission to add GSCE results");
+      return res.json (unauthorizedResponse("You do not have permission to add GSCE results"));
     }
 
     const { gsceResult } = req.body;
     if (!Array.isArray(gsceResult) || gsceResult.length === 0) {
-      throw badRequest("gsceResult must be a non-empty array");
+      return res.json (badRequestResponse("gsceResult must be a non-empty array"));
     }
 
     // Allowed grades (you can customize this list)
     const validGrades = ["A*", "A", "B", "C", "D", "E", "F", "G", "U"];
 
-    // Validate each result object
+    // Validate each result object - Note: marks should be String according to schema
     for (const result of gsceResult) {
       if (!result.subject || typeof result.subject !== "string" || !result.subject.trim()) {
-        throw badRequest("Each result must have a valid subject");
+        return res.json (badRequestResponse("Each result must have a valid subject"));
       }
-      if (
-        result.marks === undefined ||
-        isNaN(result.marks) ||
-        result.marks < 0 ||
-        result.marks > 100
-      ) {
-        throw badRequest("Marks must be a number between 0 and 100");
+      if (!result.marks || typeof result.marks !== "string") {
+        return res.json (badRequestResponse("Marks must be provided as a string"));
+      }
+      if (!result.percentage || typeof result.percentage !== 'string') {
+        return res.json (badRequestResponse("Percentage must be provided as a string"));
       }
       if (!result.grade || !validGrades.includes(result.grade.toUpperCase())) {
-        throw badRequest(
-          `Invalid grade for ${result.subject}. Allowed grades are: ${validGrades.join(", ")}`
+        return res.json (badRequestResponse(
+          `Invalid grade for ${result.subject}. Allowed grades are: ${validGrades.join(", ")}`)
         );
       }
     }
@@ -737,7 +727,7 @@ const addResult = asyncHandler(async (req, res) => {
     // Fetch student
     const student = await Student.findOne({ userId: user._id });
     if (!student) {
-      throw notFound("Student profile not found");
+      return res.json(notFoundResponse("Student profile not found"));
     }
 
     // Prevent duplicate subjects
@@ -747,7 +737,7 @@ const addResult = asyncHandler(async (req, res) => {
 
     for (const result of gsceResult) {
       if (existingSubjects.has(result.subject.toLowerCase())) {
-        throw conflict(`GSCE result for subject '${result.subject}' already exists`);
+        return res.json (conflictResponse(`GSCE result for subject '${result.subject}' already exists`));
       }
     }
 
@@ -755,7 +745,7 @@ const addResult = asyncHandler(async (req, res) => {
     student.gsceResult = [...(student.gsceResult || []), ...gsceResult];
     await student.save();
 
-    return res.status(200).json(
+    return res.json(
       successResponse(
         { gsceResult: student.gsceResult },
         "GSCE results updated successfully"
@@ -766,7 +756,6 @@ const addResult = asyncHandler(async (req, res) => {
     throw internalServer(error.message);
   }
 });
-
 
 export {
   createStudentProfile,

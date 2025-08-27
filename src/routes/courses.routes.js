@@ -97,17 +97,9 @@ const courseRouter = express.Router();
  *                   type: string
  *                   example: "Courses retrieved successfully"
  *       404:
- *         description: No courses found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 courseRouter.get('/', requestLogger,verifyJWT , authorizeRoles('school' , 'student'), coursesCache, getCourses);
 
@@ -201,23 +193,11 @@ courseRouter.get('/', requestLogger,verifyJWT , authorizeRoles('school' , 'stude
  *                   type: string
  *                   example: "Search completed successfully"
  *       400:
- *         description: Invalid search parameters
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/ValidationError'
  *       404:
- *         description: No courses found matching search criteria
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 courseRouter.get('/search', requestLogger,authorizeRoles('school' , 'student'), coursesCache, searchCourses);
 
@@ -290,17 +270,9 @@ courseRouter.get('/search', requestLogger,authorizeRoles('school' , 'student'), 
  *                   type: string
  *                   example: "Provider courses retrieved successfully"
  *       404:
- *         description: No courses found for this provider or provider not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 courseRouter.get('/provider/:providerId', requestLogger,authorizeRoles('school'), getCoursesByProvider);
 
@@ -342,17 +314,9 @@ courseRouter.get('/provider/:providerId', requestLogger,authorizeRoles('school')
  *                   type: string
  *                   example: "Course retrieved successfully"
  *       404:
- *         description: Course not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 courseRouter.get('/:id', requestLogger,authorizeRoles('school' , 'student'), coursesCache, getCoursesById);
 
@@ -429,60 +393,13 @@ courseRouter.get('/:id', requestLogger,authorizeRoles('school' , 'student'), cou
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 statusCode:
- *                   type: integer
- *                   example: 201
- *                 message:
- *                   type: string
- *                   example: "Course created successfully"
- *                 payload:
- *                   type: object
- *                   properties:
- *                     course:
- *                       type: object
- *                       example:
- *                         coverImage: "http://res.cloudinary.com/hanzalascloud/image/upload/v1756104538/loopwin-products/otiyhb0xg2k2vly4hcfv.jpg"
- *                         title: "Golang -Go beigner to Advance"
- *                         instructor: "John ven"
- *                         duration: "8 weeks"
- *                         price: 299.99
- *                         language: "English"
- *                         type: "oncampus"
- *                         objectives: ["Learn HTML,Learn CSS,Learn JavaScript"]
- *                         description: "Learn the fundamentals of web development"
- *                         skills: ["Frontend Development,Responsive Design"]
- *                         trainingProvider: "68a592c676bf09279c431214"
- *                         category: "Technology"
- *                         status: "approved"
- *                         maxEnrollments: 50
- *                         currentEnrollments: 0
- *                         _id: "68ac075a03b1574c514c9fbb"
- *                         createdAt: "2025-08-25T06:48:58.537Z"
- *                         updatedAt: "2025-08-25T06:48:58.537Z"
- *                         __v: 0
+ *               $ref: '#/components/schemas/ApiResponse'
  *       400:
- *         description: Missing required fields or validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/ValidationError'
  *       401:
- *         description: Unauthorized - Invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         description: Forbidden - Only training providers can create courses or subscription required
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/ForbiddenError'
  *       429:
  *         description: Course limit exceeded for current subscription plan
  *         content:
@@ -490,11 +407,7 @@ courseRouter.get('/:id', requestLogger,authorizeRoles('school' , 'student'), cou
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 courseRouter.post('/', requestLogger, verifyJWT, authorizeRoles('school'), requireActiveSubscription, checkCourseLimit, upload.single('coverImage'), createCourse);
 
@@ -548,56 +461,64 @@ courseRouter.post('/', requestLogger, verifyJWT, authorizeRoles('school'), requi
  *     responses:
  *       200:
  *         description: Course updated successfully
- *       404:
- *         description: Course not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Course'
  *       401:
- *         description: Unauthorized
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         description: Forbidden - Can only update own courses
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
  */
 courseRouter.put('/:id', requestLogger, verifyJWT, authorizeRoles('school'), requireActiveSubscription, updateCourse);
 
-// /**
-//  * @swagger
-//  * /api/v1/courses/{id}/status:
-//  *   patch:
-//  *     summary: Update course status (Admin only)
-//  *     tags: [Courses]
-//  *     security:
-//  *       - bearerAuth: []
-//  *     parameters:
-//  *       - in: path
-//  *         name: id
-//  *         required: true
-//  *         schema:
-//  *           type: string
-//  *         description: Course ID
-//  *     requestBody:
-//  *       required: true
-//  *       content:
-//  *         application/json:
-//  *           schema:
-//  *             type: object
-//  *             required:
-//  *               - status
-//  *             properties:
-//  *               status:
-//  *                 type: string
-//  *                 enum: ["draft", "pending_approval", "approved", "rejected", "archived"]
-//  *                 example: "approved"
-//  *     responses:
-//  *       200:
-//  *         description: Course status updated successfully
-//  *       400:
-//  *         description: Invalid status value
-//  *       401:
-//  *         description: Unauthorized
-//  *       403:
-//  *         description: Forbidden - Admin access required
-//  *       404:
-//  *         description: Course not found
-//  */
-// courseRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('school'), updateCourseStatus);
+/**
+ * @swagger
+ * /api/v1/courses/{id}/status:
+ *   patch:
+ *     summary: Update course status (Admin only)
+ *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Course ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: ["draft", "pending_approval", "approved", "rejected", "archived"]
+ *                 example: "approved"
+ *     responses:
+ *       200:
+ *         description: Course status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Course'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+courseRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('school'), updateCourseStatus);
 
 /**
  * @swagger
@@ -617,12 +538,16 @@ courseRouter.put('/:id', requestLogger, verifyJWT, authorizeRoles('school'), req
  *     responses:
  *       200:
  *         description: Course deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
  *       401:
- *         description: Unauthorized
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         description: Forbidden - Admin access required
+ *         $ref: '#/components/responses/ForbiddenError'
  *       404:
- *         description: Course not found
+ *         $ref: '#/components/responses/NotFoundError'
  */
 courseRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('school'), deleteCourseById);
 

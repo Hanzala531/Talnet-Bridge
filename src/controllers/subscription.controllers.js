@@ -12,7 +12,7 @@ import {
     validationError, 
     internalServer 
 } from "../utils/ApiError.js";
-import { successResponse } from "../utils/ApiResponse.js";
+import { badRequestResponse, conflictResponse, noContentResponse, successResponse } from "../utils/ApiResponse.js";
 
 // ===========================================
 // SUBSCRIPTION PLAN CONTROLLERS
@@ -34,50 +34,50 @@ const createPlan = asyncHandler(async (req, res) => {
 
         // Validate required fields
         if (!name) {
-            throw badRequest("Plan name is required", "MISSING_PLAN_NAME");
+            return res.json(badRequestResponse("Plan name is required", "MISSING_PLAN_NAME"));
         }
         if (!displayName) {
-            throw badRequest("Plan display name is required", "MISSING_DISPLAY_NAME");
+            return res.json(badRequestResponse("Plan display name is required", "MISSING_DISPLAY_NAME"));
         }
         if (!description) {
-            throw badRequest("Plan description is required", "MISSING_DESCRIPTION");
+            return res.json(badRequestResponse("Plan description is required", "MISSING_DESCRIPTION"));
         }
         
         if (!billingCycle || !['onetime', 'monthly'].includes(billingCycle)) {
-            throw badRequest("Valid billing cycle is required (onetime, monthly)", "INVALID_BILLING_CYCLE");
+            return res.json(badRequestResponse("Valid billing cycle is required (onetime, monthly)", "INVALID_BILLING_CYCLE"));
         }
         if (!stripePriceId) {
-            throw badRequest("Stripe price ID is required", "MISSING_STRIPE_PRICE_ID");
+            return res.json(badRequestResponse("Stripe price ID is required", "MISSING_STRIPE_PRICE_ID"));
         }
         if (!stripeProductId) {
-            throw badRequest("Stripe product ID is required", "MISSING_STRIPE_PRODUCT_ID");
+            return res.json(badRequestResponse("Stripe product ID is required", "MISSING_STRIPE_PRODUCT_ID"));
         }
 
         // Validate plan name format
         if (!['learner', 'employer', 'trainingInstitue'].includes(name)) {
-            throw badRequest("Plan name must be one of: learner, employer, trainingInstitue", "INVALID_PLAN_NAME");
+            return res.json(badRequestResponse("Plan name must be one of: learner, employer, trainingInstitue", "INVALID_PLAN_NAME"));
         }
 
         // Check if plan already exists
         const existingPlan = await SubscriptionPlan.findOne({ name });
         if (existingPlan) {
-            throw conflict(`Subscription plan '${name}' already exists`, "PLAN_ALREADY_EXISTS");
+            return res.json(conflictResponse(`Subscription plan '${name}' already exists`, "PLAN_ALREADY_EXISTS"));
         }
 
         // Check if Stripe IDs are already in use
         const existingStripePrice = await SubscriptionPlan.findOne({ stripePriceId });
         if (existingStripePrice) {
-            throw conflict("Stripe price ID is already in use", "STRIPE_PRICE_ID_EXISTS");
+            return res.json(conflictResponse("Stripe price ID is already in use", "STRIPE_PRICE_ID_EXISTS"));
         }
 
         const existingStripeProduct = await SubscriptionPlan.findOne({ stripeProductId });
         if (existingStripeProduct) {
-            throw conflict("Stripe product ID is already in use", "STRIPE_PRODUCT_ID_EXISTS");
+            return res.json(conflictResponse("Stripe product ID is already in use", "STRIPE_PRODUCT_ID_EXISTS"));
         }
 
         // Validate features (required, must be array of strings)
         if (!features || !Array.isArray(features) || !features.every(f => typeof f === 'string')) {
-            throw badRequest("Features must be a non-empty array of strings", "INVALID_FEATURES_TYPE");
+            return res.json(badRequestResponse("Features must be a non-empty array of strings", "INVALID_FEATURES_TYPE"));
         }
 
         // Create the plan
@@ -92,8 +92,8 @@ const createPlan = asyncHandler(async (req, res) => {
             stripeProductId
         });
 
-        res.status(201).json(
-    successResponse(201, plan, "Subscription plan created successfully")
+        res.json(
+    successResponse({plan}, "Subscription plan created successfully")
         );
     } catch (error) {
         if (error instanceof ApiError) throw error;
@@ -110,7 +110,7 @@ const createPlan = asyncHandler(async (req, res) => {
         // Handle MongoDB duplicate key errors
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern)[0];
-            throw conflict(`A plan with this ${field} already exists`, "DUPLICATE_PLAN_FIELD");
+            return res.json(conflictResponse(`A plan with this ${field} already exists`, "DUPLICATE_PLAN_FIELD"));
         }throw internalServer("Failed to create subscription plan", "PLAN_CREATION_ERROR");
     }
 });
@@ -123,7 +123,7 @@ const getAllPlans = asyncHandler(async (req, res) => {
         // const filter = {};
         // if (active !== undefined) {
         //     if (active !== 'true' && active !== 'false') {
-        //         throw badRequest("Active parameter must be 'true' or 'false'", "INVALID_ACTIVE_PARAMETER");
+        //         return res.json(badRequestResponse("Active parameter must be 'true' or 'false'", "INVALID_ACTIVE_PARAMETER");
         //     }
         //     filter.isActive = active === 'true';
         // }
@@ -132,13 +132,13 @@ const getAllPlans = asyncHandler(async (req, res) => {
         const plans = await SubscriptionPlan.find({}).sort({ sortOrder: 1, createdAt: 1 });
 
         if (!plans || plans.length === 0) {
-            return res.status(404).json(
-                successResponse(404, [], "No subscription plans found")
+            return res.json(
+                successResponse( "No subscription plans found")
             );
         }
 
-        res.status(200).json(
-            successResponse(200, plans, "Subscription plans retrieved successfully")
+        res.json(
+            successResponse({plans}, "Subscription plans retrieved successfully")
         );
     } catch (error) {
         if (error instanceof ApiError) throw error;throw internalServer("Failed to fetch subscription plans", "PLANS_FETCH_ERROR");
@@ -152,17 +152,17 @@ const getPlanById = asyncHandler(async (req, res) => {
         
         // Validate plan ID format
         if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-            throw badRequest("Invalid plan ID format", "INVALID_PLAN_ID");
+            return res.json(badRequestResponse("Invalid plan ID format", "INVALID_PLAN_ID"));
         }
         
         const plan = await SubscriptionPlan.findById(id);
         
         if (!plan) {
-            throw notFound("Subscription plan not found", "PLAN_NOT_FOUND");
+            return res.json(noContentResponse("Subscription plan not found", "PLAN_NOT_FOUND"));
         }
 
-        res.status(200).json(
-            successResponse(200, plan, "Subscription plan retrieved successfully")
+        res.json(
+            successResponse({ plan}, "Subscription plan retrieved successfully")
         );
     } catch (error) {
         if (error instanceof ApiError) throw error;throw internalServer("Failed to fetch subscription plan", "PLAN_FETCH_ERROR");
@@ -177,7 +177,7 @@ const updatePlan = asyncHandler(async (req, res) => {
 
         // Validate plan ID
         if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-            throw badRequest("Invalid plan ID format", "INVALID_PLAN_ID");
+            return res.json(badRequestResponse("Invalid plan ID format", "INVALID_PLAN_ID"));
         }
 
         // Remove fields that shouldn't be updated
@@ -190,32 +190,32 @@ const updatePlan = asyncHandler(async (req, res) => {
 
         // Validate updates if provided
         if (updates.name && !['learner', 'employer', 'trainingInstitue'].includes(updates.name)) {
-            throw badRequest("Plan name must be one of: learner, employer, trainingInstitue", "INVALID_PLAN_NAME");
+            return res.json(badRequestResponse("Plan name must be one of: learner, employer, trainingInstitue", "INVALID_PLAN_NAME"));
         }
 
         if (updates.price !== undefined && updates.price < 0) {
-            throw badRequest("Price must be a positive number", "INVALID_PRICE");
+            return res.json(badRequestResponse("Price must be a positive number", "INVALID_PRICE"));
         }
 
         if (updates.billingCycle && !['onetime', 'monthly'].includes(updates.billingCycle)) {
-            throw badRequest("Billing cycle must be: onetime or monthly", "INVALID_BILLING_CYCLE");
+            return res.json(badRequestResponse("Billing cycle must be: onetime or monthly", "INVALID_BILLING_CYCLE"));
         }
 
         if (updates.features && (!Array.isArray(updates.features) || !updates.features.every(f => typeof f === 'string'))) {
-            throw badRequest("Features must be an array of strings", "INVALID_FEATURES_TYPE");
+            return res.json(badRequestResponse("Features must be an array of strings", "INVALID_FEATURES_TYPE"));
         }
 
         // Check if plan exists
         const existingPlan = await SubscriptionPlan.findById(id);
         if (!existingPlan) {
-            throw notFound("Subscription plan not found", "PLAN_NOT_FOUND");
+            return res.json(noContentResponse("Subscription plan not found", "PLAN_NOT_FOUND"));
         }
 
         // Check for conflicts if updating unique fields
         if (updates.name && updates.name !== existingPlan.name) {
             const nameConflict = await SubscriptionPlan.findOne({ name: updates.name });
             if (nameConflict) {
-                throw conflict(`Plan name '${updates.name}' is already in use`, "PLAN_NAME_EXISTS");
+                return res.json(conflictResponse(`Plan name '${updates.name}' is already in use`, "PLAN_NAME_EXISTS"));
             }
         }
 
@@ -225,8 +225,8 @@ const updatePlan = asyncHandler(async (req, res) => {
             { new: true, runValidators: true }
         );
 
-        res.status(200).json(
-            successResponse(200, plan, "Subscription plan updated successfully")
+        res.json(
+            successResponse({plan}, "Subscription plan updated successfully")
         );
     } catch (error) {
         if (error instanceof ApiError) throw error;
@@ -243,7 +243,7 @@ const updatePlan = asyncHandler(async (req, res) => {
         // Handle MongoDB duplicate key errors
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern)[0];
-            throw conflict(`A plan with this ${field} already exists`, "DUPLICATE_PLAN_FIELD");
+            return res.json(conflictResponse(`A plan with this ${field} already exists`, "DUPLICATE_PLAN_FIELD"));
         }throw internalServer("Failed to update subscription plan", "PLAN_UPDATE_ERROR");
     }
 });
@@ -255,13 +255,13 @@ const deletePlan = asyncHandler(async (req, res) => {
 
         // Validate plan ID
         if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-            throw badRequest("Invalid plan ID format", "INVALID_PLAN_ID");
+            return res.json(badRequestResponse("Invalid plan ID format", "INVALID_PLAN_ID"));
         }
 
         // Check if plan exists
         const plan = await SubscriptionPlan.findById(id);
         if (!plan) {
-            throw notFound("Subscription plan not found", "PLAN_NOT_FOUND");
+            return res.json(noContentResponse("Subscription plan not found", "PLAN_NOT_FOUND"));
         }
 
         // Check if any active subscriptions use this plan
@@ -271,16 +271,16 @@ const deletePlan = asyncHandler(async (req, res) => {
         });
 
         if (activeSubscriptions > 0) {
-            throw conflict(
+            return res.json(conflictResponse(
                 `Cannot delete plan with ${activeSubscriptions} active subscription(s). Cancel or transfer subscriptions first.`, 
                 "PLAN_HAS_ACTIVE_SUBSCRIPTIONS"
-            );
+            ));
         }
 
         await SubscriptionPlan.findByIdAndDelete(id);
 
-        res.status(200).json(
-            successResponse(200, null, "Subscription plan deleted successfully")
+        res.json(
+            successResponse( "Subscription plan deleted successfully")
         );
     } catch (error) {
         if (error instanceof ApiError) throw error;throw internalServer("Failed to delete subscription plan", "PLAN_DELETE_ERROR");
@@ -299,12 +299,12 @@ const createSubscription = asyncHandler(async (req, res) => {
 
         // Validate required fields
         if (!planId) {
-            throw badRequest("Plan ID is required", "MISSING_PLAN_ID");
+            return res.json(badRequestResponse("Plan ID is required", "MISSING_PLAN_ID"));
         }
 
         // Validate plan ID format
         if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
-            throw badRequest("Invalid plan ID format", "INVALID_PLAN_ID");
+            return res.json(badRequestResponse("Invalid plan ID format", "INVALID_PLAN_ID"));
         }
 
         // Check if user already has an active subscription
@@ -314,17 +314,17 @@ const createSubscription = asyncHandler(async (req, res) => {
         });
 
         if (existingSubscription) {
-            throw conflict("User already has an active or pending subscription", "SUBSCRIPTION_ALREADY_EXISTS");
+            return res.json(conflictResponse("User already has an active or pending subscription", "SUBSCRIPTION_ALREADY_EXISTS"));
         }
 
         // Get the subscription plan
         const plan = await SubscriptionPlan.findById(planId);
         if (!plan) {
-            throw notFound("Subscription plan not found", "PLAN_NOT_FOUND");
+            return res.json(noContentResponse("Subscription plan not found", "PLAN_NOT_FOUND"));
         }
 
         if (!plan.isActive) {
-            throw badRequest("Subscription plan is not active", "PLAN_NOT_ACTIVE");
+            return res.json(badRequestResponse("Subscription plan is not active", "PLAN_NOT_ACTIVE"));
         }
 
         // Calculate billing dates
@@ -353,8 +353,8 @@ const createSubscription = asyncHandler(async (req, res) => {
             status: 'pending'
         });
 
-        res.status(201).json(
-            successResponse(201, subscription, "Subscription created successfully")
+        res.json(
+            successResponse({subscription}, "Subscription created successfully")
         );
     } catch (error) {
         if (error instanceof ApiError) throw error;
@@ -379,13 +379,13 @@ const getUserSubscription = asyncHandler(async (req, res) => {
             .sort({ createdAt: -1 });
 
         if (!subscription) {
-            return res.status(404).json(
-                successResponse(404, null, "No subscription found for user")
+            return res.json(
+                successResponse("No subscription found for user")
             );
         }
 
-        res.status(200).json(
-            successResponse(200, subscription, "Subscription retrieved successfully")
+        res.json(
+            successResponse( {subscription}, "Subscription retrieved successfully")
         );
     } catch (error) {throw internalServer("Failed to fetch user subscription", "USER_SUBSCRIPTION_FETCH_ERROR");
     }
@@ -398,17 +398,17 @@ const getAllSubscriptions = asyncHandler(async (req, res) => {
 
         // Validate pagination parameters
         if (page < 1) {
-            throw badRequest("Page number must be greater than 0", "INVALID_PAGE_NUMBER");
+            return res.json(badRequestResponse("Page number must be greater than 0", "INVALID_PAGE_NUMBER"));
         }
         if (limit < 1 || limit > 100) {
-            throw badRequest("Limit must be between 1 and 100", "INVALID_LIMIT");
+            return res.json(badRequestResponse("Limit must be between 1 and 100", "INVALID_LIMIT"));
         }
 
         const filter = {};
         if (status) {
             const validStatuses = ["active", "inactive", "cancelled", "expired", "pending"];
             if (!validStatuses.includes(status)) {
-                throw badRequest(`Status must be one of: ${validStatuses.join(', ')}`, "INVALID_STATUS");
+                return res.json(badRequestResponse(`Status must be one of: ${validStatuses.join(', ')}`, "INVALID_STATUS"));
             }
             filter.status = status;
         }
@@ -422,8 +422,8 @@ const getAllSubscriptions = asyncHandler(async (req, res) => {
 
         const total = await Subscription.countDocuments(filter);
 
-        res.status(200).json(
-            successResponse(200, {
+        res.json(
+            successResponse( {
                 subscriptions,
                 pagination: {
                     page: Number(page),
@@ -446,28 +446,28 @@ const updateSubscriptionStatus = asyncHandler(async (req, res) => {
 
         // Validate subscription ID
         if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-            throw badRequest("Invalid subscription ID format", "INVALID_SUBSCRIPTION_ID");
+            return res.json(badRequestResponse("Invalid subscription ID format", "INVALID_SUBSCRIPTION_ID"));
         }
 
         // Validate status
         if (!status) {
-            throw badRequest("Status is required", "MISSING_STATUS");
+            return res.json(badRequestResponse("Status is required", "MISSING_STATUS"));
         }
 
         const validStatuses = ["active", "inactive", "cancelled", "expired", "pending"];
         if (!validStatuses.includes(status)) {
-            throw badRequest(`Status must be one of: ${validStatuses.join(', ')}`, "INVALID_STATUS");
+            return res.json(badRequestResponse(`Status must be one of: ${validStatuses.join(', ')}`, "INVALID_STATUS"));
         }
 
         // Check if subscription exists
         const existingSubscription = await Subscription.findById(id);
         if (!existingSubscription) {
-            throw notFound("Subscription not found", "SUBSCRIPTION_NOT_FOUND");
+            return res.json(noContentResponse("Subscription not found", "SUBSCRIPTION_NOT_FOUND"));
         }
 
         // Validate status transition
         if (existingSubscription.status === status) {
-            throw conflict(`Subscription is already ${status}`, "STATUS_UNCHANGED");
+            return res.json(conflictResponse(`Subscription is already ${status}`, "STATUS_UNCHANGED"));
         }
 
         const subscription = await Subscription.findByIdAndUpdate(
@@ -476,8 +476,8 @@ const updateSubscriptionStatus = asyncHandler(async (req, res) => {
             { new: true }
         );
 
-        res.status(200).json(
-            successResponse(200, subscription, "Subscription status updated successfully")
+        res.json(
+            successResponse({subscription}, "Subscription status updated successfully")
         );
     } catch (error) {
         if (error instanceof ApiError) throw error;throw internalServer("Failed to update subscription status", "SUBSCRIPTION_STATUS_UPDATE_ERROR");
@@ -496,17 +496,17 @@ const cancelSubscription = asyncHandler(async (req, res) => {
         });
 
         if (!subscription) {
-            throw notFound("No active subscription found for this user", "ACTIVE_SUBSCRIPTION_NOT_FOUND");
+            return res.json(noContentResponse("No active subscription found for this user", "ACTIVE_SUBSCRIPTION_NOT_FOUND"));
         }
 
         // Check if subscription is already being cancelled
         if (subscription.status === 'cancelled') {
-            throw conflict("Subscription is already cancelled", "SUBSCRIPTION_ALREADY_CANCELLED");
+            return res.json(conflictResponse("Subscription is already cancelled", "SUBSCRIPTION_ALREADY_CANCELLED"));
         }
 
         // Validate reason if provided
         if (reason && typeof reason !== 'string') {
-            throw badRequest("Cancellation reason must be a string", "INVALID_REASON_FORMAT");
+            return res.json(badRequestResponse("Cancellation reason must be a string", "INVALID_REASON_FORMAT"));
         }
 
         // Update subscription with cancellation info
@@ -519,8 +519,8 @@ const cancelSubscription = asyncHandler(async (req, res) => {
 
         await subscription.save();
 
-        res.status(200).json(
-            successResponse(200, subscription, "Subscription cancelled successfully")
+        res.json(
+            successResponse({ subscription}, "Subscription cancelled successfully")
         );
     } catch (error) {
         if (error instanceof ApiError) throw error;throw internalServer("Failed to cancel subscription", "SUBSCRIPTION_CANCEL_ERROR");
@@ -538,11 +538,11 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
         const userId = req.user._id;
 
         if (!subscriptionId) {
-            throw badRequest("Subscription ID is required", "MISSING_SUBSCRIPTION_ID");
+            return res.json(badRequestResponse("Subscription ID is required", "MISSING_SUBSCRIPTION_ID"));
         }
 
         if (!subscriptionId.match(/^[0-9a-fA-F]{24}$/)) {
-            throw badRequest("Invalid subscription ID format", "INVALID_SUBSCRIPTION_ID");
+            return res.json(badRequestResponse("Invalid subscription ID format", "INVALID_SUBSCRIPTION_ID"));
         }
 
         const subscription = await Subscription.findOne({
@@ -552,13 +552,13 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
         });
 
         if (!subscription) {
-            throw notFound("Subscription not found or not pending", "SUBSCRIPTION_NOT_FOUND_OR_NOT_PENDING");
+            return res.json(noContentResponse("Subscription not found or not pending", "SUBSCRIPTION_NOT_FOUND_OR_NOT_PENDING"));
         }
 
         
         const plan = await SubscriptionPlan.findById(subscription.planId);
         if (!plan || plan.price === undefined || plan.price === null) {
-            throw badRequest(`Invalid subscription plan data for planId: ${subscription.planId}`, "INVALID_PLAN_DATA");
+            return res.json(badRequestResponse(`Invalid subscription plan data for planId: ${subscription.planId}`, "INVALID_PLAN_DATA"));
         }
         if (plan.name === "learner") {
             await User.findByIdAndUpdate(userId, { role: "student" });
@@ -568,16 +568,15 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
             await User.findByIdAndUpdate(userId, { role: "school" });
         }
         if (plan.price === undefined || plan.price === null || plan.price < 0) {
-            throw badRequest("Invalid subscription price", "INVALID_PRICE");
+            return res.json(badRequestResponse("Invalid subscription price", "INVALID_PRICE"));
         }
 
         // Handle free plans: skip Stripe, activate subscription immediately
         if (plan.price === 0) {
             subscription.status = 'active';
             await subscription.save();
-            return res.status(200).json(
-                successResponse(200, {
-                    message: "Free plan: subscription activated without payment",
+            return res.json(
+                successResponse({
                     subscriptionId: subscription._id
                 }, "Subscription activated for free plan")
             );
@@ -597,13 +596,13 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
                 // automatic_payment_methods: { enabled: true, allow_redirects: 'never' }
             });
 
-            res.status(200).json(
-                successResponse(200, {
-                    clientSecret: paymentIntent.client_secret,
+            res.json(
+                successResponse({
+                   clientSecret: paymentIntent.client_secret,
                     paymentIntentId: paymentIntent.id
                 }, "Payment intent created successfully")
             );
-        } catch (stripeError) {throw badRequest(`Stripe error: ${stripeError.message}", "STRIPE_PAYMENT_INTENT_ERROR"`);
+        } catch (stripeError) {return res.json(badRequestResponse(`Stripe error: ${stripeError.message}", "STRIPE_PAYMENT_INTENT_ERROR"`));
         }
     } catch (error) {
         if (error instanceof ApiError) throw error;throw internalServer("Failed to create payment intent", "PAYMENT_INTENT_CREATION_ERROR");
@@ -617,10 +616,10 @@ const confirmPayment = asyncHandler(async (req, res) => {
         const userId = req.user._id;
 
         if (!paymentIntentId) {
-            throw badRequest("PaymentIntent ID is required", "MISSING_PAYMENT_INTENT_ID");
+            return res.json(badRequestResponse("PaymentIntent ID is required", "MISSING_PAYMENT_INTENT_ID"));
         }
         if (!subscriptionId) {
-            throw badRequest("Subscription ID is required", "MISSING_SUBSCRIPTION_ID");
+            return res.json(badRequestResponse("Subscription ID is required", "MISSING_SUBSCRIPTION_ID"));
         }
 
         // Verify subscription ownership & status
@@ -631,7 +630,7 @@ const confirmPayment = asyncHandler(async (req, res) => {
         });
 
         if (!subscription) {
-            throw notFound("Subscription not found or not pending", "SUBSCRIPTION_NOT_FOUND_OR_NOT_PENDING");
+            return res.json(noContentResponse("Subscription not found or not pending", "SUBSCRIPTION_NOT_FOUND_OR_NOT_PENDING"));
         }
 
         try {
@@ -645,22 +644,17 @@ const confirmPayment = asyncHandler(async (req, res) => {
                 subscription.status = 'active';
                 await subscription.save();
 
-                return res.status(200).json(
-                    successResponse(200, {
+                return res.json(
+                    successResponse({
                         message: "Payment successful and subscription activated",
                         paymentIntent
                     })
                 );
             }
 
-            return res.status(400).json({
-                status: 400,
-                success: false,
-                message: `Payment not successful. Status: ${paymentIntent.status}`,
-                errorCode: "PAYMENT_FAILED"
-            });
+            
 
-        } catch (stripeError) {throw badRequest(`Stripe error: ${stripeError.message}`, "STRIPE_PAYMENT_CONFIRMATION_ERROR");
+        } catch (stripeError) {return res.json(badRequestResponse(`Stripe error: ${stripeError.message}`, "STRIPE_PAYMENT_CONFIRMATION_ERROR"));
         }
 
     } catch (error) {
@@ -679,12 +673,12 @@ const getSubscriptionStats = asyncHandler(async (req, res) => {
         });
 
         if (!subscription) {
-            throw notFound("No active subscription found for this user", "ACTIVE_SUBSCRIPTION_NOT_FOUND");
+            return res.json(noContentResponse("No active subscription found for this user", "ACTIVE_SUBSCRIPTION_NOT_FOUND"));
         }
 
         // Validate subscription data
         if (!subscription.features) {
-            throw badRequest("Subscription features not configured", "SUBSCRIPTION_FEATURES_MISSING");
+            return res.json(badRequestResponse("Subscription features not configured", "SUBSCRIPTION_FEATURES_MISSING"));
         }
 
         try {
@@ -725,8 +719,8 @@ const getSubscriptionStats = asyncHandler(async (req, res) => {
                 }
             };
 
-            res.status(200).json(
-                successResponse(200, stats, "Subscription stats retrieved successfully")
+            res.json(
+                successResponse({stats}, "Subscription stats retrieved successfully")
             );
         } catch (dbError) {throw internalServer("Failed to calculate usage statistics", "USAGE_CALCULATION_ERROR");
         }

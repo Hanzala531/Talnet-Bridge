@@ -84,52 +84,17 @@ const employerRouter = express.Router();
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 statusCode:
- *                   type: integer
- *                   example: 201
- *                 data:
- *                   type: object
- *                   properties:
- *                     employer:
- *                       $ref: '#/components/schemas/Employer'
- *                 message:
- *                   type: string
- *                   example: "Employer profile created successfully"
+ *               $ref: '#/components/schemas/ApiResponse'
  *       400:
- *         description: Bad request - validation error or missing required fields
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/ValidationError'
  *       401:
- *         description: Unauthorized - Invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         description: Forbidden - Only users with employer role can create company profiles
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/ForbiddenError'
  *       409:
- *         description: Conflict - Company profile already exists for this user
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/ConflictError'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 employerRouter.post('/', requestLogger, verifyJWT, authorizeRoles('employer'), creatCompanyProfile);
 
@@ -204,17 +169,9 @@ employerRouter.post('/', requestLogger, verifyJWT, authorizeRoles('employer'), c
  *                   type: string
  *                   example: "Companies retrieved successfully"
  *       404:
- *         description: No companies found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 employerRouter.get('/', requestLogger, getAllCompanies);
 
@@ -234,8 +191,12 @@ employerRouter.get('/', requestLogger, getAllCompanies);
  *     responses:
  *       200:
  *         description: Company fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Employer'
  *       404:
- *         description: Company not found
+ *         $ref: '#/components/responses/NotFoundError'
  */
 employerRouter.get('/:id', requestLogger, getCompanyById);
 
@@ -270,10 +231,14 @@ employerRouter.get('/:id', requestLogger, getCompanyById);
  *     responses:
  *       200:
  *         description: Company profile updated successfully
- *       404:
- *         description: Company not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Employer'
  *       403:
- *         description: Forbidden
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
  */
 employerRouter.put('/:id', requestLogger, verifyJWT, authorizeRoles('employer'), updateCompanyDetails);
 
@@ -295,10 +260,14 @@ employerRouter.put('/:id', requestLogger, verifyJWT, authorizeRoles('employer'),
  *     responses:
  *       200:
  *         description: Company profile and related jobs deleted successfully
- *       404:
- *         description: Company not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
  *       403:
- *         description: Forbidden
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
  */
 employerRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('employer'), deleteCompanyProfile);
 

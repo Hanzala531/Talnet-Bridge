@@ -5,8 +5,11 @@ import {
   successResponse,
   createdResponse,
   badRequestResponse,
+  serverErrorResponse,
+  notFoundResponse,
+  conflictResponse,
 } from "../utils/ApiResponse.js";
-import { uploadOnCloudinary } from '../utils/cloudinary.js'
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 // ===============================
 // GET ALL COURSES
@@ -59,10 +62,10 @@ const getCourses = asyncHandler(async (req, res) => {
     ]);
 
     if (!courses.length) {
-      throw notFound("No courses found");
+      return res.json(notFoundResponse("No courses found"));
     }
 
-    return res.status(200).json(
+    return res.json(
       successResponse(
         {
           courses,
@@ -87,13 +90,12 @@ const getCourses = asyncHandler(async (req, res) => {
 const getCoursesById = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    const course = await Course.findById(id)
+    const course = await Course.findById(id);
     if (!course) {
-      throw notFound("Course not found");
+      return res.json (notFoundResponse("Course not found"));
     }
 
     return res
-      .status(200)
       .json(successResponse({ course }, "Course fetched successfully"));
   } catch (error) {
     throw internalServer("Failed to fetch course");
@@ -119,6 +121,11 @@ const createCourse = asyncHandler(async (req, res) => {
       maxEnrollments,
     } = req.body;
     const school = await TrainingInstitute.findOne({ userId: req.user._id });
+    if (!school) {
+      return res.json(
+        badRequestResponse("Training provider (school) not found for this user")
+      );
+    }
     const trainingProvider = school._id;
 
     // Schema-level validations already exist, but we also check at controller-level for clarity
@@ -134,7 +141,9 @@ const createCourse = asyncHandler(async (req, res) => {
       !skills?.length ||
       !category
     ) {
-      throw badRequest("All required fields must be provided");
+      return res.json(
+        badRequestResponse("All required fields must be provided")
+      );
     }
     // Checking if the course already exists
     const existingCourses = await Course.findOne({
@@ -144,21 +153,19 @@ const createCourse = asyncHandler(async (req, res) => {
     });
 
     if (existingCourses) {
-      return res.status(409).json({
-        success: false,
-        status: 409,
-        message: "Course already exists",
-      });
+      return res.json(conflictResponse("Course already exists"));
     }
 
     // checking if image is uploaded
     const imageLocalPath = req.file?.path;
-    if(!imageLocalPath) throw badRequest("Course image is not uploaded")
-      // upload image to cloudinary
-    const imageUploadPath = await uploadOnCloudinary(imageLocalPath)
-    if (!imageUploadPath) throw internalServer("Failed to upload course image due to some issue")
-
-    
+    if (!imageLocalPath)
+      return res.json(badRequestResponse("Course image is not uploaded"));
+    // upload image to cloudinary
+    const imageUploadPath = await uploadOnCloudinary(imageLocalPath);
+    if (!imageUploadPath)
+      return res.json(
+        serverErrorResponse("Failed to upload course image due to some issue")
+      );
 
     const course = await Course.create({
       coverImage: imageUploadPath.url,
@@ -178,9 +185,9 @@ const createCourse = asyncHandler(async (req, res) => {
     });
 
     return res
-      .status(201)
       .json(createdResponse({ course }, "Course created successfully"));
   } catch (error) {
+    console.error("Create course error:", error); // Add this for debugging
     throw internalServer("Failed to create course");
   }
 });
@@ -196,11 +203,11 @@ const updateCourse = asyncHandler(async (req, res) => {
 
     const existingCourse = await Course.findById(id);
     if (!existingCourse) {
-      throw notFound("Course not found");
+      return res.json (notFoundResponse("Course not found"));
     }
 
     if (existingCourse.trainingProvider?.toString() !== userId.toString()) {
-      throw badRequest("You can only update your own courses");
+      return res.json (badRequestResponse("You can only update your own courses"));
     }
 
     const course = await Course.findByIdAndUpdate(id, updates, {
@@ -208,11 +215,10 @@ const updateCourse = asyncHandler(async (req, res) => {
       runValidators: true,
     });
     if (!course) {
-      throw notFound("Course update failed");
+      return res.json (notFoundResponse("Course update failed"));
     }
 
     return res
-      .status(200)
       .json(successResponse({ course }, "Course updated successfully"));
   } catch (error) {
     throw internalServer("Failed to update course");
@@ -228,12 +234,12 @@ const updateCourseStatus = asyncHandler(async (req, res) => {
     const { status } = req.body;
 
     if (req.user?.role !== "admin") {
-      throw badRequest("Only admin can update course status");
+      return res.json(badRequestResponse("Only admin can update course status"));
     }
 
     const validStatuses = ["draft", "pending_approval", "approved", "rejected"];
     if (!validStatuses.includes(status)) {
-      throw badRequest("Invalid status value");
+      return res.json (badRequestResponse("Invalid status value"));
     }
 
     const course = await Course.findByIdAndUpdate(
@@ -242,11 +248,10 @@ const updateCourseStatus = asyncHandler(async (req, res) => {
       { new: true }
     );
     if (!course) {
-      throw notFound("Course not found or update failed");
+      return res.json (notFoundResponse("Course not found or update failed"));
     }
 
     return res
-      .status(200)
       .json(successResponse({ course }, "Course status updated successfully"));
   } catch (error) {
     throw internalServer("Failed to update course status");
@@ -262,11 +267,10 @@ const deleteCourseById = asyncHandler(async (req, res) => {
     const course = await Course.findByIdAndDelete(id);
 
     if (!course) {
-      throw notFound("Course not found or already deleted");
+      return res.json (notFoundResponse("Course not found or already deleted"));
     }
 
     return res
-      .status(200)
       .json(successResponse(null, "Course deleted successfully"));
   } catch (error) {
     throw internalServer("Failed to delete course");
@@ -313,7 +317,7 @@ const searchCourses = asyncHandler(async (req, res) => {
 
     const total = await Course.countDocuments(searchFilter);
 
-    return res.status(200).json(
+    return res.json(
       successResponse(
         {
           courses,
@@ -347,12 +351,12 @@ const getCoursesByProvider = asyncHandler(async (req, res) => {
       .sort({ createdAt: -1 });
 
     if (!courses.length) {
-      throw notFound("No courses found for this provider");
+       return res.json (notFoundResponse("No courses found for this provider"));
     }
 
     const total = await Course.countDocuments({ trainingProvider: providerId });
 
-    return res.status(200).json(
+    return res.json(
       successResponse(
         {
           courses,

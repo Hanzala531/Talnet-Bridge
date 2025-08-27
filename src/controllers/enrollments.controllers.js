@@ -7,7 +7,7 @@ import {
 } from '../models/index.js';
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { badRequest, notFound, internalServer } from "../utils/ApiError.js";
-import { successResponse, createdResponse, badRequestResponse } from "../utils/ApiResponse.js";
+import { successResponse, createdResponse, badRequestResponse, notFoundResponse } from "../utils/ApiResponse.js";
 
 // ===============================
 // CREATE ENROLLMENT
@@ -20,11 +20,11 @@ const createEnrollment = asyncHandler(async (req, res) => {
         // Validate course exists and is active
         const course = await Course.findById(courseId).populate('trainingProvider', 'name email');
         if (!course) {
-            throw notFound("Course not found");
+            return res.json (notFoundResponse("Course not found"));
         }
 
         if (course.status !== 'approved') {
-            throw badRequest("Course is not available for enrollment");
+            return res.json (badRequestResponse("Course is not available for enrollment"));
         }
 
     // Optionally, check for course capacity if you want to keep this logic
@@ -37,7 +37,7 @@ const createEnrollment = asyncHandler(async (req, res) => {
         });
 
         if (existingEnrollment) {
-            throw badRequest("Already enrolled in this course");
+            return res.json (badRequestResponse("Already enrolled in this course"));
         }
 
         // Create enrollment
@@ -56,7 +56,7 @@ const createEnrollment = asyncHandler(async (req, res) => {
             .populate('courseId', 'title instructor duration category')
             .populate('studentId', 'fullName email');
 
-        return res.status(201).json(
+        return res.json(
             createdResponse(
                 { enrollment: populatedEnrollment },
                 "Successfully enrolled in course"
@@ -97,7 +97,7 @@ const getUserEnrollments = asyncHandler(async (req, res) => {
             Enrollment.countDocuments(filter)
         ]);
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 {
                     enrollments,
@@ -137,7 +137,7 @@ const getEnrollmentById = asyncHandler(async (req, res) => {
             });
 
         if (!enrollment) {
-            throw notFound("Enrollment not found");
+            return res.json (notFoundResponse("Enrollment not found"));
         }
 
         // Authorization check
@@ -146,10 +146,10 @@ const getEnrollmentById = asyncHandler(async (req, res) => {
         const isAdmin = userRole === 'admin';
 
         if (!isStudent && !isProvider && !isAdmin) {
-            throw badRequest("Access denied");
+            return res.json (badRequestResponse("Access denied"));
         }
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 { enrollment },
                 "Enrollment fetched successfully"
@@ -172,14 +172,14 @@ const updateEnrollmentStatus = asyncHandler(async (req, res) => {
 
         const validStatuses = ["enrolled", "in-progress", "completed", "withdrawn", "suspended"];
         if (status && !validStatuses.includes(status)) {
-            throw badRequest("Invalid status value");
+            return res.json (badRequestResponse("Invalid status value"));
         }
 
         const enrollment = await Enrollment.findById(id)
             .populate('courseId', 'trainingProvider');
 
         if (!enrollment) {
-            throw notFound("Enrollment not found");
+            return res.json (notFoundResponse("Enrollment not found"));
         }
 
         // Authorization check
@@ -188,7 +188,7 @@ const updateEnrollmentStatus = asyncHandler(async (req, res) => {
         const isAdmin = userRole === 'admin';
 
         if (!isStudent && !isProvider && !isAdmin) {
-            throw badRequest("Access denied");
+            return res.json (badRequestResponse("Access denied"));
         }
 
     // Update fields
@@ -202,7 +202,7 @@ const updateEnrollmentStatus = asyncHandler(async (req, res) => {
     ).populate('courseId', 'title instructor')
      .populate('studentId', 'fullName email');
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 { enrollment: updatedEnrollment },
                 "Enrollment updated successfully"
@@ -232,14 +232,14 @@ const getCourseEnrollments = asyncHandler(async (req, res) => {
             .populate('trainingProvider', 'userId');
 
         if (!course) {
-            throw notFound("Course not found");
+            return res.json (notFoundResponse("Course not found"));
         }
 
         const isProvider = course.trainingProvider.userId.toString() === userId.toString();
         const isAdmin = userRole === 'admin';
 
         if (!isProvider && !isAdmin) {
-            throw badRequest("Access denied");
+            return res.json (badRequestResponse("Access denied"));
         }
 
         const filter = { courseId };
@@ -258,7 +258,7 @@ const getCourseEnrollments = asyncHandler(async (req, res) => {
             Enrollment.countDocuments(filter)
         ]);
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 {
                     enrollments,
@@ -294,7 +294,7 @@ const getEnrollmentStatistics = asyncHandler(async (req, res) => {
             // Get courses by this training provider
             const institute = await TrainingInstitute.findOne({ userId });
             if (!institute) {
-                throw notFound("Training institute not found");
+                return res.json (notFoundResponse("Training institute not found"));
             }
             const courses = await Course.find({ trainingProvider: institute._id }).select('_id');
             const courseIds = courses.map(c => c._id);
@@ -302,7 +302,7 @@ const getEnrollmentStatistics = asyncHandler(async (req, res) => {
         } else if (userRole === 'student') {
             matchFilter = { studentId: userId };
         } else if (userRole !== 'admin') {
-            throw badRequest("Access denied");
+            return res.json (badRequestResponse("Access denied"));
         }
 
         const stats = await Enrollment.aggregate([
@@ -328,7 +328,7 @@ const getEnrollmentStatistics = asyncHandler(async (req, res) => {
             activeEnrollments: 0
         };
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 {
                     statistics: {
@@ -357,24 +357,24 @@ const withdrawFromCourse = asyncHandler(async (req, res) => {
             .populate('courseId', 'title currentEnrollments');
 
         if (!enrollment) {
-            throw notFound("Enrollment not found");
+            return res.json(notFoundResponse("Enrollment not found"));
         }
 
         // Only student can withdraw their own enrollment
         if (enrollment.studentId.toString() !== userId.toString()) {
-            throw badRequest("Access denied");
+            return res.json(badRequestResponse("Access denied"));
         }
         if (enrollment.status === 'withdrawn') {
-            throw badRequest("Already withdrawn from course");
+            return res.json(badRequestResponse("Already withdrawn from course"));
         }
         if (enrollment.status === 'completed') {
-            throw badRequest("Cannot withdraw from completed course");
+            return res.json(badRequestResponse("Cannot withdraw from completed course"));
         }
         // Update enrollment status
         enrollment.status = 'withdrawn';
         await enrollment.save();
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 { enrollment },
                 "Successfully withdrawn from course"

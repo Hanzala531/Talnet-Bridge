@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import {uploadOnCloudinary} from '../utils/cloudinary.js'
 import { Certification } from "../models/student models/certification.models.js";
-import { successResponse, createdResponse, updatedResponse } from "../utils/ApiResponse.js";
+import { successResponse, createdResponse, updatedResponse, serverErrorResponse, notFoundResponse, badRequestResponse } from "../utils/ApiResponse.js";
 import { badRequest, internalServer, notFound, forbidden } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Student } from "../models/index.js";
@@ -14,7 +14,7 @@ const createCertification = asyncHandler(async (req, res) => {
         const { name, issuedBy, issueDate } = req.body;
 
         if (!name || !issuedBy) {
-            throw badRequest("Name and issuedBy are required");
+                  return res.json( badRequestResponse("Certificate name and issuer is required"));
         }
 
         // Duplicate check
@@ -24,19 +24,19 @@ const createCertification = asyncHandler(async (req, res) => {
         });
 
         if (existingCert) {
-            throw badRequest("Certification with this name and issuer already exists");
+                  return res.json( badRequestResponse("Certification with this name already exists"));
         }
 
         // File validation
         const localImagePath = req.file?.path || req.files?.[0]?.path;
         if (!localImagePath) {
-            throw badRequest("Certificate file is required");
+                  return res.json( badRequestResponse("Certificate file not provided"));
         }
 
         // Upload to Cloudinary
         const imageUrl = await uploadOnCloudinary(localImagePath).catch(() => null);
         if (!imageUrl) {
-            throw internalServer("Failed to upload image to cloud");
+                  return res.json( serverErrorResponse("Failed to upload certification"));
         }
 
         // Save certification
@@ -48,7 +48,7 @@ const createCertification = asyncHandler(async (req, res) => {
         });
 
         if (!certification) {
-            throw internalServer("Failed to create certification");
+                  return res.json( serverErrorResponse("Failed to upload certificate"));
         }
 
         // Link certification to student
@@ -57,7 +57,7 @@ const createCertification = asyncHandler(async (req, res) => {
         if (!student) {
             // Optionally, you may want to delete the created certification if student not found
             await Certification.findByIdAndDelete(certification._id);
-            throw notFound("Student not found to link certification");
+                  return res.json( notFoundResponse("Student not found to link certification"));
         }
         student.certifications = Array.isArray(student.certifications)
             ? [...student.certifications, certification._id]
@@ -72,7 +72,6 @@ const createCertification = asyncHandler(async (req, res) => {
         );
 
     } catch (error) {
-        console.error("Error in createCertification:", error.message || error);
         if (error.statusCode) {
             throw error;
         }
@@ -119,7 +118,7 @@ const getAllCertifications = asyncHandler(async (req, res) => {
             Certification.countDocuments(filter)
         ]);
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 {
                     certifications,
@@ -145,16 +144,16 @@ const getCertificationById = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw badRequest("Invalid certification ID");
+      return res.json( badRequestResponse("Invalid certification id provided"));
         }
 
         const certification = await Certification.findById(id).lean();
 
         if (!certification) {
-            throw notFound("Certification not found");
+         return res.json( badRequestResponse("Certi"));
         }
 
-        return res.status(200).json(
+        return res.json(
             successResponse({ certification }, "Certification retrieved successfully")
         );
     } catch (error) {throw error;
@@ -170,12 +169,12 @@ const updateCertification = asyncHandler(async (req, res) => {
         const { name, issuedBy, issueDate, certificateFile, extracted } = req.body;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw badRequest("Invalid certification ID");
+            return res.json(badRequestResponse("Invalid certification ID"));
         }
 
         const certification = await Certification.findById(id);
         if (!certification) {
-            throw notFound("Certification not found");
+            return res.json( notFoundResponse("Certification not found"))
         }
 
         // Check for duplicate if name or issuer is being changed
@@ -191,7 +190,7 @@ const updateCertification = asyncHandler(async (req, res) => {
                 }).lean();
 
                 if (existingCert) {
-                    throw badRequest("Certification with this name and issuer already exists");
+                    return res.json (badRequestResponse("Certification with this name and issuer already exists"));
                 }
             }
         }
@@ -207,7 +206,7 @@ const updateCertification = asyncHandler(async (req, res) => {
         Object.assign(certification, updateData);
         await certification.save();
 
-        return res.status(200).json(
+        return res.json(
             updatedResponse(
                 {
                     certification: {
@@ -221,7 +220,7 @@ const updateCertification = asyncHandler(async (req, res) => {
                 "Certification updated successfully"
             )
         );
-    } catch (error) {throw error;
+    } catch (error) {throw internalServer("Failed in updating the certifications");
     }
 });
 
@@ -233,15 +232,15 @@ const deleteCertification = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw badRequest("Invalid certification ID");
+            return res.json (badRequestResponse("Invalid certification ID"));
         }
 
         const certification = await Certification.findByIdAndDelete(id);
         if (!certification) {
-            throw notFound("Certification not found");
+            return res.json (notFoundResponse("Certification not found"));
         }
 
-        return res.status(200).json(
+        return res.json(
             successResponse(null, "Certification deleted successfully")
         );
     } catch (error) {throw internalServer("Failed to delete certification");
@@ -256,7 +255,7 @@ const searchCertifications = asyncHandler(async (req, res) => {
         const { q, limit = 20 } = req.query;
 
         if (!q || q.trim().length < 2) {
-            throw badRequest("Search query must be at least 2 characters");
+            return res.json (badRequestResponse("Search query must be at least 2 characters"));
         }
 
         const searchTerm = q.trim();
@@ -273,7 +272,7 @@ const searchCertifications = asyncHandler(async (req, res) => {
         .limit(limitNum)
         .lean();
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 { 
                     certifications,
@@ -283,7 +282,8 @@ const searchCertifications = asyncHandler(async (req, res) => {
                 "Certifications search completed"
             )
         );
-    } catch (error) {throw error;
+    } catch (error) {
+        throw internalServer('Failed in searching certifications');
     }
 });
 
@@ -296,7 +296,7 @@ const getCertificationsByIssuer = asyncHandler(async (req, res) => {
         const { page = 1, limit = 20 } = req.query;
 
         if (!issuer || issuer.trim().length < 2) {
-            throw badRequest("Issuer name must be at least 2 characters");
+            return res.json( badRequest("Issuer name must be at least 2 characters"));
         }
 
         const skip = (page - 1) * Math.min(limit, 100);
@@ -314,7 +314,7 @@ const getCertificationsByIssuer = asyncHandler(async (req, res) => {
             Certification.countDocuments(filter)
         ]);
 
-        return res.status(200).json(
+        return res.json(
             successResponse(
                 {
                     certifications,
@@ -329,7 +329,7 @@ const getCertificationsByIssuer = asyncHandler(async (req, res) => {
                 "Certifications by issuer retrieved successfully"
             )
         );
-    } catch (error) {throw error;
+    } catch (error) {throw internalServer("Failed to retrive certifications by an issuer");
     }
 });
 

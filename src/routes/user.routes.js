@@ -82,11 +82,9 @@ const userRouter = express.Router();
  *                   type: string
  *                   example: "User registered successfully"
  *       400:
- *         description: Bad request - validation error or user already exists
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/ValidationError'
+ *       409:
+ *         $ref: '#/components/responses/ConflictError'
  */
 
 userRouter.post('/register', requestLogger, verifyRegisterCredentials,  registerUser);
@@ -142,17 +140,9 @@ userRouter.post('/register', requestLogger, verifyRegisterCredentials,  register
  *                   type: string
  *                   example: "User logged in successfully"
  *       400:
- *         description: Invalid credentials or validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/ValidationError'
  *       404:
- *         description: User not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/NotFoundError'
  */
 userRouter.post('/login', requestLogger, loginUser);
 
@@ -167,8 +157,16 @@ userRouter.post('/login', requestLogger, loginUser);
  *     responses:
  *       200:
  *         description: User logged out successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *             example:
+ *               success: true
+ *               statusCode: 200
+ *               message: "User logged out successfully"
  *       401:
- *         description: Unauthorized
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 userRouter.post('/logout', requestLogger, verifyJWT, logoutUser);
 
@@ -217,23 +215,11 @@ userRouter.post('/logout', requestLogger, verifyJWT, logoutUser);
  *                   type: string
  *                   example: "Profile picture updated successfully"
  *       400:
- *         description: Bad request - image not uploaded or invalid file type
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/ValidationError'
  *       401:
- *         description: Unauthorized - Invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 userRouter.post('/profile-picture', requestLogger, verifyJWT, upload.single('image'), addPicture);
 
@@ -284,23 +270,11 @@ userRouter.post('/profile-picture', requestLogger, verifyJWT, upload.single('ima
  *                   type: string
  *                   example: "Access token refreshed successfully"
  *       400:
- *         description: Bad request - invalid or missing refresh token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/ValidationError'
  *       401:
- *         description: Unauthorized - Invalid or expired refresh token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 userRouter.post("/refresh-token", refreshAccessToken);
 
@@ -410,37 +384,9 @@ userRouter.post("/refresh-token", refreshAccessToken);
  *                   type: string
  *                   example: "Users fetched successfully"
  *       401:
- *         description: Unauthorized - Invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 statusCode:
- *                   type: integer
- *                   example: 401
- *                 message:
- *                   type: string
- *                   example: "Access token required"
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 statusCode:
- *                   type: integer
- *                   example: 500
- *                 message:
- *                   type: string
- *                   example: "Failed to fetch users"
+ *         $ref: '#/components/responses/InternalServerError'
  */
 userRouter.get('/', requestLogger, verifyJWT, getAllUsers);
 

@@ -20,7 +20,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/contents/User.models.js";
 import { badRequest, notFound, internalServer, ApiError, unauthorized } from "../utils/ApiError.js";
-import { successResponse, createdResponse } from "../utils/ApiResponse.js";
+import { successResponse, createdResponse, badRequestResponse, notFoundResponse, serverErrorResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from '../utils/cloudinary.js'
 import jwt from "jsonwebtoken";
 
@@ -112,25 +112,25 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // Check for required fields
     if (!fullName || !email || !phone || !password) {
-      throw  badRequest("All fields are required");
+      return res.json( badRequestResponse("All fields are required"));
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      throw  badRequest("Invalid email format");
+      return res.json( badRequestResponse("Invalid email format"));
     }
 
     // Validate phone number 
     const phoneRegex = /^\d{10,15}$/;
     if (!phoneRegex.test(phone)) {
-      throw  badRequest("Invalid phone number format");
+            return res.json( badRequestResponse("Invalid phone number"));
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      throw  badRequest("User with this email already exists");
+            return res.json( badRequestResponse("User with this email already exists"));
     }
 
     // Create new user
@@ -151,7 +151,6 @@ const registerUser = asyncHandler(async (req, res) => {
     delete createdUser.refreshToken;
 
     return res
-      .status(201)
       .json(createdResponse({ user: createdUser, accessToken }, "User registered successfully"));
 
   } catch (error) {
@@ -204,19 +203,19 @@ const loginUser = asyncHandler(async (req, res) => {
 
     // Check required fields
     if (!email || !password) {
-      throw  badRequest("Email and password are required");
+            return res.json( badRequestResponse("Email and password are required"));
     }
 
     // Find user and select password
     const user = await User.findOne({ email });
     if (!user) {
-      throw  notFound("User not found");
+            return res.json( notFoundResponse("User not found"));
     }
 
     // Validate password
     const isPasswordValid = await user.isPasswordCorrect(password);
     if (!isPasswordValid) {
-      throw  badRequest("Invalid credentials");
+            return res.json( badRequestResponse("Invalid login credentials"));
     }
 
     // Generate tokens
@@ -244,7 +243,8 @@ const loginUser = asyncHandler(async (req, res) => {
         )
       );
 
-  } catch (error) {throw  internalServer("Failed to login");
+  } catch (error) {
+    throw  internalServer("Failed to login");
   }
 });
 
@@ -282,7 +282,7 @@ const logoutUser = asyncHandler(async (req, res) => {
         const userId = req.user?._id;
 
         if (!userId) {
-            throw  badRequest("User not found");
+                  return res.json( badRequestResponse("User Not Found"));
         }
 
         // Remove refresh token from database
@@ -306,7 +306,6 @@ const logoutUser = asyncHandler(async (req, res) => {
 
         // Remove both access and refresh tokens from cookies
         return res
-            .status(200)
             .clearCookie("accessToken", options)
             .clearCookie("refreshToken", options)
             .json(successResponse(null, "User logged out successfully"));
@@ -373,14 +372,15 @@ const addPicture = asyncHandler(async (req, res) => {
      const imageLocalPath = req.file?.path || req.files?.[0]?.path;
     // Check if the image is uploaded
     if (!imageLocalPath) {
-      throw badRequest("Image is not uploaded");
+           return res.json( badRequestResponse("Image is not provided to upload"));
+
     }
 
     // Upload to cloudinary
     const imageUrl = await uploadOnCloudinary(imageLocalPath);
 
     if (!imageUrl) {
-      throw internalServer(500, "Error in uploading the image");
+            return res.json( serverErrorResponse("Failed to upload image"));
     }
 
     // Update user profile with image URL
@@ -391,10 +391,10 @@ const addPicture = asyncHandler(async (req, res) => {
     );
 
     if (!updatedUser) {
-      throw notFound("User not found");
+            return res.json( notFoundResponse("user not updated"));
     }
 
-    return res.status(200).json(
+    return res.json(
       successResponse(
         { user: updatedUser, imageUrl },
         "Profile picture updated successfully"
@@ -409,11 +409,7 @@ const addPicture = asyncHandler(async (req, res) => {
         message: error.message,
       });
     }
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: "Failed to update profile picture",
-    });
+    throw internalServer("Failed to update the user")
   }
 });
 
@@ -470,7 +466,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         )
     } catch (error) {
         // console.error("Error in refreshAccessToken:", error.message);
-        throw new ApiError(401, error?.message || "Invalid refresh token")
+        throw unauthorized("Invalid reffresh token provided")
     }
 })
 
