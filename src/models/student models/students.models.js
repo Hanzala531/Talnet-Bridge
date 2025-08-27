@@ -54,7 +54,6 @@ const studentSchema = new mongoose.Schema({
         subject: { type: String, required: true },
         marks: { type: String, required: true },
         grade: { type: String, required: true },
-        percentage : { type: String, required: true }
     }],
     enrollments:[{
         type: mongoose.Schema.Types.ObjectId,

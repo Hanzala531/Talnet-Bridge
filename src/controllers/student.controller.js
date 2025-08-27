@@ -247,9 +247,9 @@ const getMyStudentProfile = asyncHandler(async (req, res) => {
 
     // Try to load student profile and populate related data
     let studentProfile = await Student.findOne({ userId: reqUser._id })
-      .populate("kycVerification")
+      .populate({ path: "kycVerification", select: "_id status" })
       .populate({ path: "certifications", select: "_id name" })
-      .populate({ path: "experience", select: "_id title" })
+      .populate("experience")
       .populate("enrollments")
       .lean();
 
@@ -714,9 +714,7 @@ const addResult = asyncHandler(async (req, res) => {
       if (!result.marks || typeof result.marks !== "string") {
         return res.json (badRequestResponse("Marks must be provided as a string"));
       }
-      if (!result.percentage || typeof result.percentage !== 'string') {
-        return res.json (badRequestResponse("Percentage must be provided as a string"));
-      }
+      
       if (!result.grade || !validGrades.includes(result.grade.toUpperCase())) {
         return res.json (badRequestResponse(
           `Invalid grade for ${result.subject}. Allowed grades are: ${validGrades.join(", ")}`)

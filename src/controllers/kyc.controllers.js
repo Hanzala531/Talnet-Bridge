@@ -153,13 +153,13 @@ const submitInitialKYC = asyncHandler(async (req, res) => {
             let normalizedQualifications = educationalQualifications;
             if (educationalQualifications) {
                 if (typeof educationalQualifications === "string") {
-                    normalizedQualifications = [{ level: educationalQualifications }];
+                    normalizedQualifications = [educationalQualifications];
                 } else if (Array.isArray(educationalQualifications) && typeof educationalQualifications[0] === "string") {
-                    normalizedQualifications = educationalQualifications.map(lvl => ({ level: lvl }));
+                    normalizedQualifications = educationalQualifications;
                 }
                 for (const qualification of normalizedQualifications) {
-                    if (!validLevels.includes(qualification.level)) {
-                        return res.json(badRequestResponse(`Invalid educational qualification level: ${qualification.level}`));
+                    if (!validLevels.includes(qualification)) {
+                        return res.json(badRequestResponse(`Invalid educational qualification level: ${qualification}`));
                     }
                 }
             }
@@ -175,16 +175,16 @@ const submitInitialKYC = asyncHandler(async (req, res) => {
         "other",
       ];
 
-      for (const field in req.files) {
-        for (const file of req.files[field]) {
-          const uploadResult = await uploadOnCloudinary(file.path);
-          let docType = file.fieldname;
-          if (!validDocTypes.includes(docType)) {
-            docType = "other";
-          }
-          documents.push({ docType, docUrl: uploadResult.secure_url });
-        }
-      }
+            for (const field in req.files) {
+                for (const file of req.files[field]) {
+                    const uploadResult = await uploadOnCloudinary(file.path);
+                    let docType = file.fieldname;
+                    if (!validDocTypes.includes(docType)) {
+                        docType = "other";
+                    }
+                    documents.push({ docType, docUrl: uploadResult.secure_url });
+                }
+            }
 
             // Create KYC
             const kycData = {
@@ -262,18 +262,18 @@ const uploadEducationalCertificates = asyncHandler(async (req, res) => {
         }
 
         const kyc = await KYC.findOne({ userId });
-        if (!kyc) {
-            throw notFound("KYC record not found");
-        }
-
-        // Upload certificates to Cloudinary
-        const certificates = [];
-        for (const file of req.files) {
-            const uploadResult = await uploadOnCloudinary(file.path);
-            certificates.push({
-                docType: "educationalCertificates",
-                docUrl: uploadResult.secure_url
-            });
+                let normalizedQualifications = educationalQualifications;
+                if (educationalQualifications) {
+                    if (typeof educationalQualifications === "string") {
+                        normalizedQualifications = [educationalQualifications];
+                    } else if (Array.isArray(educationalQualifications) && typeof educationalQualifications[0] === "string") {
+                        normalizedQualifications = educationalQualifications;
+                    }
+                    for (const qualification of normalizedQualifications) {
+                        if (!validLevels.includes(qualification)) {
+                            return res.json(badRequestResponse(`Invalid educational qualification level: ${qualification}`));
+                        }
+                    }
         }
 
         kyc.documents = [...kyc.documents, ...certificates];
