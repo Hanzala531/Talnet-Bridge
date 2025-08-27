@@ -8,8 +8,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 const creatCompanyProfile = asyncHandler(async (req, res) => {
     try {
         const userId = req.user._id;
-        const { name, companySize, industry, websiteLink, location } = req.body;
-        if (!name || !companySize || !industry || !websiteLink || !location) {
+        const { name, companySize, industry, websiteLink} = req.body;
+        if (!name || !companySize || !industry || !websiteLink) {
             return res.json(badRequestResponse("All fields (name, companySize, industry, websiteLink, location) are required."));
         }
         // Check if employer already exists for this user
@@ -28,7 +28,6 @@ const creatCompanyProfile = asyncHandler(async (req, res) => {
             companySize: companySize.trim(),
             industry: industry.trim(),
             websiteLink: websiteLink.trim(),
-            location: location.trim()
         });
         if (!employer) return res.json(serverErrorResponse("Failed to create employer profile."));
         return res.json(createdResponse(employer, "Employer profile created successfully."));

@@ -158,44 +158,6 @@ const getJobById = asyncHandler(async (req, res) => {
     }
 });
 
-/**
- * Create a new job post
- * 
- * @function createJobPost
- * @param {Object} req - Express request object
- * @param {Object} req.body - Request body
- * @param {string} req.body.jobTitle - Job title (required)
- * @param {string} req.body.department - Department name (required)
- * @param {string} req.body.location - Job location (required)
- * @param {string} req.body.employmentType - Employment type: "Full-time", "Part-time", "Internship", "Contract" (required)
- * @param {Object} req.body.salary - Salary information
- * @param {number} req.body.salary.min - Minimum salary
- * @param {number} req.body.salary.max - Maximum salary
- * @param {string} req.body.salary.currency - Currency code (default: "PKR")
- * @param {string} req.body.jobDescription - Job description (required, max 2000 chars)
- * @param {string[]} req.body.skillsRequired - Array of required skills
- * @param {string} req.body.benefits - Benefits description
- * @param {string} req.body.category - Job category (required)
- * @param {Date} req.body.applicationDeadline - Application deadline
- * @param {Object} req.user - Authenticated user (employer)
- * @param {Object} res - Express response object
- * @returns {Promise<Object>} Created job post data
- * 
- * @example
- * POST /api/v1/jobs
- * Body: {
- *   "jobTitle": "Full Stack Developer",
- *   "department": "Engineering",
- *   "location": "Lahore",
- *   "employmentType": "Full-time",
- *   "salary": { "min": 60000, "max": 90000, "currency": "PKR" },
- *   "jobDescription": "We are looking for a skilled full stack developer...",
- *   "skillsRequired": ["React", "Node.js", "MongoDB"],
- *   "benefits": "Health insurance, flexible hours",
- *   "category": "Technology",
- *   "applicationDeadline": "2025-12-31"
- * }
- */
 // Create a job post
 const createJobPost = asyncHandler(async (req, res) => {
     try {
@@ -261,22 +223,6 @@ const deleteJobPost = asyncHandler(async (req, res) => {
     }
 });
 
-/**
- * Search jobs with advanced filtering
- * 
- * @function searchJobs
- * @param {Object} req - Express request object
- * @param {Object} req.query - Query parameters
- * @param {string} req.query.q - Search term for job title, description, or company
- * @param {string} req.query.location - Location filter
- * @param {string} req.query.category - Category filter
- * @param {string} req.query.employmentType - Employment type filter
- * @param {number} req.query.minSalary - Minimum salary filter
- * @param {number} req.query.maxSalary - Maximum salary filter
- * @param {string} req.query.skills - Comma-separated skills filter
- * @param {Object} res - Express response object
- * @returns {Promise<Object>} Filtered job search results
- */
 const searchJobs = asyncHandler(async (req, res) => {
     try {
         const { 
