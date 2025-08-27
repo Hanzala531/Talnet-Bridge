@@ -3,7 +3,6 @@ import {
     uploadDocs,
     updatePersonalInfo,
     submitInitialKYC,
-    uploadEducationalCertificates,
     addDocuments,
     getAllKYCDocs,
     getKYCById,
@@ -135,38 +134,6 @@ kycRouter.post('/initial', requestLogger, verifyJWT,
   ])
 , submitInitialKYC);
 
-/**
- * @swagger
- * /api/v1/kyc/certificates:
- *   post:
- *     summary: Upload educational certificates
- *     tags: [KYC]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - documents
- *             properties:
- *               documents:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: binary
- *                 minItems: 1
- *     responses:
- *       201:
- *         description: Educational certificates uploaded successfully
- *       400:
- *         description: Invalid document data
- *       401:
- *         description: Unauthorized
- */
-kycRouter.post('/certificates', requestLogger, verifyJWT, upload.array('certificates', 10), uploadEducationalCertificates);
 
 /**
  * @swagger

@@ -246,48 +246,48 @@ const submitInitialKYC = asyncHandler(async (req, res) => {
       )
     );
   } catch (error) {
-    throw error;
+    throw internalServer("Failed for kyc");
   }
 });
 
-// ===============================
-// EDUCATIONAL CERTIFICATES CONTROLLER
-// ===============================
-const uploadEducationalCertificates = asyncHandler(async (req, res) => {
-    try {
-        const userId = req.user._id;
+// // ===============================
+// // EDUCATIONAL CERTIFICATES CONTROLLER
+// // ===============================
+// const uploadEducationalCertificates = asyncHandler(async (req, res) => {
+//     try {
+//         const userId = req.user._id;
 
-        if (!req.files || req.files.length === 0) {
-            return res.json(badRequestResponse("Certificates are required"));
-        }
+//         if (!req.files || req.files.length === 0) {
+//             return res.json(badRequestResponse("Certificates are required"));
+//         }
 
-        const kyc = await KYC.findOne({ userId });
-                let normalizedQualifications = educationalQualifications;
-                if (educationalQualifications) {
-                    if (typeof educationalQualifications === "string") {
-                        normalizedQualifications = [educationalQualifications];
-                    } else if (Array.isArray(educationalQualifications) && typeof educationalQualifications[0] === "string") {
-                        normalizedQualifications = educationalQualifications;
-                    }
-                    for (const qualification of normalizedQualifications) {
-                        if (!validLevels.includes(qualification)) {
-                            return res.json(badRequestResponse(`Invalid educational qualification level: ${qualification}`));
-                        }
-                    }
-        }
+//         const kyc = await KYC.findOne({ userId });
+//                 let normalizedQualifications = educationalQualifications;
+//                 if (educationalQualifications) {
+//                     if (typeof educationalQualifications === "string") {
+//                         normalizedQualifications = [educationalQualifications];
+//                     } else if (Array.isArray(educationalQualifications) && typeof educationalQualifications[0] === "string") {
+//                         normalizedQualifications = educationalQualifications;
+//                     }
+//                     for (const qualification of normalizedQualifications) {
+//                         if (!validLevels.includes(qualification)) {
+//                             return res.json(badRequestResponse(`Invalid educational qualification level: ${qualification}`));
+//                         }
+//                     }
+//         }
 
-        kyc.documents = [...kyc.documents, ...certificates];
-        kyc.status = 'pending'; // Reset to pending after certificate upload
-        await kyc.save();
+//         kyc.documents = [...kyc.documents, ...certificates];
+//         kyc.status = 'pending'; // Reset to pending after certificate upload
+//         await kyc.save();
 
-        return res.json(
-            updatedResponse(
-                { kyc: { _id: kyc._id, status: kyc.status, certificatesCount: certificates.length } },
-                "Educational certificates uploaded successfully"
-            )
-        );
-    } catch (error) {throw error;}
-});
+//         return res.json(
+//             updatedResponse(
+//                 { kyc: { _id: kyc._id, status: kyc.status, certificatesCount: certificates.length } },
+//                 "Educational certificates uploaded successfully"
+//             )
+//         );
+//     } catch (error) {throw error;}
+// });
 
 // ===============================
 // ADDITIONAL DOCUMENT UPLOAD
@@ -550,7 +550,7 @@ export {
     uploadDocs,
     updatePersonalInfo,
     submitInitialKYC,
-    uploadEducationalCertificates,
+    // uploadEducationalCertificates,
     addDocuments,
     getAllKYCDocs,
     getKYCById,

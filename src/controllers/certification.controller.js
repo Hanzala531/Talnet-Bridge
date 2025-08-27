@@ -36,8 +36,10 @@ const createCertification = asyncHandler(async (req, res) => {
         // Upload to Cloudinary
         const imageUrl = await uploadOnCloudinary(localImagePath).catch(() => null);
         if (!imageUrl) {
-                  return res.json( serverErrorResponse("Failed to upload certification"));
+            fs.unlinkSync(localImagePath);
+            return res.json( serverErrorResponse("Failed to upload certification"));
         }
+        fs.unlink
 
         // Save certification
         const certification = await Certification.create({

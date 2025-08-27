@@ -101,6 +101,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
         const cloudinaryResult = await uploadOnCloudinary(file.path);
         
         if (!cloudinaryResult) {
+          fs.unlinkSync(file.path);
          return res.json(serverErrorResponse(`Failed to upload file: ${file.originalname}`));
         }
         
