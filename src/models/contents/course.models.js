@@ -44,7 +44,6 @@ const courseSchema = new mongoose.Schema({
     type: {
         type: String,
         required: true,
-        enum: [ "oncampus", "hybrid"]
     },
 
     // Course Objectives
