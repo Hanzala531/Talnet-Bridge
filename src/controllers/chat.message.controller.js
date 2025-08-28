@@ -1,7 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError, internalServer } from "../utils/ApiError.js";
 import { serverErrorResponse, successResponse } from "../utils/ApiResponse.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { 
   appendMessage, 
   listMessages, 
@@ -14,7 +13,7 @@ import {
  * /api/v1/chat/messages:
  *   post:
  *     summary: Send a message
- *     description: Send a text message or file attachment to a conversation
+ *     description: Send a text message to a conversation
  *     security:
  *       - bearerAuth: []
  *     tags: [Chat]
@@ -26,6 +25,7 @@ import {
  *             type: object
  *             required:
  *               - conversationId
+ *               - text
  *             properties:
  *               conversationId:
  *                 type: string
@@ -40,24 +40,6 @@ import {
  *                 type: string
  *                 description: ID of message being replied to
  *                 example: "60f7b3b3b3b3b3b3b3b3b3b4"
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - conversationId
- *             properties:
- *               conversationId:
- *                 type: string
- *               text:
- *                 type: string
- *               replyTo:
- *                 type: string
- *               attachments:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: binary
- *                 description: File attachments (max 10MB each)
  *     responses:
  *       200:
  *         description: Message sent successfully
@@ -78,7 +60,7 @@ import {
  *                     message:
  *                       $ref: '#/components/schemas/ChatMessage'
  *       400:
- *         description: Validation error or file upload error
+ *         description: Validation error
  *       403:
  *         description: Access denied to conversation
  *       404:
@@ -93,50 +75,16 @@ export const sendMessage = asyncHandler(async (req, res) => {
   // Verify access to conversation
   await getConversationWithAccess(conversationId, senderId);
   
-  // Process file attachments if any
-  let attachments = [];
-  if (req.files && req.files.length > 0) {
-    for (const file of req.files) {
-      try {
-        const cloudinaryResult = await uploadOnCloudinary(file.path);
-        
-        if (!cloudinaryResult) {
-          fs.unlinkSync(file.path);
-         return res.json(serverErrorResponse(`Failed to upload file: ${file.originalname}`));
-        }
-        
-        // Determine file type
-        let fileType = "file";
-        if (file.mimetype.startsWith("image/")) {
-          fileType = "image";
-        } else if (file.mimetype === "application/pdf") {
-          fileType = "pdf";
-        } else if (
-          file.mimetype === "application/msword" ||
-          file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ) {
-          fileType = "doc";
-        }
-        
-        attachments.push({
-          url: cloudinaryResult.secure_url,
-          type: fileType,
-          name: file.originalname,
-          size: file.size,
-          mimeType: file.mimetype,
-        });
-      } catch (error) {
-        throw new internalServer(`Failed to upload file: ${file.originalname}`);
-      }
-    }
+  // Validate that text is provided
+  if (!text || !text.trim()) {
+    return res.json(serverErrorResponse("Message text is required"));
   }
   
   // Create message
   const message = await appendMessage({
     conversationId,
     senderId,
-    text,
-    attachments,
+    text: text.trim(),
     replyTo,
   });
   
@@ -450,10 +398,6 @@ export const sendTypingIndicator = asyncHandler(async (req, res) => {
  *         text:
  *           type: string
  *           description: Message text content
- *         attachments:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/ChatAttachment'
  *         readBy:
  *           type: array
  *           items:
@@ -468,13 +412,6 @@ export const sendTypingIndicator = asyncHandler(async (req, res) => {
  *           description: When the message was last edited
  *         replyTo:
  *           $ref: '#/components/schemas/ChatMessageBasic'
- *         type:
- *           type: string
- *           enum: [text, media, mixed]
- *           description: Type of message based on content
- *         hasAttachments:
- *           type: boolean
- *           description: Whether message has attachments
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -494,24 +431,4 @@ export const sendTypingIndicator = asyncHandler(async (req, res) => {
  *         createdAt:
  *           type: string
  *           format: date-time
- *     
- *     ChatAttachment:
- *       type: object
- *       properties:
- *         url:
- *           type: string
- *           description: URL of the uploaded file
- *         type:
- *           type: string
- *           enum: [image, pdf, doc, file]
- *           description: Type of attachment
- *         name:
- *           type: string
- *           description: Original filename
- *         size:
- *           type: integer
- *           description: File size in bytes
- *         mimeType:
- *           type: string
- *           description: MIME type of the file
  */

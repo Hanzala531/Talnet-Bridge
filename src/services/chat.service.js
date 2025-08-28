@@ -55,12 +55,11 @@ export async function findOrCreateDm({ userA, roleA, userB, roleB }) {
  * @param {Object} params - Parameters
  * @param {string} params.conversationId - Conversation ID
  * @param {string} params.senderId - Sender user ID
- * @param {string} params.text - Message text (optional)
- * @param {Array} params.attachments - Message attachments (optional)
+ * @param {string} params.text - Message text (required)
  * @param {string} params.replyTo - Reply to message ID (optional)
  * @returns {Promise<Object>} Created message
  */
-export async function appendMessage({ conversationId, senderId, text, attachments = [], replyTo }) {
+export async function appendMessage({ conversationId, senderId, text, replyTo }) {
   const session = await mongoose.startSession();
   
   try {
@@ -69,12 +68,16 @@ export async function appendMessage({ conversationId, senderId, text, attachment
     // Sanitize text
     const sanitizedText = text ? ChatMessage.sanitizeText(text) : "";
     
+    // Validate that text is provided
+    if (!sanitizedText.trim()) {
+      throw new ApiError(400, "Message text is required");
+    }
+    
     // Create message
     const message = new ChatMessage({
       conversationId,
       sender: senderId,
       text: sanitizedText,
-      attachments,
       replyTo,
     });
     

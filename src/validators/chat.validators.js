@@ -46,10 +46,11 @@ export const sendMessageSchema = [
     }),
   
   body("text")
-    .optional()
+    .notEmpty()
+    .withMessage("Message text is required")
     .trim()
-    .isLength({ max: 5000 })
-    .withMessage("Message text cannot exceed 5000 characters"),
+    .isLength({ min: 1, max: 5000 })
+    .withMessage("Message text must be between 1 and 5000 characters"),
   
   body("replyTo")
     .optional()
@@ -59,18 +60,6 @@ export const sendMessageSchema = [
       }
       return true;
     }),
-  
-  // Custom validation to ensure either text or attachments exist
-  body().custom((body, { req }) => {
-    const hasText = body.text && body.text.trim().length > 0;
-    const hasFiles = req.files && req.files.length > 0;
-    
-    if (!hasText && !hasFiles) {
-      throw new Error("Message must have either text content or attachments");
-    }
-    
-    return true;
-  }),
 ];
 
 // Validation for getting messages
@@ -176,41 +165,6 @@ export const typingSchema = [
     .isBoolean()
     .withMessage("isTyping must be a boolean"),
 ];
-
-// File upload validation helper
-export const validateFileUploads = (req, res, next) => {
-  if (!req.files || req.files.length === 0) {
-    return next();
-  }
-  
-  const maxFileSize = parseInt(process.env.MAX_MESSAGE_SIZE_MB || "10") * 1024 * 1024; // Convert MB to bytes
-  const allowedTypes = [
-    "image/jpeg",
-    "image/jpg", 
-    "image/png",
-    "image/gif",
-    "image/webp",
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "text/plain"
-  ];
-  
-  // Check each file
-  for (const file of req.files) {
-    // Check file size
-    if (file.size > maxFileSize) {
-      return next(new ApiError(400, `File ${file.originalname} exceeds maximum size of ${process.env.MAX_MESSAGE_SIZE_MB || 10}MB`));
-    }
-    
-    // Check file type
-    if (!allowedTypes.includes(file.mimetype)) {
-      return next(new ApiError(400, `File type ${file.mimetype} is not allowed for ${file.originalname}`));
-    }
-  }
-  
-  next();
-};
 
 // Validation error handler
 export const handleValidationErrors = (req, res, next) => {

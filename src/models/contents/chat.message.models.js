@@ -1,36 +1,5 @@
 import mongoose from "mongoose";
 
-const attachmentSchema = new mongoose.Schema(
-  {
-    url: {
-      type: String,
-      required: true,
-    },
-    type: {
-      type: String,
-      required: true,
-      enum: ["image", "pdf", "doc", "file"],
-    },
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    size: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    mimeType: {
-      type: String,
-      required: true,
-    },
-  },
-  {
-    _id: false, // Disable _id for subdocuments
-  }
-);
-
 const chatMessageSchema = new mongoose.Schema(
   {
     conversationId: {
@@ -49,19 +18,14 @@ const chatMessageSchema = new mongoose.Schema(
       type: String,
       trim: true,
       maxlength: 5000, // Reasonable limit for message length
-      // Custom validator to ensure either text or attachments exist
+      required: true, // Now text is required since we removed attachments
       validate: {
         validator: function (text) {
-          // Either text should exist or attachments should exist
-          return (
-            (text && text.trim().length > 0) ||
-            (this.attachments && this.attachments.length > 0)
-          );
+          return text && text.trim().length > 0;
         },
-        message: "Message must have either text content or attachments",
+        message: "Message text is required and cannot be empty",
       },
     },
-    attachments: [attachmentSchema],
     readBy: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -91,22 +55,6 @@ chatMessageSchema.index({ conversationId: 1, createdAt: -1, _id: -1 });
 chatMessageSchema.index({ sender: 1, createdAt: -1 });
 chatMessageSchema.index({ createdAt: -1 });
 
-// Virtual to check if message has attachments
-chatMessageSchema.virtual("hasAttachments").get(function () {
-  return this.attachments && this.attachments.length > 0;
-});
-
-// Virtual to get message type
-chatMessageSchema.virtual("type").get(function () {
-  if (this.hasAttachments && !this.text) {
-    return "media";
-  } else if (this.hasAttachments && this.text) {
-    return "mixed";
-  } else {
-    return "text";
-  }
-});
-
 // Method to check if user has read this message
 chatMessageSchema.methods.isReadBy = function (userId) {
   return this.readBy.some((readerId) => readerId.toString() === userId.toString());
@@ -132,23 +80,10 @@ chatMessageSchema.methods.getSanitizedText = function () {
 
 // Method to get message preview for notifications
 chatMessageSchema.methods.getPreview = function (maxLength = 100) {
-  if (this.text) {
-    const sanitized = this.getSanitizedText();
-    return sanitized.length > maxLength
-      ? sanitized.substring(0, maxLength) + "..."
-      : sanitized;
-  } else if (this.hasAttachments) {
-    const attachmentCount = this.attachments.length;
-    const firstAttachment = this.attachments[0];
-    
-    if (attachmentCount === 1) {
-      return `📎 ${firstAttachment.name}`;
-    } else {
-      return `📎 ${firstAttachment.name} and ${attachmentCount - 1} more`;
-    }
-  }
-  
-  return "Message";
+  const sanitized = this.getSanitizedText();
+  return sanitized.length > maxLength
+    ? sanitized.substring(0, maxLength) + "..."
+    : sanitized;
 };
 
 // Static method to sanitize text input

@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/Auth.middlewares.js";
-import { upload } from "../middlewares/Multer.middlewares.js";
 import { 
   sendMessage, 
   getMessages, 
@@ -12,7 +11,6 @@ import {
   getMessagesSchema, 
   markReadSchema, 
   typingSchema,
-  validateFileUploads,
   handleValidationErrors 
 } from "../validators/chat.validators.js";
 
@@ -26,37 +24,35 @@ router.use(verifyJWT);
  * /api/v1/chat/messages:
  *   post:
  *     summary: Send a message
- *     description: Send a text message with optional file attachments to a conversation
+ *     description: Send a text message to a conversation
  *     tags: [Chat]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             type: object
  *             required:
  *               - conversationId
- *               - content
+ *               - text
  *             properties:
  *               conversationId:
  *                 type: string
  *                 description: ID of the conversation to send message to
  *                 example: "64f456def789abc123456789"
- *               content:
+ *               text:
  *                 type: string
- *                 description: Message content/text
+ *                 description: Message text content
+ *                 maxLength: 5000
  *                 example: "Hello, how are you?"
- *               attachments:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: binary
- *                 description: Optional file attachments (max 5 files, 10MB each)
- *                 maxItems: 5
+ *               replyTo:
+ *                 type: string
+ *                 description: ID of message being replied to (optional)
+ *                 example: "64f456def789abc123456790"
  *     responses:
- *       201:
+ *       200:
  *         description: Message sent successfully
  *         content:
  *           application/json:
@@ -66,60 +62,28 @@ router.use(verifyJWT);
  *                 success:
  *                   type: boolean
  *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Message sent successfully"
  *                 data:
  *                   type: object
  *                   properties:
  *                     message:
- *                       type: object
- *                       properties:
- *                         _id:
- *                           type: string
- *                           example: "64f789abc123def456789012"
- *                         content:
- *                           type: string
- *                           example: "Hello, how are you?"
- *                         sender:
- *                           type: string
- *                           example: "64f123abc456def789012345"
- *                         conversationId:
- *                           type: string
- *                           example: "64f456def789abc123456789"
- *                         attachments:
- *                           type: array
- *                           items:
- *                             type: object
- *                             properties:
- *                               filename:
- *                                 type: string
- *                               url:
- *                                 type: string
- *                               fileType:
- *                                 type: string
- *                               fileSize:
- *                                 type: number
- *                         timestamp:
- *                           type: string
- *                           format: date-time
- *                         isRead:
- *                           type: boolean
- *                           example: false
+ *                       $ref: '#/components/schemas/ChatMessage'
  *       400:
- *         description: Invalid request - missing required fields or file validation error
+ *         description: Invalid request - missing required fields
  *       403:
- *         description: Access denied - not a conversation participant
+ *         description: Access denied to conversation
  *       404:
  *         description: Conversation not found
- *       413:
- *         description: File too large or too many attachments
- *       401:
- *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
-// Send a message (with optional file attachments)
+
+// Send a message
 router.post(
-  "/messages", 
-  upload.array("attachments", 5), // Allow up to 5 attachments
-  validateFileUploads,
-  sendMessageSchema, 
+  "/",
+  sendMessageSchema,
   handleValidationErrors,
   sendMessage
 );
