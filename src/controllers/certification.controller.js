@@ -36,10 +36,10 @@ const createCertification = asyncHandler(async (req, res) => {
         // Upload to Cloudinary
         const imageUrl = await uploadOnCloudinary(localImagePath).catch(() => null);
         if (!imageUrl) {
-            fs.unlinkSync(localImagePath);
+            const fs = await import('fs');
+            if (fs.existsSync(localImagePath)) fs.unlinkSync(localImagePath);
             return res.json( serverErrorResponse("Failed to upload certification"));
         }
-        fs.unlink
 
         // Save certification
         const certification = await Certification.create({
@@ -74,6 +74,7 @@ const createCertification = asyncHandler(async (req, res) => {
         );
 
     } catch (error) {
+        console.error("Create certification error:", error);
         if (error.statusCode) {
             throw error;
         }
