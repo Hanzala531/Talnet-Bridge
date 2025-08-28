@@ -155,7 +155,7 @@ import chatMessageRouter from "./routes/chat.message.routes.js";
 import adminRouter from "./routes/admin.routes.js";
 import emailRouter from "./routes/email.routes.js";
 app.use("/api/v1/chat", chatConversationRouter);
-app.use("/api/v1/chat", chatMessageRouter);
+app.use("/api/v1/chat/messages", chatMessageRouter);
 
 // 404 handler
 app.use("*", (req, res) => {

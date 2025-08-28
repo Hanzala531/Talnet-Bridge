@@ -13,7 +13,7 @@ import {
   typingSchema,
   handleValidationErrors 
 } from "../validators/chat.validators.js";
-
+import {requestLogger} from '../middlewares/ReqLog.middlewares.js'
 const router = Router();
 
 // Apply JWT verification to all chat routes
@@ -83,6 +83,7 @@ router.use(verifyJWT);
 // Send a message
 router.post(
   "/",
+  requestLogger,
   sendMessageSchema,
   handleValidationErrors,
   sendMessage
