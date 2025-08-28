@@ -613,12 +613,12 @@ const options = {
               description: 'Associated user ID',
               example: '64f890abc123def456789013'
             },
-            companyName: {
+            name: {
               type: 'string',
               description: 'Company name',
               example: 'TechCorp Solutions'
             },
-            companyDescription: {
+            description: {
               type: 'string',
               description: 'Company description',
               example: 'Leading software development company specializing in web and mobile applications'
@@ -634,47 +634,52 @@ const options = {
               description: 'Company size range',
               example: '51-200'
             },
-            website: {
+            websiteLink: {
               type: 'string',
               format: 'url',
               description: 'Company website URL',
               example: 'https://techcorp.com'
             },
-            address: {
-              type: 'object',
-              properties: {
-                street: {
-                  type: 'string',
-                  example: '456 Business Avenue'
-                },
-                city: {
-                  type: 'string',
-                  example: 'Karachi'
-                },
-                state: {
-                  type: 'string',
-                  example: 'Sindh'
-                },
-                country: {
-                  type: 'string',
-                  example: 'Pakistan'
-                },
-                postalCode: {
-                  type: 'string',
-                  example: '75600'
-                }
-              }
+            location: {
+              type: 'string',
+              description: 'Company location',
+              example: 'Karachi, Pakistan'
             },
             establishedYear: {
               type: 'integer',
               description: 'Year company was established',
               example: 2015
             },
-            verificationStatus: {
-              type: 'string',
-              enum: ['pending', 'verified', 'rejected'],
+            verified: {
+              type: 'boolean',
               description: 'Company verification status',
-              example: 'verified'
+              example: true
+            },
+            totalEmployees: {
+              type: 'integer',
+              description: 'Total number of employees',
+              example: 150
+            },
+            userDetails: {
+              type: 'object',
+              properties: {
+                fullName: {
+                  type: 'string',
+                  example: 'John Doe'
+                },
+                email: {
+                  type: 'string',
+                  example: 'john@techcorp.com'
+                },
+                phone: {
+                  type: 'string',
+                  example: '03001234567'
+                },
+                profilePicture: {
+                  type: 'string',
+                  example: 'https://example.com/profile.jpg'
+                }
+              }
             },
             createdAt: {
               type: 'string',

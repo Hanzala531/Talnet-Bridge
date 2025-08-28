@@ -755,6 +755,157 @@ const addResult = asyncHandler(async (req, res) => {
   }
 });
 
+// ===============================
+// UPDATE PRIVACY SETTINGS
+// ===============================
+const updatePrivacySettings = asyncHandler(async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || user.role !== "student") {
+      return res.json(unauthorizedResponse("You do not have permission to update privacy settings"));
+    }
+
+    const { isPublic, isOpenToWork, isContactPublic, isProgressPublic } = req.body;
+
+    // Find student profile
+    const student = await Student.findOne({ userId: user._id });
+    if (!student) {
+      return res.json(notFoundResponse("Student profile not found"));
+    }
+
+    // Update privacy settings
+    const privacyUpdates = {};
+    if (typeof isPublic === 'boolean') privacyUpdates.isPublic = isPublic;
+    if (typeof isOpenToWork === 'boolean') privacyUpdates.isOpenToWork = isOpenToWork;
+    if (typeof isContactPublic === 'boolean') privacyUpdates.isContactPublic = isContactPublic;
+    if (typeof isProgressPublic === 'boolean') privacyUpdates.isProgressPublic = isProgressPublic;
+
+    const updatedStudent = await Student.findOneAndUpdate(
+      { userId: user._id },
+      { $set: privacyUpdates },
+      { new: true, runValidators: true }
+    );
+
+    const privacySettings = {
+      isPublic: updatedStudent.isPublic,
+      isOpenToWork: updatedStudent.isOpenToWork,
+      isContactPublic: updatedStudent.isContactPublic,
+      isProgressPublic: updatedStudent.isProgressPublic
+    };
+
+    return res.json(successResponse(privacySettings, "Privacy settings updated successfully"));
+  } catch (error) {
+    console.error("Error in updatePrivacySettings:", error);
+    return res.json(serverErrorResponse("Failed to update privacy settings"));
+  }
+});
+
+// ===============================
+// UPDATE COMMUNICATION PREFERENCES
+// ===============================
+const updateCommunicationPreferences = asyncHandler(async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || user.role !== "student") {
+      return res.json(unauthorizedResponse("You do not have permission to update communication preferences"));
+    }
+
+    const { isCourseRecomendations, isMarketingCommunications } = req.body;
+
+    // Find student profile
+    const student = await Student.findOne({ userId: user._id });
+    if (!student) {
+      return res.json(notFoundResponse("Student profile not found"));
+    }
+
+    // Build communication preferences update
+    const communicationUpdates = {};
+    if (typeof isCourseRecomendations === 'boolean') {
+      communicationUpdates['communicationPreferences.isCourseRecomendations'] = isCourseRecomendations;
+    }
+    if (typeof isMarketingCommunications === 'boolean') {
+      communicationUpdates['communicationPreferences.isMarketingCommunications'] = isMarketingCommunications;
+    }
+
+    const updatedStudent = await Student.findOneAndUpdate(
+      { userId: user._id },
+      { $set: communicationUpdates },
+      { new: true, runValidators: true }
+    );
+
+    return res.json(successResponse(
+      updatedStudent.communicationPreferences, 
+      "Communication preferences updated successfully"
+    ));
+  } catch (error) {
+    console.error("Error in updateCommunicationPreferences:", error);
+    return res.json(serverErrorResponse("Failed to update communication preferences"));
+  }
+});
+
+// ===============================
+// GET PRIVACY SETTINGS
+// ===============================
+const getPrivacySettings = asyncHandler(async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || user.role !== "student") {
+      return res.json(unauthorizedResponse("You do not have permission to view privacy settings"));
+    }
+
+    const student = await Student.findOne({ userId: user._id })
+      .select('isPublic isOpenToWork isContactPublic isProgressPublic')
+      .lean();
+
+    if (!student) {
+      return res.json(notFoundResponse("Student profile not found"));
+    }
+
+    const privacySettings = {
+      isPublic: student.isPublic,
+      isOpenToWork: student.isOpenToWork,
+      isContactPublic: student.isContactPublic,
+      isProgressPublic: student.isProgressPublic
+    };
+
+    return res.json(successResponse(privacySettings, "Privacy settings retrieved successfully"));
+  } catch (error) {
+    console.error("Error in getPrivacySettings:", error);
+    return res.json(serverErrorResponse("Failed to retrieve privacy settings"));
+  }
+});
+
+// ===============================
+// GET COMMUNICATION PREFERENCES
+// ===============================
+const getCommunicationPreferences = asyncHandler(async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || user.role !== "student") {
+      return res.json(unauthorizedResponse("You do not have permission to view communication preferences"));
+    }
+
+    const student = await Student.findOne({ userId: user._id })
+      .select('communicationPreferences')
+      .lean();
+
+    if (!student) {
+      return res.json(notFoundResponse("Student profile not found"));
+    }
+
+    return res.json(successResponse(
+      student.communicationPreferences || {
+        isCourseRecomendations: false,
+        isMarketingCommunications: false
+      }, 
+      "Communication preferences retrieved successfully"
+    ));
+  } catch (error) {
+    console.error("Error in getCommunicationPreferences:", error);
+    return res.json(serverErrorResponse("Failed to retrieve communication preferences"));
+  }
+});
+
 export {
   createStudentProfile,
   getAllStudents,
@@ -766,7 +917,11 @@ export {
   profileConpletion,
   addSkills,
   addResult,
-  removeSkill
+  removeSkill,
+  updatePrivacySettings,
+  updateCommunicationPreferences,
+  getPrivacySettings,
+  getCommunicationPreferences
 };
 
 function splitFullName(fullName = "") {

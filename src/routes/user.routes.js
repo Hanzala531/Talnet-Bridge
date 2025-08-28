@@ -19,6 +19,7 @@ const userRouter = express.Router();
  * /api/v1/users/register:
  *   post:
  *     summary: Register a new user
+ *     description: Create a new user account with role-based registration (student, school, or employer)
  *     tags: [Users]
  *     requestBody:
  *       required: true
@@ -35,16 +36,19 @@ const userRouter = express.Router();
  *             properties:
  *               fullName:
  *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
  *                 description: User's full name
  *                 example: "John Doe"
  *               email:
  *                 type: string
  *                 format: email
- *                 description: User's email address
+ *                 description: User's email address (must be unique)
  *                 example: "john.doe@example.com"
  *               phone:
  *                 type: string
- *                 description: User's phone number (10-15 digits)
+ *                 pattern: "^[0-9]{10,15}$"
+ *                 description: User's phone number (10-15 digits, must be unique)
  *                 example: "03001234567"
  *               role:
  *                 type: string
@@ -54,8 +58,31 @@ const userRouter = express.Router();
  *               password:
  *                 type: string
  *                 minLength: 6
- *                 description: User's password (minimum 6 characters)
+ *                 maxLength: 128
+ *                 description: User's password (minimum 6 characters, include letters and numbers)
  *                 example: "SecurePass123!"
+ *               confirmPassword:
+ *                 type: string
+ *                 description: Password confirmation (must match password)
+ *                 example: "SecurePass123!"
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 description: User's date of birth (optional, required for students)
+ *                 example: "1995-06-15"
+ *               acceptTerms:
+ *                 type: boolean
+ *                 description: User acceptance of terms and conditions
+ *                 example: true
+ *           example:
+ *             fullName: "John Doe"
+ *             email: "john.doe@example.com"
+ *             phone: "03001234567"
+ *             role: "student"
+ *             password: "SecurePass123!"
+ *             confirmPassword: "SecurePass123!"
+ *             dateOfBirth: "1995-06-15"
+ *             acceptTerms: true
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -64,27 +91,98 @@ const userRouter = express.Router();
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 statusCode:
+ *                 status:
  *                   type: integer
  *                   example: 201
- *                 data:
- *                   type: object
- *                   properties:
- *                     user:
- *                       $ref: '#/components/schemas/User'
- *                     accessToken:
- *                       type: string
- *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *                 message:
  *                   type: string
  *                   example: "User registered successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           example: "64f456def789abc123456789"
+ *                         fullName:
+ *                           type: string
+ *                           example: "John Doe"
+ *                         email:
+ *                           type: string
+ *                           example: "john.doe@example.com"
+ *                         phone:
+ *                           type: string
+ *                           example: "03001234567"
+ *                         role:
+ *                           type: string
+ *                           example: "student"
+ *                         isVerified:
+ *                           type: boolean
+ *                           example: false
+ *                         createdAt:
+ *                           type: string
+ *                           format: date-time
+ *                           example: "2025-08-28T10:30:00.000Z"
+ *                     accessToken:
+ *                       type: string
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                     refreshToken:
+ *                       type: string
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-08-28T10:30:00.000Z"
  *       400:
- *         $ref: '#/components/responses/ValidationError'
+ *         description: Validation error or bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "Validation failed"
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       field:
+ *                         type: string
+ *                         example: "email"
+ *                       message:
+ *                         type: string
+ *                         example: "Invalid email format"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
  *       409:
- *         $ref: '#/components/responses/ConflictError'
+ *         description: User already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 409
+ *                 message:
+ *                   type: string
+ *                   example: "User with this email already exists"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 
 userRouter.post('/register', requestLogger, verifyRegisterCredentials,  registerUser);
@@ -93,7 +191,7 @@ userRouter.post('/register', requestLogger, verifyRegisterCredentials,  register
  * /api/v1/users/login:
  *   post:
  *     summary: Login a user
- *     description: Authenticate user with email and password, returns access token and sets HTTP-only cookies
+ *     description: Authenticate user with email and password, returns access token and sets HTTP-only cookies for session management
  *     tags: [Users]
  *     requestBody:
  *       required: true
@@ -108,41 +206,152 @@ userRouter.post('/register', requestLogger, verifyRegisterCredentials,  register
  *               email:
  *                 type: string
  *                 format: email
- *                 description: User's email address
+ *                 description: User's registered email address
  *                 example: "john.doe@example.com"
  *               password:
  *                 type: string
+ *                 minLength: 6
  *                 description: User's password
  *                 example: "SecurePass123!"
+ *               rememberMe:
+ *                 type: boolean
+ *                 description: Whether to extend session duration (optional)
+ *                 default: false
+ *                 example: true
+ *           example:
+ *             email: "john.doe@example.com"
+ *             password: "SecurePass123!"
+ *             rememberMe: true
  *     responses:
  *       200:
  *         description: User logged in successfully
+ *         headers:
+ *           Set-Cookie:
+ *             description: HTTP-only cookies for refresh token
+ *             schema:
+ *               type: string
+ *               example: "refreshToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Secure; SameSite=Strict; Max-Age=604800"
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 statusCode:
+ *                 status:
  *                   type: integer
  *                   example: 200
- *                 data:
- *                   type: object
- *                   properties:
- *                     user:
- *                       $ref: '#/components/schemas/User'
- *                     accessToken:
- *                       type: string
- *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *                 message:
  *                   type: string
  *                   example: "User logged in successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           example: "64f456def789abc123456789"
+ *                         fullName:
+ *                           type: string
+ *                           example: "John Doe"
+ *                         email:
+ *                           type: string
+ *                           example: "john.doe@example.com"
+ *                         role:
+ *                           type: string
+ *                           example: "student"
+ *                         isVerified:
+ *                           type: boolean
+ *                           example: true
+ *                         avatar:
+ *                           type: string
+ *                           example: "https://res.cloudinary.com/talentbridge/image/upload/v1234567890/avatars/user_abc123.jpg"
+ *                         lastLogin:
+ *                           type: string
+ *                           format: date-time
+ *                           example: "2025-08-28T10:30:00.000Z"
+ *                     accessToken:
+ *                       type: string
+ *                       description: JWT access token for API authorization
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                     tokenExpiry:
+ *                       type: string
+ *                       format: date-time
+ *                       description: Access token expiration time
+ *                       example: "2025-08-28T16:30:00.000Z"
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-08-28T10:30:00.000Z"
  *       400:
- *         $ref: '#/components/responses/ValidationError'
+ *         description: Validation error - Invalid email or password format
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid email or password format"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *       401:
+ *         description: Authentication failed - Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid email or password"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
  *       404:
- *         $ref: '#/components/responses/NotFoundError'
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "User not found with this email"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *       423:
+ *         description: Account locked due to multiple failed attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 423
+ *                 message:
+ *                   type: string
+ *                   example: "Account temporarily locked due to multiple failed login attempts"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 userRouter.post('/login', requestLogger, loginUser);
 

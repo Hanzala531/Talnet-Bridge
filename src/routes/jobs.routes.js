@@ -141,7 +141,7 @@ jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
  * /api/v1/jobs:
  *   post:
  *     summary: Create a new job post
- *     description: Create a new job posting (Only available to verified employers)
+ *     description: Create a new job posting with detailed requirements and benefits (Only available to verified employers with active subscription)
  *     tags: [Jobs]
  *     security:
  *       - bearerAuth: []
@@ -162,85 +162,307 @@ jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
  *             properties:
  *               jobTitle:
  *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 100
  *                 description: Job position title
- *                 example: "Senior Software Engineer"
+ *                 example: "Senior Full Stack Developer"
  *               department:
  *                 type: string
- *                 description: Department or team
+ *                 minLength: 2
+ *                 maxLength: 50
+ *                 description: Department or team name
  *                 example: "Engineering"
  *               location:
  *                 type: string
- *                 description: Job location (city/remote)
- *                 example: "Lahore"
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 description: Job location (city, state, country or remote)
+ *                 example: "Lahore, Pakistan / Remote"
  *               employmentType:
  *                 type: string
- *                 enum: ["Full-time", "Part-time", "Internship", "Contract"]
- *                 description: Type of employment
+ *                 enum: ["Full-time", "Part-time", "Internship", "Contract", "Freelance"]
+ *                 description: Type of employment arrangement
  *                 example: "Full-time"
+ *               workMode:
+ *                 type: string
+ *                 enum: ["onsite", "remote", "hybrid"]
+ *                 description: Work arrangement mode
+ *                 example: "hybrid"
+ *               experience:
+ *                 type: object
+ *                 description: Experience requirements
+ *                 properties:
+ *                   minimum:
+ *                     type: integer
+ *                     minimum: 0
+ *                     maximum: 50
+ *                     description: Minimum years of experience required
+ *                     example: 3
+ *                   maximum:
+ *                     type: integer
+ *                     minimum: 0
+ *                     maximum: 50
+ *                     description: Maximum years of experience (optional)
+ *                     example: 7
+ *                   level:
+ *                     type: string
+ *                     enum: ["entry", "junior", "mid", "senior", "lead", "executive"]
+ *                     description: Experience level category
+ *                     example: "senior"
  *               salary:
  *                 type: object
- *                 description: Salary range information
+ *                 description: Compensation details
  *                 properties:
  *                   min:
  *                     type: number
- *                     description: Minimum salary
- *                     example: 80000
+ *                     minimum: 0
+ *                     description: Minimum salary amount
+ *                     example: 120000
  *                   max:
  *                     type: number
- *                     description: Maximum salary
- *                     example: 150000
+ *                     minimum: 0
+ *                     description: Maximum salary amount
+ *                     example: 180000
  *                   currency:
  *                     type: string
- *                     description: Currency code
+ *                     minLength: 3
+ *                     maxLength: 3
+ *                     description: ISO currency code
  *                     example: "PKR"
+ *                   period:
+ *                     type: string
+ *                     enum: ["hourly", "monthly", "yearly"]
+ *                     description: Salary period
+ *                     example: "yearly"
+ *                   negotiable:
+ *                     type: boolean
+ *                     description: Whether salary is negotiable
+ *                     example: true
  *               jobDescription:
  *                 type: string
- *                 description: Detailed job description and responsibilities
- *                 example: "We are looking for a Senior Software Engineer to join our team. You will be responsible for developing scalable web applications, mentoring junior developers, and contributing to architectural decisions."
+ *                 minLength: 100
+ *                 maxLength: 5000
+ *                 description: Comprehensive job description including responsibilities and requirements
+ *                 example: "We are seeking a Senior Full Stack Developer to join our innovative engineering team. You will lead the development of scalable web applications, mentor junior developers, architect solutions, and drive technical excellence across multiple projects. This role offers the opportunity to work with cutting-edge technologies while building products that impact thousands of users."
+ *               responsibilities:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   minLength: 10
+ *                 minItems: 3
+ *                 maxItems: 15
+ *                 description: Key job responsibilities and duties
+ *                 example: ["Design and develop scalable web applications using modern frameworks", "Lead code reviews and ensure adherence to best practices", "Mentor junior developers and provide technical guidance", "Collaborate with product managers and designers on feature development", "Optimize application performance and troubleshoot complex issues"]
  *               skillsRequired:
  *                 type: array
- *                 description: Required skills and proficiency levels
+ *                 description: Required technical and soft skills with proficiency levels
  *                 items:
  *                   type: object
+ *                   required:
+ *                     - skill
+ *                     - proficiency
+ *                     - required
  *                   properties:
  *                     skill:
  *                       type: string
- *                       example: "JavaScript"
+ *                       minLength: 2
+ *                       description: Skill name
+ *                       example: "React.js"
  *                     proficiency:
  *                       type: string
- *                       enum: ["Beginner", "Intermediate", "Advanced"]
+ *                       enum: ["Beginner", "Intermediate", "Advanced", "Expert"]
+ *                       description: Required proficiency level
  *                       example: "Advanced"
+ *                     required:
+ *                       type: boolean
+ *                       description: Whether this skill is mandatory
+ *                       example: true
+ *                     experience:
+ *                       type: integer
+ *                       minimum: 0
+ *                       description: Years of experience with this skill
+ *                       example: 3
  *                 example: [
- *                   {"skill": "JavaScript", "proficiency": "Advanced"},
- *                   {"skill": "React", "proficiency": "Intermediate"},
- *                   {"skill": "Node.js", "proficiency": "Intermediate"}
+ *                   {"skill": "JavaScript", "proficiency": "Advanced", "required": true, "experience": 5},
+ *                   {"skill": "React.js", "proficiency": "Advanced", "required": true, "experience": 3},
+ *                   {"skill": "Node.js", "proficiency": "Intermediate", "required": true, "experience": 2},
+ *                   {"skill": "PostgreSQL", "proficiency": "Intermediate", "required": false, "experience": 1}
  *                 ]
+ *               qualifications:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Educational and professional qualifications
+ *                 example: ["Bachelor's degree in Computer Science or related field", "5+ years of full-stack development experience", "Experience with cloud platforms (AWS/Azure)"]
  *               benefits:
- *                 type: string
- *                 description: Job benefits and perks
- *                 example: "Health insurance, Flexible working hours, Remote work options, Professional development budget"
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Job benefits, perks, and compensation details
+ *                 example: ["Competitive salary with performance bonuses", "Comprehensive health insurance", "Flexible working hours and remote work options", "Professional development budget ($2000/year)", "Stock options", "Paid time off and sabbatical leave"]
  *               category:
  *                 type: string
- *                 description: Job category
+ *                 minLength: 2
+ *                 description: Job category or industry
  *                 example: "Technology"
  *               applicationDeadline:
  *                 type: string
  *                 format: date
- *                 description: Application deadline (YYYY-MM-DD)
+ *                 description: Last date to apply (YYYY-MM-DD format)
  *                 example: "2025-12-31"
+ *               applicationInstructions:
+ *                 type: string
+ *                 maxLength: 1000
+ *                 description: Special instructions for applicants
+ *                 example: "Please include a portfolio link and cover letter explaining why you're interested in this role."
+ *               numberOfPositions:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 100
+ *                 description: Number of positions available
+ *                 example: 2
+ *               urgency:
+ *                 type: string
+ *                 enum: ["low", "medium", "high", "urgent"]
+ *                 description: Hiring urgency level
+ *                 example: "medium"
+ *           example:
+ *             jobTitle: "Senior Full Stack Developer"
+ *             department: "Engineering"
+ *             location: "Lahore, Pakistan / Remote"
+ *             employmentType: "Full-time"
+ *             workMode: "hybrid"
+ *             experience:
+ *               minimum: 3
+ *               maximum: 7
+ *               level: "senior"
+ *             salary:
+ *               min: 120000
+ *               max: 180000
+ *               currency: "PKR"
+ *               period: "yearly"
+ *               negotiable: true
+ *             jobDescription: "We are seeking a Senior Full Stack Developer to join our innovative engineering team. You will lead the development of scalable web applications, mentor junior developers, and drive technical excellence."
+ *             responsibilities: ["Design and develop scalable web applications", "Lead code reviews and ensure best practices", "Mentor junior developers", "Collaborate with product teams"]
+ *             skillsRequired: [
+ *               {"skill": "JavaScript", "proficiency": "Advanced", "required": true, "experience": 5},
+ *               {"skill": "React.js", "proficiency": "Advanced", "required": true, "experience": 3}
+ *             ]
+ *             qualifications: ["Bachelor's degree in Computer Science", "5+ years of full-stack development experience"]
+ *             benefits: ["Competitive salary with bonuses", "Health insurance", "Flexible working hours", "Professional development budget"]
+ *             category: "Technology"
+ *             applicationDeadline: "2025-12-31"
+ *             applicationInstructions: "Please include portfolio link and cover letter"
+ *             numberOfPositions: 2
+ *             urgency: "medium"
  *     responses:
  *       201:
- *         description: Job created successfully
+ *         description: Job posted successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Job'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: "Job posted successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     jobId:
+ *                       type: string
+ *                       example: "64f456def789abc123456789"
+ *                     jobTitle:
+ *                       type: string
+ *                       example: "Senior Full Stack Developer"
+ *                     department:
+ *                       type: string
+ *                       example: "Engineering"
+ *                     status:
+ *                       type: string
+ *                       example: "active"
+ *                     postedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-08-28T10:30:00.000Z"
+ *                     applicationDeadline:
+ *                       type: string
+ *                       format: date
+ *                       example: "2025-12-31"
+ *                     applicationsCount:
+ *                       type: integer
+ *                       example: 0
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-08-28T10:30:00.000Z"
  *       400:
- *         $ref: '#/components/responses/ValidationError'
+ *         description: Validation error - Invalid request data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "Validation failed"
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       field:
+ *                         type: string
+ *                         example: "jobTitle"
+ *                       message:
+ *                         type: string
+ *                         example: "Job title is required and must be at least 3 characters"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         $ref: '#/components/responses/ForbiddenError'
+ *         description: Forbidden - Insufficient permissions or unverified employer
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 403
+ *                 message:
+ *                   type: string
+ *                   example: "Access denied. Only verified employers can post jobs"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *       429:
+ *         description: Rate limit exceeded or job posting limit reached
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 429
+ *                 message:
+ *                   type: string
+ *                   example: "Job posting limit exceeded for your current subscription plan"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */

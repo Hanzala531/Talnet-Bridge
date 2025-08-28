@@ -283,6 +283,7 @@ subscriptionRouter.get('/my-subscription', requestLogger, verifyJWT, getUserSubs
  * /api/v1/subscriptions:
  *   post:
  *     summary: Create a new subscription
+ *     description: Create a new subscription for the authenticated user with a selected plan and payment details
  *     tags: [Subscriptions]
  *     security:
  *       - bearerAuth: []
@@ -294,21 +295,189 @@ subscriptionRouter.get('/my-subscription', requestLogger, verifyJWT, getUserSubs
  *             type: object
  *             required:
  *               - planId
+ *               - billingCycle
  *             properties:
  *               planId:
  *                 type: string
+ *                 format: objectId
+ *                 description: Subscription plan ID to subscribe to
  *                 example: "60d0fe4f5311236168a109ca"
+ *               billingCycle:
+ *                 type: string
+ *                 enum: ["monthly", "yearly"]
+ *                 description: Billing cycle preference
+ *                 example: "monthly"
+ *               paymentMethodId:
+ *                 type: string
+ *                 description: Stripe payment method ID for automatic billing
+ *                 example: "pm_1234567890abcdef"
+ *               couponCode:
+ *                 type: string
+ *                 description: Optional coupon code for discount
+ *                 example: "FIRST20"
+ *               autoRenewal:
+ *                 type: boolean
+ *                 description: Whether subscription should auto-renew
+ *                 default: true
+ *                 example: true
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Preferred start date (default is immediate)
+ *                 example: "2025-09-01"
+ *               companyName:
+ *                 type: string
+ *                 description: Company name (required for business plans)
+ *                 example: "Tech Solutions Inc."
+ *               taxId:
+ *                 type: string
+ *                 description: Tax ID or VAT number (for business plans)
+ *                 example: "GB123456789"
+ *           example:
+ *             planId: "60d0fe4f5311236168a109ca"
+ *             billingCycle: "monthly"
+ *             paymentMethodId: "pm_1234567890abcdef"
+ *             couponCode: "FIRST20"
+ *             autoRenewal: true
+ *             startDate: "2025-09-01"
+ *             companyName: "Tech Solutions Inc."
+ *             taxId: "GB123456789"
  *     responses:
  *       201:
  *         description: Subscription created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: "Subscription created successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     subscriptionId:
+ *                       type: string
+ *                       example: "64f789abc123def456789012"
+ *                     planName:
+ *                       type: string
+ *                       example: "Premium Plan"
+ *                     status:
+ *                       type: string
+ *                       example: "active"
+ *                     billingCycle:
+ *                       type: string
+ *                       example: "monthly"
+ *                     currentPeriodStart:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-08-28T10:30:00.000Z"
+ *                     currentPeriodEnd:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-09-28T10:30:00.000Z"
+ *                     nextBillingDate:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-09-28T10:30:00.000Z"
+ *                     amount:
+ *                       type: number
+ *                       example: 29.99
+ *                     currency:
+ *                       type: string
+ *                       example: "usd"
+ *                     stripeSubscriptionId:
+ *                       type: string
+ *                       example: "sub_1234567890"
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-08-28T10:30:00.000Z"
  *       400:
- *         description: Validation error
+ *         description: Validation error or invalid plan
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid plan ID or payment method"
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       field:
+ *                         type: string
+ *                         example: "planId"
+ *                       message:
+ *                         type: string
+ *                         example: "Invalid plan ID format"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
  *       401:
- *         description: Unauthorized
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         description: Subscription plan not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "Subscription plan not found or inactive"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
  *       409:
  *         description: User already has an active subscription
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 409
+ *                 message:
+ *                   type: string
+ *                   example: "User already has an active subscription. Please cancel or upgrade existing subscription"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *       422:
+ *         description: Payment processing failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 422
+ *                 message:
+ *                   type: string
+ *                   example: "Payment method declined. Please try a different payment method"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 subscriptionRouter.post('/', requestLogger, verifyJWT,  createSubscription);
 

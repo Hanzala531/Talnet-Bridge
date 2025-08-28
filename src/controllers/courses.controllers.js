@@ -120,6 +120,7 @@ const createCourse = asyncHandler(async (req, res) => {
       category,
       maxEnrollments,
     } = req.body;
+
     const school = await TrainingInstitute.findOne({ userId: req.user._id });
     if (!school) {
       return res.json(
@@ -145,6 +146,7 @@ const createCourse = asyncHandler(async (req, res) => {
         badRequestResponse("All required fields must be provided")
       );
     }
+
     // Checking if the course already exists
     const existingCourses = await Course.findOne({
       trainingProvider,
@@ -160,6 +162,7 @@ const createCourse = asyncHandler(async (req, res) => {
     const imageLocalPath = req.file?.path;
     if (!imageLocalPath)
       return res.json(badRequestResponse("Course image is not uploaded"));
+
     // upload image to cloudinary
     const imageUploadPath = await uploadOnCloudinary(imageLocalPath);
     if (!imageUploadPath)
@@ -167,6 +170,7 @@ const createCourse = asyncHandler(async (req, res) => {
         serverErrorResponse("Failed to upload course image due to some issue")
       );
 
+    // Create new course
     const course = await Course.create({
       coverImage: imageUploadPath.url,
       title,
@@ -184,10 +188,15 @@ const createCourse = asyncHandler(async (req, res) => {
       status: "approved",
     });
 
-    return res
-      .json(createdResponse({ course }, "Course created successfully"));
+    // Push course _id into the school's courses array
+    school.courses.push(course._id);
+    await school.save();
+
+    return res.json(
+      createdResponse({ course }, "Course created successfully")
+    );
   } catch (error) {
-    console.error("Create course error:", error); // Add this for debugging
+    console.error("Create course error:", error);
     throw internalServer("Failed to create course");
   }
 });

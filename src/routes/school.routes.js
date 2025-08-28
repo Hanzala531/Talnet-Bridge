@@ -210,31 +210,286 @@ schoolRouter.put('/profile', requestLogger, verifyJWT, authorizeRoles('school'),
  * /api/v1/schools/profile:
  *   post:
  *     summary: Create a new training provider profile
- *     description: Allows a school to create its training provider profile. Only accessible to authenticated users with the 'school' role.
+ *     description: Create a comprehensive training provider profile with institution details, contact information, and educational focus areas
  *     tags: [Training Providers]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/School'
+ *             type: object
+ *             required:
+ *               - institutionName
+ *               - institutionType
+ *               - email
+ *               - phone
+ *               - address
+ *               - city
+ *               - country
+ *               - focusAreas
+ *               - description
+ *             properties:
+ *               profileImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: Institution logo/profile image (JPEG, PNG, WebP, max 5MB)
+ *               institutionName:
+ *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 200
+ *                 description: Official name of the training institution
+ *                 example: "Tech Excellence Institute"
+ *               institutionType:
+ *                 type: string
+ *                 enum: ["university", "college", "vocational_school", "training_center", "bootcamp", "online_academy"]
+ *                 description: Type of educational institution
+ *                 example: "training_center"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Primary contact email for the institution
+ *                 example: "contact@techexcellence.edu"
+ *               phone:
+ *                 type: string
+ *                 pattern: "^[0-9+\\-\\s()]{10,20}$"
+ *                 description: Primary contact phone number
+ *                 example: "+1-555-123-4567"
+ *               website:
+ *                 type: string
+ *                 format: uri
+ *                 description: Institution website URL
+ *                 example: "https://www.techexcellence.edu"
+ *               address:
+ *                 type: string
+ *                 minLength: 10
+ *                 maxLength: 300
+ *                 description: Complete physical address
+ *                 example: "123 Education Street, Tech District"
+ *               city:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 description: City where institution is located
+ *                 example: "San Francisco"
+ *               state:
+ *                 type: string
+ *                 description: State or province
+ *                 example: "California"
+ *               country:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 description: Country where institution is located
+ *                 example: "United States"
+ *               postalCode:
+ *                 type: string
+ *                 description: Postal or ZIP code
+ *                 example: "94105"
+ *               focusAreas:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 minItems: 1
+ *                 maxItems: 10
+ *                 description: Primary areas of educational focus
+ *                 example: ["Software Development", "Data Science", "Cybersecurity", "Cloud Computing"]
+ *               description:
+ *                 type: string
+ *                 minLength: 50
+ *                 maxLength: 2000
+ *                 description: Detailed description of the institution and its programs
+ *                 example: "Tech Excellence Institute is a leading provider of cutting-edge technology education, specializing in software development, data science, and cybersecurity training. We offer hands-on, industry-relevant programs designed to prepare students for successful careers in tech."
+ *               accreditation:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: List of accreditations and certifications
+ *                 example: ["ACCET Accredited", "ISO 9001:2015 Certified", "CompTIA Authorized Partner"]
+ *               establishedYear:
+ *                 type: integer
+ *                 minimum: 1800
+ *                 maximum: 2025
+ *                 description: Year the institution was established
+ *                 example: 2010
+ *               studentCapacity:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 50000
+ *                 description: Maximum number of students the institution can accommodate
+ *                 example: 500
+ *               facultyCount:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Number of faculty members
+ *                 example: 25
+ *               languages:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Languages of instruction
+ *                 example: ["English", "Spanish"]
+ *               socialMedia:
+ *                 type: object
+ *                 properties:
+ *                   facebook:
+ *                     type: string
+ *                     format: uri
+ *                     example: "https://facebook.com/techexcellence"
+ *                   twitter:
+ *                     type: string
+ *                     format: uri
+ *                     example: "https://twitter.com/techexcellence"
+ *                   linkedin:
+ *                     type: string
+ *                     format: uri
+ *                     example: "https://linkedin.com/company/techexcellence"
+ *                   instagram:
+ *                     type: string
+ *                     format: uri
+ *                     example: "https://instagram.com/techexcellence"
+ *           example:
+ *             institutionName: "Tech Excellence Institute"
+ *             institutionType: "training_center"
+ *             email: "contact@techexcellence.edu"
+ *             phone: "+1-555-123-4567"
+ *             website: "https://www.techexcellence.edu"
+ *             address: "123 Education Street, Tech District"
+ *             city: "San Francisco"
+ *             state: "California"
+ *             country: "United States"
+ *             postalCode: "94105"
+ *             focusAreas: ["Software Development", "Data Science", "Cybersecurity"]
+ *             description: "Leading provider of cutting-edge technology education with hands-on, industry-relevant programs."
+ *             accreditation: ["ACCET Accredited", "ISO 9001:2015 Certified"]
+ *             establishedYear: 2010
+ *             studentCapacity: 500
+ *             facultyCount: 25
+ *             languages: ["English"]
+ *             socialMedia:
+ *               facebook: "https://facebook.com/techexcellence"
+ *               linkedin: "https://linkedin.com/company/techexcellence"
  *     responses:
  *       201:
  *         description: Training provider profile created successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/School'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: "Training provider profile created successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     profileId:
+ *                       type: string
+ *                       example: "64f456def789abc123456789"
+ *                     institutionName:
+ *                       type: string
+ *                       example: "Tech Excellence Institute"
+ *                     institutionType:
+ *                       type: string
+ *                       example: "training_center"
+ *                     status:
+ *                       type: string
+ *                       example: "pending_verification"
+ *                     profileImageUrl:
+ *                       type: string
+ *                       example: "https://res.cloudinary.com/talentbridge/image/upload/v1234567890/schools/logo_abc123.jpg"
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-08-28T10:30:00.000Z"
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-08-28T10:30:00.000Z"
  *       400:
- *         $ref: '#/components/responses/ValidationError'
+ *         description: Validation error - Invalid or missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "Validation failed"
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       field:
+ *                         type: string
+ *                         example: "institutionName"
+ *                       message:
+ *                         type: string
+ *                         example: "Institution name is required and must be at least 3 characters"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         $ref: '#/components/responses/ForbiddenError'
+ *         description: Forbidden - School role required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 403
+ *                 message:
+ *                   type: string
+ *                   example: "Access denied. Only users with school role can create training provider profiles"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
  *       409:
- *         $ref: '#/components/responses/ConflictError'
+ *         description: Profile already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 409
+ *                 message:
+ *                   type: string
+ *                   example: "Training provider profile already exists for this user"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *       413:
+ *         description: File too large
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 413
+ *                 message:
+ *                   type: string
+ *                   example: "Profile image file size exceeds 5MB limit"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */

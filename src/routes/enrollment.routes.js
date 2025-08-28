@@ -19,6 +19,7 @@ const enrollmentRouter = express.Router();
  * /api/v1/enrollments:
  *   post:
  *     summary: Enroll in a course
+ *     description: Create a new enrollment for a student in a specific course with payment and preferences
  *     tags: [Enrollments]
  *     security:
  *       - bearerAuth: []
@@ -27,7 +28,62 @@ const enrollmentRouter = express.Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/EnrollmentRequest'
+ *             type: object
+ *             required:
+ *               - courseId
+ *               - paymentMethod
+ *             properties:
+ *               courseId:
+ *                 type: string
+ *                 format: objectId
+ *                 description: Unique identifier of the course to enroll in
+ *                 example: "64abc123def456789012def1"
+ *               paymentMethod:
+ *                 type: string
+ *                 enum: [stripe, paypal, credit_card, bank_transfer, free]
+ *                 description: Payment method for course enrollment
+ *                 example: "stripe"
+ *               couponCode:
+ *                 type: string
+ *                 description: Optional coupon code for discount
+ *                 example: "SAVE20"
+ *               enrollmentType:
+ *                 type: string
+ *                 enum: [full, trial, audit]
+ *                 description: Type of enrollment access
+ *                 default: "full"
+ *                 example: "full"
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Preferred start date for the course (if flexible)
+ *                 example: "2025-09-01"
+ *               notifications:
+ *                 type: object
+ *                 description: Notification preferences for this enrollment
+ *                 properties:
+ *                   email:
+ *                     type: boolean
+ *                     default: true
+ *                     example: true
+ *                   sms:
+ *                     type: boolean
+ *                     default: false
+ *                     example: false
+ *                   push:
+ *                     type: boolean
+ *                     default: true
+ *                     example: true
+ *           example:
+ *             courseId: "64abc123def456789012def1"
+ *             paymentMethod: "stripe"
+ *             couponCode: "SAVE20"
+ *             enrollmentType: "full"
+ *             startDate: "2025-09-01"
+ *             notifications:
+ *               email: true
+ *               sms: false
+ *               push: true
  *     responses:
  *       201:
  *         description: Successfully enrolled in course
@@ -36,23 +92,80 @@ const enrollmentRouter = express.Router();
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: integer
+ *                   example: 201
  *                 message:
  *                   type: string
  *                   example: "Successfully enrolled in course"
- *                 data:
+ *                 payload:
  *                   type: object
  *                   properties:
- *                     enrollment:
- *                       $ref: '#/components/schemas/Enrollment'
+ *                     enrollmentId:
+ *                       type: string
+ *                       example: "64abc123def456789012def2"
+ *                     courseId:
+ *                       type: string
+ *                       example: "64abc123def456789012def1"
+ *                     studentId:
+ *                       type: string
+ *                       example: "64abc123def456789012def3"
+ *                     enrollmentDate:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-08-28T10:30:00.000Z"
+ *                     status:
+ *                       type: string
+ *                       example: "enrolled"
+ *                     paymentStatus:
+ *                       type: string
+ *                       example: "paid"
+ *                     progress:
+ *                       type: number
+ *                       example: 0
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-08-28T10:30:00.000Z"
  *       400:
  *         description: Bad request - Already enrolled, course at capacity, or course not available
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "Student is already enrolled in this course"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
  *       401:
- *         description: Unauthorized
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         description: Course not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "Course not found"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 enrollmentRouter.post('/', requestLogger, verifyJWT, authorizeRoles('student'), createEnrollment);
 

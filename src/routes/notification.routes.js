@@ -340,7 +340,7 @@ notificationRouter.delete('/:id', requestLogger, verifyJWT, deleteNotification);
  * /api/v1/notifications/create:
  *   post:
  *     summary: Create a new notification (Admin only)
- *     description: Create a single notification for a specific user
+ *     description: Create a single notification for a specific user with optional related entity and priority settings
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
@@ -358,60 +358,193 @@ notificationRouter.delete('/:id', requestLogger, verifyJWT, deleteNotification);
  *             properties:
  *               userId:
  *                 type: string
- *                 description: Recipient user ID
+ *                 format: objectId
+ *                 description: Recipient user ID (must be valid ObjectId)
  *                 example: "64f123abc456def789012345"
  *               title:
  *                 type: string
+ *                 minLength: 3
  *                 maxLength: 100
- *                 description: Notification title
+ *                 description: Notification title (concise and descriptive)
  *                 example: "Course Enrollment Confirmed"
  *               message:
  *                 type: string
+ *                 minLength: 10
  *                 maxLength: 500
- *                 description: Notification message
- *                 example: "You have successfully enrolled in JavaScript Fundamentals course"
+ *                 description: Detailed notification message
+ *                 example: "You have successfully enrolled in JavaScript Fundamentals course. You can now access all course materials and start learning immediately."
  *               type:
  *                 type: string
  *                 enum: [course_enrollment, course_completion, certificate_issued, payment_received, payment_failed, job_application, interview_scheduled, profile_verified, message_received, system_update, security_alert, subscription_expiry]
- *                 description: Type of notification
+ *                 description: Type of notification for categorization and filtering
  *                 example: "course_enrollment"
  *               priority:
  *                 type: string
  *                 enum: [low, normal, high, urgent]
  *                 default: "normal"
- *                 description: Notification priority
+ *                 description: Notification priority level (affects display order and styling)
  *                 example: "normal"
+ *               actionUrl:
+ *                 type: string
+ *                 format: uri
+ *                 description: Optional URL for user action (relative or absolute)
+ *                 example: "/courses/64f456def789abc123456789"
+ *               actionText:
+ *                 type: string
+ *                 maxLength: 50
+ *                 description: Text for action button (if actionUrl provided)
+ *                 example: "View Course"
  *               relatedEntity:
  *                 type: object
+ *                 description: Optional related entity information for context
  *                 properties:
  *                   entityType:
  *                     type: string
- *                     enum: [course, job, application, payment, user, message]
+ *                     enum: [course, job, application, payment, user, message, subscription, certificate]
+ *                     description: Type of related entity
  *                     example: "course"
  *                   entityId:
  *                     type: string
+ *                     format: objectId
+ *                     description: ID of the related entity
  *                     example: "64f456def789abc123456789"
- *           examples:
- *             courseEnrollment:
- *               summary: Course enrollment notification
- *               value:
- *                 userId: "64f123abc456def789012345"
- *                 title: "Course Enrollment Confirmed"
- *                 message: "You have successfully enrolled in JavaScript Fundamentals"
- *                 type: "course_enrollment"
- *                 priority: "normal"
- *                 relatedEntity:
- *                   entityType: "course"
- *                   entityId: "64f456def789abc123456789"
+ *                   entityName:
+ *                     type: string
+ *                     description: Display name of the related entity
+ *                     example: "JavaScript Fundamentals"
+ *               scheduledFor:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Optional scheduled delivery time (default is immediate)
+ *                 example: "2025-08-28T14:00:00.000Z"
+ *               expiresAt:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Optional expiration time for the notification
+ *                 example: "2025-09-28T10:30:00.000Z"
+ *           example:
+ *             userId: "64f123abc456def789012345"
+ *             title: "Course Enrollment Confirmed"
+ *             message: "You have successfully enrolled in JavaScript Fundamentals course. You can now access all course materials and start learning immediately."
+ *             type: "course_enrollment"
+ *             priority: "normal"
+ *             actionUrl: "/courses/64f456def789abc123456789"
+ *             actionText: "View Course"
+ *             relatedEntity:
+ *               entityType: "course"
+ *               entityId: "64f456def789abc123456789"
+ *               entityName: "JavaScript Fundamentals"
+ *             scheduledFor: "2025-08-28T14:00:00.000Z"
+ *             expiresAt: "2025-09-28T10:30:00.000Z"
  *     responses:
  *       201:
  *         description: Notification created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: "Notification created successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     notificationId:
+ *                       type: string
+ *                       example: "64f789abc123def456789012"
+ *                     userId:
+ *                       type: string
+ *                       example: "64f123abc456def789012345"
+ *                     title:
+ *                       type: string
+ *                       example: "Course Enrollment Confirmed"
+ *                     type:
+ *                       type: string
+ *                       example: "course_enrollment"
+ *                     priority:
+ *                       type: string
+ *                       example: "normal"
+ *                     isScheduled:
+ *                       type: boolean
+ *                       example: false
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-08-28T10:30:00.000Z"
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-08-28T10:30:00.000Z"
  *       400:
- *         description: Bad request - Missing required fields
+ *         description: Bad request - Validation errors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "Validation failed"
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       field:
+ *                         type: string
+ *                         example: "userId"
+ *                       message:
+ *                         type: string
+ *                         example: "Invalid user ID format"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
  *       401:
- *         description: Unauthorized
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         description: Forbidden - Admin access required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 403
+ *                 message:
+ *                   type: string
+ *                   example: "Access denied. Admin privileges required"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "User not found with the provided ID"
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 notificationRouter.post('/create', requestLogger, verifyJWT, authorizeRoles('admin'), createNotification);
 

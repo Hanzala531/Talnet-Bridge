@@ -18,7 +18,11 @@ import {
     profileConpletion,
     addSkills,
     removeSkill,
-    addResult
+    addResult,
+    updatePrivacySettings,
+    updateCommunicationPreferences,
+    getPrivacySettings,
+    getCommunicationPreferences
 } from '../controllers/student.controller.js';
 
 // Experience Controllers
@@ -61,6 +65,7 @@ const studentRouter = express.Router();
  * /api/v1/students:
  *   post:
  *     summary: Create student profile
+ *     description: Create a new student profile with personal information. Required for students to access platform features.
  *     tags: [Students]
  *     security:
  *       - bearerAuth: []
@@ -69,20 +74,117 @@ const studentRouter = express.Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Student'
+ *             type: object
+ *             required:
+ *               - firstName
+ *               - lastName
+ *               - email
+ *               - phone
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *                 description: Student's first name
+ *                 example: "Ahmed"
+ *               lastName:
+ *                 type: string
+ *                 description: Student's last name
+ *                 example: "Ali"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Student's email address
+ *                 example: "ahmed.ali@example.com"
+ *               phone:
+ *                 type: string
+ *                 description: Student's phone number
+ *                 example: "03001234567"
+ *               bio:
+ *                 type: string
+ *                 description: Short biography/description
+ *                 example: "Computer Science student passionate about web development"
+ *               location:
+ *                 type: string
+ *                 description: Student's location
+ *                 example: "Karachi, Pakistan"
+ *               website:
+ *                 type: string
+ *                 format: url
+ *                 description: Personal website or portfolio URL
+ *                 example: "https://ahmed-portfolio.com"
+ *               skills:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: List of student's skills
+ *                 example: ["JavaScript", "React", "Node.js", "MongoDB"]
+ *           example:
+ *             firstName: "Ahmed"
+ *             lastName: "Ali"
+ *             email: "ahmed.ali@example.com"
+ *             phone: "03001234567"
+ *             bio: "Computer Science student passionate about web development"
+ *             location: "Karachi, Pakistan"
+ *             website: "https://ahmed-portfolio.com"
+ *             skills: ["JavaScript", "React", "Node.js", "MongoDB"]
  *     responses:
  *       201:
  *         description: Student profile created successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Student'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: "Student profile created successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     studentId:
+ *                       type: string
+ *                       example: "64f123abc456def789012345"
+ *                     userId:
+ *                       type: string
+ *                       example: "64f789abc123def456789012"
+ *                     firstName:
+ *                       type: string
+ *                       example: "Ahmed"
+ *                     lastName:
+ *                       type: string
+ *                       example: "Ali"
+ *                     email:
+ *                       type: string
+ *                       example: "ahmed.ali@example.com"
+ *                     phone:
+ *                       type: string
+ *                       example: "03001234567"
+ *                     bio:
+ *                       type: string
+ *                       example: "Computer Science student passionate about web development"
+ *                     location:
+ *                       type: string
+ *                       example: "Karachi, Pakistan"
+ *                     website:
+ *                       type: string
+ *                       example: "https://ahmed-portfolio.com"
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-08-28T10:30:00.000Z"
  *       400:
  *         $ref: '#/components/responses/ValidationError'
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       409:
  *         $ref: '#/components/responses/ConflictError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 studentRouter.post('/', requestLogger, verifyJWT,authorizeRoles('student'), createStudentProfile);
 
@@ -280,34 +382,6 @@ studentRouter.get('/:id', requestLogger, verifyJWT,authorizeRoles('school'), get
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-/**
- * @swagger
- * /api/v1/students/my:
- *   put:
- *     summary: Update current user's student profile
- *     tags: [Students]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Student'
- *     responses:
- *       200:
- *         description: Student profile updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Student'
- *       400:
- *         $ref: '#/components/responses/ValidationError'
- *       401:
- *         $ref: '#/components/responses/UnauthorizedError'
- *       404:
- *         $ref: '#/components/responses/NotFoundError'
-*/
 studentRouter.get('/profile/completion', requestLogger ,verifyJWT,authorizeRoles('student'), profileConpletion);
 
 
@@ -482,6 +556,7 @@ studentRouter.post('/gsce-result', requestLogger, verifyJWT,authorizeRoles('stud
  * /api/v1/students/experiences:
  *   post:
  *     summary: Create a new experience for current student
+ *     description: Add work experience to the authenticated student's profile
  *     tags: [Student Experiences]
  *     security:
  *       - bearerAuth: []
@@ -490,18 +565,116 @@ studentRouter.post('/gsce-result', requestLogger, verifyJWT,authorizeRoles('stud
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Experience'
+ *             type: object
+ *             required:
+ *               - title
+ *               - company
+ *               - startDate
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 description: Job title or position held
+ *                 example: "Software Engineer"
+ *               company:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 description: Company or organization name
+ *                 example: "Google"
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Employment start date (YYYY-MM-DD)
+ *                 example: "2022-01-15"
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Employment end date (YYYY-MM-DD). Leave empty if current job
+ *                 example: "2023-06-30"
+ *               description:
+ *                 type: string
+ *                 maxLength: 1000
+ *                 description: Job description, responsibilities, and achievements
+ *                 example: "Developed web applications using React and Node.js. Led a team of 3 developers and improved application performance by 40%."
+ *               location:
+ *                 type: string
+ *                 maxLength: 100
+ *                 description: Job location (city, country)
+ *                 example: "San Francisco, CA"
+ *               employmentType:
+ *                 type: string
+ *                 enum: ["full-time", "part-time", "contract", "internship", "freelance"]
+ *                 description: Type of employment
+ *                 example: "full-time"
+ *           example:
+ *             title: "Software Engineer"
+ *             company: "Google"
+ *             startDate: "2022-01-15"
+ *             endDate: "2023-06-30"
+ *             description: "Developed web applications using React and Node.js. Led a team of 3 developers and improved application performance by 40%."
+ *             location: "San Francisco, CA"
+ *             employmentType: "full-time"
  *     responses:
  *       201:
  *         description: Experience created successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Experience'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: "Experience created successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     experienceId:
+ *                       type: string
+ *                       example: "64f0f4f4f4f4f4f4f4f4f4f4"
+ *                     title:
+ *                       type: string
+ *                       example: "Software Engineer"
+ *                     company:
+ *                       type: string
+ *                       example: "Google"
+ *                     startDate:
+ *                       type: string
+ *                       format: date
+ *                       example: "2022-01-15"
+ *                     endDate:
+ *                       type: string
+ *                       format: date
+ *                       example: "2023-06-30"
+ *                     isCurrentJob:
+ *                       type: boolean
+ *                       example: false
+ *                     duration:
+ *                       type: string
+ *                       example: "1 year 5 months"
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-08-28T10:30:00.000Z"
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-08-28T10:30:00.000Z"
  *       400:
  *         $ref: '#/components/responses/ValidationError'
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 studentRouter.post('/experiences', requestLogger, verifyJWT,authorizeRoles('student'), createExperience);
 
@@ -616,6 +789,7 @@ studentRouter.get('/experiences/my', requestLogger, verifyJWT,authorizeRoles('st
  * /api/v1/students/experiences/{id}:
  *   put:
  *     summary: Update experience
+ *     description: Update work experience details for authenticated student
  *     tags: [Student Experiences]
  *     security:
  *       - bearerAuth: []
@@ -626,25 +800,131 @@ studentRouter.get('/experiences/my', requestLogger, verifyJWT,authorizeRoles('st
  *         schema:
  *           type: string
  *         description: Experience ID
+ *         example: "64f0f4f4f4f4f4f4f4f4f4f4"
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Experience'
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 description: Job title or position held
+ *                 example: "Senior Software Engineer"
+ *               company:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 description: Company or organization name
+ *                 example: "Microsoft"
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Employment start date (YYYY-MM-DD)
+ *                 example: "2022-01-15"
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Employment end date (YYYY-MM-DD). Leave empty if current job
+ *                 example: "2024-08-30"
+ *               description:
+ *                 type: string
+ *                 maxLength: 1000
+ *                 description: Job description, responsibilities, and achievements
+ *                 example: "Led development of cloud-native applications using Azure. Managed team of 5 developers and improved system performance by 60%."
+ *               location:
+ *                 type: string
+ *                 maxLength: 100
+ *                 description: Job location (city, country)
+ *                 example: "Seattle, WA"
+ *               employmentType:
+ *                 type: string
+ *                 enum: ["full-time", "part-time", "contract", "internship", "freelance"]
+ *                 description: Type of employment
+ *                 example: "full-time"
+ *           example:
+ *             title: "Senior Software Engineer"
+ *             company: "Microsoft"
+ *             startDate: "2022-01-15"
+ *             endDate: "2024-08-30"
+ *             description: "Led development of cloud-native applications using Azure. Managed team of 5 developers and improved system performance by 60%."
+ *             location: "Seattle, WA"
+ *             employmentType: "full-time"
  *     responses:
  *       200:
  *         description: Experience updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Experience'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: "Experience updated successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                       example: "64f0f4f4f4f4f4f4f4f4f4f4"
+ *                     title:
+ *                       type: string
+ *                       example: "Senior Software Engineer"
+ *                     company:
+ *                       type: string
+ *                       example: "Microsoft"
+ *                     startDate:
+ *                       type: string
+ *                       format: date
+ *                       example: "2022-01-15"
+ *                     endDate:
+ *                       type: string
+ *                       format: date
+ *                       example: "2024-08-30"
+ *                     isCurrentJob:
+ *                       type: boolean
+ *                       example: false
+ *                     duration:
+ *                       type: string
+ *                       example: "2 years 7 months"
+ *                     description:
+ *                       type: string
+ *                       example: "Led development of cloud-native applications using Azure. Managed team of 5 developers and improved system performance by 60%."
+ *                     location:
+ *                       type: string
+ *                       example: "Seattle, WA"
+ *                     employmentType:
+ *                       type: string
+ *                       example: "full-time"
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-08-28T10:30:00.000Z"
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-08-28T14:45:00.000Z"
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2024-08-28T14:45:00.000Z"
  *       400:
  *         $ref: '#/components/responses/ValidationError'
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 studentRouter.put('/experiences/:id', requestLogger, verifyJWT,authorizeRoles('student'), updateExperience);
 
@@ -906,6 +1186,7 @@ studentRouter.get('/certifications/:id', requestLogger,verifyJWT , authorizeRole
  * /api/v1/students/certifications/{id}:
  *   put:
  *     summary: Update certification (Admin only)
+ *     description: Update certification details. Only admin users can update certifications
  *     tags: [Student Certifications]
  *     security:
  *       - bearerAuth: []
@@ -916,19 +1197,97 @@ studentRouter.get('/certifications/:id', requestLogger,verifyJWT , authorizeRole
  *         schema:
  *           type: string
  *         description: Certification ID
+ *         example: "64f0f4f4f4f4f4f4f4f4f4f4"
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Certification'
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 description: Certification name
+ *                 example: "AWS Certified Solutions Architect - Professional"
+ *               issuedBy:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 description: Issuing organization
+ *                 example: "Amazon Web Services"
+ *               issueDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Date when certification was issued (YYYY-MM-DD)
+ *                 example: "2023-06-15"
+ *               expiryDate:
+ *                 type: string
+ *                 format: date
+ *                 nullable: true
+ *                 description: Certification expiry date (YYYY-MM-DD). Leave empty if no expiry
+ *                 example: "2026-06-15"
+ *           example:
+ *             name: "AWS Certified Solutions Architect - Professional"
+ *             issuedBy: "Amazon Web Services"
+ *             issueDate: "2023-06-15"
+ *             expiryDate: "2026-06-15"
  *     responses:
  *       200:
  *         description: Certification updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Certification'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: "Certification updated successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                       example: "64f0f4f4f4f4f4f4f4f4f4f4"
+ *                     name:
+ *                       type: string
+ *                       example: "AWS Certified Solutions Architect - Professional"
+ *                     issuedBy:
+ *                       type: string
+ *                       example: "Amazon Web Services"
+ *                     issueDate:
+ *                       type: string
+ *                       format: date
+ *                       example: "2023-06-15"
+ *                     expiryDate:
+ *                       type: string
+ *                       format: date
+ *                       example: "2026-06-15"
+ *                     certificateFile:
+ *                       type: string
+ *                       example: "https://cloudinary.com/certificate.pdf"
+ *                     extracted:
+ *                       type: boolean
+ *                       example: false
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-08-15T10:30:00.000Z"
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-08-28T14:45:00.000Z"
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2024-08-28T14:45:00.000Z"
  *       400:
  *         $ref: '#/components/responses/ValidationError'
  *       401:
@@ -937,6 +1296,8 @@ studentRouter.get('/certifications/:id', requestLogger,verifyJWT , authorizeRole
  *         $ref: '#/components/responses/ForbiddenError'
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 studentRouter.put('/certifications/:id', requestLogger, verifyJWT, authorizeRoles('admin'), updateCertification);
 
@@ -1044,6 +1405,288 @@ studentRouter.post('/skills', requestLogger, verifyJWT, addSkills);
  *         $ref: '#/components/responses/NotFoundError'
  */
 studentRouter.delete('/skills/:skill', requestLogger, verifyJWT, removeSkill);
+
+// =============================================
+// PRIVACY SETTINGS ROUTES
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/students/privacy-settings:
+ *   get:
+ *     summary: Get student privacy settings
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Privacy settings retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: "Privacy settings retrieved successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     isPublic:
+ *                       type: boolean
+ *                       description: Whether profile is public
+ *                     isOpenToWork:
+ *                       type: boolean
+ *                       description: Whether student is open to work opportunities
+ *                     isContactPublic:
+ *                       type: boolean
+ *                       description: Whether contact information is public
+ *                     isProgressPublic:
+ *                       type: boolean
+ *                       description: Whether learning progress is public
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+studentRouter.get('/privacy-settings', requestLogger, verifyJWT, authorizeRoles('student'), getPrivacySettings);
+
+/**
+ * @swagger
+ * /api/v1/students/privacy-settings:
+ *   put:
+ *     summary: Update student privacy settings
+ *     description: Update privacy preferences for student profile visibility and contact information
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isPublic:
+ *                 type: boolean
+ *                 description: Whether profile should be public to other users
+ *                 example: true
+ *               isOpenToWork:
+ *                 type: boolean
+ *                 description: Whether student is open to work opportunities and job offers
+ *                 example: true
+ *               isContactPublic:
+ *                 type: boolean
+ *                 description: Whether contact information (email, phone) should be public
+ *                 example: false
+ *               isProgressPublic:
+ *                 type: boolean
+ *                 description: Whether learning progress and achievements should be public
+ *                 example: true
+ *           example:
+ *             isPublic: true
+ *             isOpenToWork: true
+ *             isContactPublic: false
+ *             isProgressPublic: true
+ *     responses:
+ *       200:
+ *         description: Privacy settings updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: "Privacy settings updated successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     isPublic:
+ *                       type: boolean
+ *                       example: true
+ *                     isOpenToWork:
+ *                       type: boolean
+ *                       example: true
+ *                     isContactPublic:
+ *                       type: boolean
+ *                       example: false
+ *                     isProgressPublic:
+ *                       type: boolean
+ *                       example: true
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-08-28T10:30:00.000Z"
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+studentRouter.put('/privacy-settings', requestLogger, verifyJWT, authorizeRoles('student'), updatePrivacySettings);
+
+// =============================================
+// COMMUNICATION PREFERENCES ROUTES
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/students/communication-preferences:
+ *   get:
+ *     summary: Get student communication preferences
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Communication preferences retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: "Communication preferences retrieved successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     isCourseRecomendations:
+ *                       type: boolean
+ *                       description: Whether to receive course recommendations
+ *                     isMarketingCommunications:
+ *                       type: boolean
+ *                       description: Whether to receive marketing communications
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+studentRouter.get('/communication-preferences', requestLogger, verifyJWT, authorizeRoles('student'), getCommunicationPreferences);
+
+/**
+ * @swagger
+ * /api/v1/students/communication-preferences:
+ *   put:
+ *     summary: Update student communication preferences
+ *     description: Update notification and communication preferences for various student activities
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               emailNotifications:
+ *                 type: boolean
+ *                 description: Whether to receive email notifications for important updates
+ *                 example: true
+ *               pushNotifications:
+ *                 type: boolean
+ *                 description: Whether to receive push notifications on mobile/web
+ *                 example: true
+ *               smsNotifications:
+ *                 type: boolean
+ *                 description: Whether to receive SMS notifications for urgent matters
+ *                 example: false
+ *               jobAlerts:
+ *                 type: boolean
+ *                 description: Whether to receive notifications about new job opportunities
+ *                 example: true
+ *               courseUpdates:
+ *                 type: boolean
+ *                 description: Whether to receive notifications about course updates and announcements
+ *                 example: true
+ *               marketingEmails:
+ *                 type: boolean
+ *                 description: Whether to receive promotional and marketing emails
+ *                 example: false
+ *               weeklyDigest:
+ *                 type: boolean
+ *                 description: Whether to receive weekly summary digest emails
+ *                 example: true
+ *           example:
+ *             emailNotifications: true
+ *             pushNotifications: true
+ *             smsNotifications: false
+ *             jobAlerts: true
+ *             courseUpdates: true
+ *             marketingEmails: false
+ *             weeklyDigest: true
+ *     responses:
+ *       200:
+ *         description: Communication preferences updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: "Communication preferences updated successfully"
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     emailNotifications:
+ *                       type: boolean
+ *                       example: true
+ *                     pushNotifications:
+ *                       type: boolean
+ *                       example: true
+ *                     smsNotifications:
+ *                       type: boolean
+ *                       example: false
+ *                     jobAlerts:
+ *                       type: boolean
+ *                       example: true
+ *                     courseUpdates:
+ *                       type: boolean
+ *                       example: true
+ *                     marketingEmails:
+ *                       type: boolean
+ *                       example: false
+ *                     weeklyDigest:
+ *                       type: boolean
+ *                       example: true
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-08-28T10:30:00.000Z"
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+studentRouter.put('/communication-preferences', requestLogger, verifyJWT, authorizeRoles('student'), updateCommunicationPreferences);
 
 // =============================================
 // EXPORT ROUTER
