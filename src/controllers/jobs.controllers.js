@@ -26,50 +26,6 @@ import { successResponse, createdResponse, badRequestResponse, notFoundResponse,
 
 
 
-/**
- * Get all job posts with pagination and filtering
- * 
- * @function getAllJobs
- * @param {Object} req - Express request object
- * @param {Object} req.query - Query parameters
- * @param {number} req.query.page - Page number (default: 1)
- * @param {number} req.query.limit - Items per page (default: 10, max: 100)
- * @param {string} req.query.status - Filter by job status ("active", "closed", "expired")
- * @param {string} req.query.location - Filter by job location
- * @param {string} req.query.employmentType - Filter by employment type
- * @param {string} req.query.sort - Sort order (default: '-createdAt')
- * @param {Object} res - Express response object
- * @returns {Promise<Object>} Paginated list of job posts with employer details
- * 
- * @example
- * GET /api/v1/jobs?page=1&limit=10&location=karachi&employmentType=Full-time
- * 
- * Response: {
- *   "success": true,
- *   "statusCode": 200,
- *   "data": {
- *     "jobs": [{
- *       "_id": "64f123...",
- *       "jobTitle": "Software Engineer",
- *       "department": "Engineering",
- *       "location": "Karachi",
- *       "employmentType": "Full-time",
- *       "salary": { "min": 50000, "max": 80000, "currency": "PKR" },
- *       "postedBy": {
- *         "fullName": "Acme Corp",
- *         "email": "hr@acme.com"
- *       }
- *     }],
- *     "pagination": {
- *       "page": 1,
- *       "limit": 10,
- *       "total": 25,
- *       "pages": 3
- *     }
- *   },
- *   "message": "Jobs retrieved successfully"
- * }
- */
 // Get all job posts
 const getAllJobs = asyncHandler(async (req, res) => {
     try {
@@ -308,18 +264,9 @@ const searchJobs = asyncHandler(async (req, res) => {
     }
 });
 
-/**
- * Get jobs posted by current employer
- * 
- * @function getMyJobs
- * @param {Object} req - Express request object
- * @param {Object} req.user - Authenticated employer
- * @param {Object} res - Express response object
- * @returns {Promise<Object>} Jobs posted by current employer
- */
 const getMyJobs = asyncHandler(async (req, res) => {
     try {
-        const employerId = req.user._id;
+        const {employerId} = req.body|| req.user._id;
         const { page = 1, limit = 10, status } = req.query;
 
         const filter = { postedBy: employerId };
@@ -356,18 +303,7 @@ const getMyJobs = asyncHandler(async (req, res) => {
     }
 });
 
-/**
- * Update job status (active, closed, expired)
- * 
- * @function updateJobStatus
- * @param {Object} req - Express request object
- * @param {Object} req.params - Route parameters
- * @param {string} req.params.id - Job ID
- * @param {Object} req.body - Request body
- * @param {string} req.body.status - New status: "active", "closed", "expired"
- * @param {Object} res - Express response object
- * @returns {Promise<Object>} Updated job with new status
- */
+
 const updateJobStatus = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;

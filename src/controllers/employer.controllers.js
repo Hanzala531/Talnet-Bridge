@@ -53,6 +53,24 @@ const getAllCompanies = asyncHandler(async (req, res) => {
     }
 });
 
+
+// Get a my company 
+const getCompanyProfile = asyncHandler(async (req, res) => {
+    try {
+       const userId = req.user._id;
+        if (!id) return res.json (badRequestResponse("Company ID is required."));
+        const company = await Employer.findOne(userId).populate({
+            path: 'userId',
+            select: 'fullName email phone'
+        });
+        if (!company) return res.json (notFoundResponse("Company not found."));
+        return res.json(successResponse(company, "Company fetched successfully."));
+    } catch (error) {
+        throw internalServer("Failed to fetch the company")
+    }
+});
+
+
 // Get a company by ID
 const getCompanyById = asyncHandler(async (req, res) => {
     try {
