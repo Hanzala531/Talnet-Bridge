@@ -248,7 +248,7 @@ const getMyStudentProfile = asyncHandler(async (req, res) => {
     // Try to load student profile and populate related data
     let studentProfile = await Student.findOne({ userId: reqUser._id })
       .populate({ path: "kycVerification", select: "_id status" })
-      .populate({ path: "certifications", select: "_id name" })
+      .populate({ path: "certifications", select: "_id name issuedBy issueDate" })
       .populate("experience")
       .populate("enrollments")
       .lean();
