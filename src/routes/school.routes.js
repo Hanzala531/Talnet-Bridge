@@ -668,76 +668,6 @@ schoolRouter.get(
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-schoolRouter.get('/:id', requestLogger, getTrainingProviderById);
-
-/**
- * @swagger
- * /api/v1/schools/{id}/status:
- *   patch:
- *     summary: Update training provider status (Admin only)
- *     tags: [Training Providers]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Training provider ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - status
- *             properties:
- *               status:
- *                 type: string
- *                 enum: ["active", "inactive", "suspended"]
- *                 example: "active"
- *     responses:
- *       200:
- *         description: Status updated successfully
- *       400:
- *         description: Invalid status value
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Admin access required
- *       404:
- *         description: Training provider not found
- */
-schoolRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('admin'), updateTrainingProviderStatus);
-
-/**
- * @swagger
- * /api/v1/schools/{id}:
- *   delete:
- *     summary: Delete training provider (Admin only)
- *     tags: [Training Providers]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Training provider ID
- *     responses:
- *       200:
- *         description: Training provider deleted successfully
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Admin access required
- *       404:
- *         description: Training provider not found
- */
-schoolRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('admin'), deleteTrainingProvider);
 
 // Route for employer directory
 /**
@@ -831,6 +761,104 @@ schoolRouter.get('/employers/dir', requestLogger, verifyJWT, authorizeRoles('sch
  *         description: Access denied - Training provider only
  */
 schoolRouter.post('/profile/picture', requestLogger, verifyJWT, authorizeRoles('school'),upload.single('image'), addPicture);
+
+// =============================================
+// PARAMETRIC ID ROUTES (MUST BE AT END)
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/schools/{id}:
+ *   get:
+ *     summary: Get training provider by ID
+ *     tags: [Training Providers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Training provider ID
+ *     responses:
+ *       200:
+ *         description: Training provider retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/School'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+schoolRouter.get('/:id', requestLogger, getTrainingProviderById);
+
+/**
+ * @swagger
+ * /api/v1/schools/{id}/status:
+ *   patch:
+ *     summary: Update training provider status (Admin only)
+ *     tags: [Training Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Training provider ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: ["active", "inactive", "suspended"]
+ *                 example: "active"
+ *     responses:
+ *       200:
+ *         description: Status updated successfully
+ *       400:
+ *         description: Invalid status value
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       404:
+ *         description: Training provider not found
+ */
+schoolRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('admin'), updateTrainingProviderStatus);
+
+/**
+ * @swagger
+ * /api/v1/schools/{id}:
+ *   delete:
+ *     summary: Delete training provider (Admin only)
+ *     tags: [Training Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Training provider ID
+ *     responses:
+ *       200:
+ *         description: Training provider deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       404:
+ *         description: Training provider not found
+ */
+schoolRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('admin'), deleteTrainingProvider);
 
 // Export the router
 export default schoolRouter;

@@ -1,12 +1,8 @@
 import express from "express";
-
-// ===== MIDDLEWARE IMPORTS =====
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
 import { authorizeRoles } from '../middlewares/Role.middlewares.js';
 import { upload } from '../middlewares/Multer.middlewares.js'
-// ===== CONTROLLER IMPORTS =====
-// Student Controllers
 import {
     createStudentProfile,
     getAllStudents,
@@ -24,19 +20,14 @@ import {
     getPrivacySettings,
     getCommunicationPreferences
 } from '../controllers/student.controller.js';
-
-// Experience Controllers
 import {
     createExperience,
-    getAllExperiences,
     getExperienceById,
     updateExperience,
     deleteExperience,
     searchExperiences,
     getExperiencesByCompany
 } from '../controllers/experience.controller.js';
-
-// Certification Controllers
 import {
     createCertification,
     getAllCertifications,
@@ -48,12 +39,6 @@ import {
 } from '../controllers/certification.controller.js';
 
 const studentRouter = express.Router();
-
-// =============================================
-// SWAGGER SCHEMAS DEFINITIONS
-// =============================================
-
-
 
 // =============================================
 // =============================================
@@ -186,7 +171,7 @@ const studentRouter = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-studentRouter.post('/', requestLogger, verifyJWT,authorizeRoles('student'), createStudentProfile);
+studentRouter.post('/', requestLogger, verifyJWT, authorizeRoles('student'), createStudentProfile);
 
 /**
  * @swagger
@@ -282,7 +267,7 @@ studentRouter.post('/', requestLogger, verifyJWT,authorizeRoles('student'), crea
  *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/ForbiddenError'
-*/
+ */
 studentRouter.get('/', requestLogger, verifyJWT, authorizeRoles('admin'), getAllStudents);
 
 /**
@@ -304,37 +289,9 @@ studentRouter.get('/', requestLogger, verifyJWT, authorizeRoles('admin'), getAll
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
-*/
-studentRouter.get('/my', requestLogger, verifyJWT,authorizeRoles('student'), getMyStudentProfile);
+ */
+studentRouter.get('/my', requestLogger, verifyJWT, authorizeRoles('student'), getMyStudentProfile);
 
-/**
- * @swagger
- * /api/v1/students/{id}:
- *   get:
- *     summary: Get student by ID
- *     tags: [Students]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Student ID
- *     responses:
- *       200:
- *         description: Student retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Student'
- *       401:
- *         $ref: '#/components/responses/UnauthorizedError'
- *       404:
- *         $ref: '#/components/responses/NotFoundError'
-*/
-studentRouter.get('/:id', requestLogger, verifyJWT,authorizeRoles('school'), getStudentById);
 /**
  * @swagger
  * /api/v1/students/profile/completion:
@@ -382,86 +339,7 @@ studentRouter.get('/:id', requestLogger, verifyJWT,authorizeRoles('school'), get
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-studentRouter.get('/profile/completion', requestLogger ,verifyJWT,authorizeRoles('student'), profileConpletion);
-
-
-
-
-/**
- * @swagger
- * /api/v1/students/{id}:
- *   delete:
- *     summary: Delete student profile
- *     tags: [Students]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Student ID
- *     responses:
- *       200:
- *         description: Student profile deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiResponse'
- *       401:
- *         $ref: '#/components/responses/UnauthorizedError'
- *       403:
- *         $ref: '#/components/responses/ForbiddenError'
- *       404:
- *         $ref: '#/components/responses/NotFoundError'
-*/
-studentRouter.delete('/:id', requestLogger, verifyJWT,authorizeRoles('admin'), deleteStudentProfile);
-
-/**
- * @swagger
- * /api/v1/students/{id}/certifications:
- *   post:
- *     summary: Add certification to student profile
- *     tags: [Students]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Student ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - certificationId
- *             properties:
- *               certificationId:
- *                 type: string
- *                 example: "60f0f4f4f4f4f4f4f4f4f4f4"
- *     responses:
- *       200:
- *         description: Certification added successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiResponse'
- *       400:
- *         $ref: '#/components/responses/ValidationError'
- *       401:
- *         $ref: '#/components/responses/UnauthorizedError'
- *       403:
- *         $ref: '#/components/responses/ForbiddenError'
- *       404:
- *         $ref: '#/components/responses/NotFoundError'
- */
-studentRouter.post('/:id/certifications', requestLogger, verifyJWT, addCertification);
+studentRouter.get('/profile/completion', requestLogger, verifyJWT, authorizeRoles('student'), profileConpletion);
 
 /**
  * @swagger
@@ -496,56 +374,7 @@ studentRouter.post('/:id/certifications', requestLogger, verifyJWT, addCertifica
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  */
-studentRouter.post('/gsce-result', requestLogger, verifyJWT,authorizeRoles('student'), addResult);
-
-
-/**
- * @swagger
- * components:
- *   schemas:
- *     Experience:
- *       type: object
- *       required:
- *         - title
- *         - company
- *         - startDate
- *       properties:
- *         _id:
- *           type: string
- *           example: "60f0f4f4f4f4f4f4f4f4f4f4"
- *         title:
- *           type: string
- *           example: "Software Engineer"
- *         company:
- *           type: string
- *           example: "Google"
- *         startDate:
- *           type: string
- *           format: date
- *           example: "2022-01-15"
- *         endDate:
- *           type: string
- *           format: date
- *           nullable: true
- *           example: "2023-06-30"
- *         description:
- *           type: string
- *           example: "Developed web applications using React and Node.js"
- *         isCurrentJob:
- *           type: boolean
- *           readOnly: true
- *           example: false
- *         duration:
- *           type: string
- *           readOnly: true
- *           example: "1 year 5 months"
- *         createdAt:
- *           type: string
- *           format: date-time
- *         updatedAt:
- *           type: string
- *           format: date-time
- */
+studentRouter.post('/gsce-result', requestLogger, verifyJWT, authorizeRoles('student'), addResult);
 
 // =============================================
 // EXPERIENCE ROUTES (Student-related)
@@ -676,7 +505,7 @@ studentRouter.post('/gsce-result', requestLogger, verifyJWT,authorizeRoles('stud
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-studentRouter.post('/experiences', requestLogger, verifyJWT,authorizeRoles('student'), createExperience);
+studentRouter.post('/experiences', requestLogger, verifyJWT, authorizeRoles('student'), createExperience);
 
 /**
  * @swagger
@@ -715,7 +544,7 @@ studentRouter.post('/experiences', requestLogger, verifyJWT,authorizeRoles('stud
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  */
-studentRouter.get('/experiences/search', requestLogger, verifyJWT,authorizeRoles('student'), searchExperiences);
+studentRouter.get('/experiences/search', requestLogger, verifyJWT, authorizeRoles('student'), searchExperiences);
 
 /**
  * @swagger
@@ -760,7 +589,7 @@ studentRouter.get('/experiences/search', requestLogger, verifyJWT,authorizeRoles
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  */
-studentRouter.get('/experiences/company/:company', requestLogger, verifyJWT,authorizeRoles('student'), getExperiencesByCompany);
+studentRouter.get('/experiences/company/:company', requestLogger, verifyJWT, authorizeRoles('student'), getExperiencesByCompany);
 
 /**
  * @swagger
@@ -782,14 +611,13 @@ studentRouter.get('/experiences/company/:company', requestLogger, verifyJWT,auth
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-studentRouter.get('/experiences/my', requestLogger, verifyJWT,authorizeRoles('student'), getExperienceById);
+studentRouter.get('/experiences/my', requestLogger, verifyJWT, authorizeRoles('student'), getExperienceById);
 
 /**
  * @swagger
  * /api/v1/students/experiences/{id}:
  *   put:
  *     summary: Update experience
- *     description: Update work experience details for authenticated student
  *     tags: [Student Experiences]
  *     security:
  *       - bearerAuth: []
@@ -800,133 +628,27 @@ studentRouter.get('/experiences/my', requestLogger, verifyJWT,authorizeRoles('st
  *         schema:
  *           type: string
  *         description: Experience ID
- *         example: "64f0f4f4f4f4f4f4f4f4f4f4"
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *                 minLength: 2
- *                 maxLength: 100
- *                 description: Job title or position held
- *                 example: "Senior Software Engineer"
- *               company:
- *                 type: string
- *                 minLength: 2
- *                 maxLength: 100
- *                 description: Company or organization name
- *                 example: "Microsoft"
- *               startDate:
- *                 type: string
- *                 format: date
- *                 description: Employment start date (YYYY-MM-DD)
- *                 example: "2022-01-15"
- *               endDate:
- *                 type: string
- *                 format: date
- *                 description: Employment end date (YYYY-MM-DD). Leave empty if current job
- *                 example: "2024-08-30"
- *               description:
- *                 type: string
- *                 maxLength: 1000
- *                 description: Job description, responsibilities, and achievements
- *                 example: "Led development of cloud-native applications using Azure. Managed team of 5 developers and improved system performance by 60%."
- *               location:
- *                 type: string
- *                 maxLength: 100
- *                 description: Job location (city, country)
- *                 example: "Seattle, WA"
- *               employmentType:
- *                 type: string
- *                 enum: ["full-time", "part-time", "contract", "internship", "freelance"]
- *                 description: Type of employment
- *                 example: "full-time"
- *           example:
- *             title: "Senior Software Engineer"
- *             company: "Microsoft"
- *             startDate: "2022-01-15"
- *             endDate: "2024-08-30"
- *             description: "Led development of cloud-native applications using Azure. Managed team of 5 developers and improved system performance by 60%."
- *             location: "Seattle, WA"
- *             employmentType: "full-time"
+ *             $ref: '#/components/schemas/Experience'
  *     responses:
  *       200:
  *         description: Experience updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 200
- *                 message:
- *                   type: string
- *                   example: "Experience updated successfully"
- *                 payload:
- *                   type: object
- *                   properties:
- *                     _id:
- *                       type: string
- *                       example: "64f0f4f4f4f4f4f4f4f4f4f4"
- *                     title:
- *                       type: string
- *                       example: "Senior Software Engineer"
- *                     company:
- *                       type: string
- *                       example: "Microsoft"
- *                     startDate:
- *                       type: string
- *                       format: date
- *                       example: "2022-01-15"
- *                     endDate:
- *                       type: string
- *                       format: date
- *                       example: "2024-08-30"
- *                     isCurrentJob:
- *                       type: boolean
- *                       example: false
- *                     duration:
- *                       type: string
- *                       example: "2 years 7 months"
- *                     description:
- *                       type: string
- *                       example: "Led development of cloud-native applications using Azure. Managed team of 5 developers and improved system performance by 60%."
- *                     location:
- *                       type: string
- *                       example: "Seattle, WA"
- *                     employmentType:
- *                       type: string
- *                       example: "full-time"
- *                     createdAt:
- *                       type: string
- *                       format: date-time
- *                       example: "2024-08-28T10:30:00.000Z"
- *                     updatedAt:
- *                       type: string
- *                       format: date-time
- *                       example: "2024-08-28T14:45:00.000Z"
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 timestamp:
- *                   type: string
- *                   format: date-time
- *                   example: "2024-08-28T14:45:00.000Z"
+ *               $ref: '#/components/schemas/Experience'
  *       400:
  *         $ref: '#/components/responses/ValidationError'
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
  */
-studentRouter.put('/experiences/:id', requestLogger, verifyJWT,authorizeRoles('student'), updateExperience);
+studentRouter.put('/experiences/:id', requestLogger, verifyJWT, authorizeRoles('student'), updateExperience);
 
 /**
  * @swagger
@@ -955,7 +677,7 @@ studentRouter.put('/experiences/:id', requestLogger, verifyJWT,authorizeRoles('s
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-studentRouter.delete('/experiences/:id', requestLogger, verifyJWT,authorizeRoles('student'), deleteExperience);
+studentRouter.delete('/experiences/:id', requestLogger, verifyJWT, authorizeRoles('student'), deleteExperience);
 
 // =============================================
 // CERTIFICATION ROUTES (Student-related)
@@ -1007,7 +729,7 @@ studentRouter.delete('/experiences/:id', requestLogger, verifyJWT,authorizeRoles
  *       409:
  *         $ref: '#/components/responses/ConflictError'
  */
-studentRouter.post('/certifications', requestLogger, verifyJWT,authorizeRoles('student'), upload.single('image') , createCertification);
+studentRouter.post('/certifications', requestLogger, verifyJWT, authorizeRoles('student'), upload.single('image'), createCertification);
 
 /**
  * @swagger
@@ -1064,7 +786,7 @@ studentRouter.post('/certifications', requestLogger, verifyJWT,authorizeRoles('s
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  */
-studentRouter.get('/certifications', requestLogger,authorizeRoles('student'), getAllCertifications);
+studentRouter.get('/certifications', requestLogger, verifyJWT, authorizeRoles('student'), getAllCertifications);
 
 /**
  * @swagger
@@ -1103,7 +825,7 @@ studentRouter.get('/certifications', requestLogger,authorizeRoles('student'), ge
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  */
-studentRouter.get('/certifications/search', requestLogger,authorizeRoles('student'), searchCertifications);
+studentRouter.get('/certifications/search', requestLogger, verifyJWT, authorizeRoles('student'), searchCertifications);
 
 /**
  * @swagger
@@ -1148,7 +870,7 @@ studentRouter.get('/certifications/search', requestLogger,authorizeRoles('studen
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  */
-studentRouter.get('/certifications/issuer/:issuer', requestLogger,verifyJWT , authorizeRoles('student'),  getCertificationsByIssuer);
+studentRouter.get('/certifications/issuer/:issuer', requestLogger, verifyJWT, authorizeRoles('student'), getCertificationsByIssuer);
 
 /**
  * @swagger
@@ -1186,7 +908,6 @@ studentRouter.get('/certifications/:id', requestLogger,verifyJWT , authorizeRole
  * /api/v1/students/certifications/{id}:
  *   put:
  *     summary: Update certification (Admin only)
- *     description: Update certification details. Only admin users can update certifications
  *     tags: [Student Certifications]
  *     security:
  *       - bearerAuth: []
@@ -1197,97 +918,19 @@ studentRouter.get('/certifications/:id', requestLogger,verifyJWT , authorizeRole
  *         schema:
  *           type: string
  *         description: Certification ID
- *         example: "64f0f4f4f4f4f4f4f4f4f4f4"
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 minLength: 2
- *                 maxLength: 100
- *                 description: Certification name
- *                 example: "AWS Certified Solutions Architect - Professional"
- *               issuedBy:
- *                 type: string
- *                 minLength: 2
- *                 maxLength: 100
- *                 description: Issuing organization
- *                 example: "Amazon Web Services"
- *               issueDate:
- *                 type: string
- *                 format: date
- *                 description: Date when certification was issued (YYYY-MM-DD)
- *                 example: "2023-06-15"
- *               expiryDate:
- *                 type: string
- *                 format: date
- *                 nullable: true
- *                 description: Certification expiry date (YYYY-MM-DD). Leave empty if no expiry
- *                 example: "2026-06-15"
- *           example:
- *             name: "AWS Certified Solutions Architect - Professional"
- *             issuedBy: "Amazon Web Services"
- *             issueDate: "2023-06-15"
- *             expiryDate: "2026-06-15"
+ *             $ref: '#/components/schemas/Certification'
  *     responses:
  *       200:
  *         description: Certification updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 200
- *                 message:
- *                   type: string
- *                   example: "Certification updated successfully"
- *                 payload:
- *                   type: object
- *                   properties:
- *                     _id:
- *                       type: string
- *                       example: "64f0f4f4f4f4f4f4f4f4f4f4"
- *                     name:
- *                       type: string
- *                       example: "AWS Certified Solutions Architect - Professional"
- *                     issuedBy:
- *                       type: string
- *                       example: "Amazon Web Services"
- *                     issueDate:
- *                       type: string
- *                       format: date
- *                       example: "2023-06-15"
- *                     expiryDate:
- *                       type: string
- *                       format: date
- *                       example: "2026-06-15"
- *                     certificateFile:
- *                       type: string
- *                       example: "https://cloudinary.com/certificate.pdf"
- *                     extracted:
- *                       type: boolean
- *                       example: false
- *                     createdAt:
- *                       type: string
- *                       format: date-time
- *                       example: "2024-08-15T10:30:00.000Z"
- *                     updatedAt:
- *                       type: string
- *                       format: date-time
- *                       example: "2024-08-28T14:45:00.000Z"
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 timestamp:
- *                   type: string
- *                   format: date-time
- *                   example: "2024-08-28T14:45:00.000Z"
+ *               $ref: '#/components/schemas/Certification'
  *       400:
  *         $ref: '#/components/responses/ValidationError'
  *       401:
@@ -1296,8 +939,6 @@ studentRouter.get('/certifications/:id', requestLogger,verifyJWT , authorizeRole
  *         $ref: '#/components/responses/ForbiddenError'
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
  */
 studentRouter.put('/certifications/:id', requestLogger, verifyJWT, authorizeRoles('admin'), updateCertification);
 
@@ -1687,6 +1328,115 @@ studentRouter.get('/communication-preferences', requestLogger, verifyJWT, author
  *         $ref: '#/components/responses/InternalServerError'
  */
 studentRouter.put('/communication-preferences', requestLogger, verifyJWT, authorizeRoles('student'), updateCommunicationPreferences);
+
+// =============================================
+// PARAMETRIC ID ROUTES (MUST BE AT END)
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/students/{id}:
+ *   get:
+ *     summary: Get student by ID
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Student ID
+ *     responses:
+ *       200:
+ *         description: Student retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Student'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+studentRouter.get('/:id', requestLogger, verifyJWT, authorizeRoles('school'), getStudentById);
+
+/**
+ * @swagger
+ * /api/v1/students/{id}:
+ *   delete:
+ *     summary: Delete student profile
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Student ID
+ *     responses:
+ *       200:
+ *         description: Student profile deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+studentRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('admin'), deleteStudentProfile);
+
+/**
+ * @swagger
+ * /api/v1/students/{id}/certifications:
+ *   post:
+ *     summary: Add certification to student profile
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Student ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - certificationId
+ *             properties:
+ *               certificationId:
+ *                 type: string
+ *                 example: "60f0f4f4f4f4f4f4f4f4f4f4"
+ *     responses:
+ *       200:
+ *         description: Certification added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+studentRouter.post('/:id/certifications', requestLogger, verifyJWT, addCertification);
 
 // =============================================
 // EXPORT ROUTER

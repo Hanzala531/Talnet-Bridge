@@ -134,7 +134,6 @@ jobsRouter.get('/', requestLogger, jobsCache, getAllJobs);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
 
 /**
  * @swagger
@@ -690,6 +689,39 @@ jobsRouter.get('/search/advanced', requestLogger, jobsCache, searchJobs);
  *         $ref: '#/components/responses/InternalServerError'
  */
 jobsRouter.get('/my/posts', requestLogger, verifyJWT, authorizeRoles('employer'), getMyJobs);
+
+// =============================================
+// PARAMETRIC ID ROUTES (MUST BE AT END)
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/jobs/{id}:
+ *   get:
+ *     summary: Get job by ID
+ *     description: Get detailed information about a specific job posting
+ *     tags: [Jobs]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Job ID
+ *         example: "64f123abc456def789012345"
+ *     responses:
+ *       200:
+ *         description: Job retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Job'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
 
 /**
  * @swagger

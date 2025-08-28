@@ -299,12 +299,33 @@ employerRouter.get('/me', requestLogger, verifyJWT, authorizeRoles('employer'), 
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-employerRouter.get('/:id', requestLogger, getCompanyById);
 /**
  * @swagger
- * /api/v1/employers:
+ * /api/v1/employers/me:
  *   get:
  *     summary: Get employers own profile
+ *     tags: [Employers]
+ *     responses:
+ *       200:
+ *         description: Company fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Employer'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+employerRouter.get('/me', requestLogger, verifyJWT, authorizeRoles('employer'), getCompanyProfile);
+
+// =============================================
+// PARAMETRIC ID ROUTES (MUST BE AT END)
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/employers/{id}:
+ *   get:
+ *     summary: Get company by ID
  *     tags: [Employers]
  *     parameters:
  *       - in: path
@@ -323,7 +344,8 @@ employerRouter.get('/:id', requestLogger, getCompanyById);
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-employerRouter.get('/me', requestLogger, verifyJWT, authorizeRoles('employer'), getCompanyProfile);
+employerRouter.get('/:id', requestLogger, getCompanyById);
+
 /**
  * @swagger
  * /api/v1/employers/{id}:

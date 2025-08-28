@@ -521,7 +521,6 @@ subscriptionRouter.post('/', requestLogger, verifyJWT,  createSubscription);
  *       404:
  *         description: Subscription not found
  */
-subscriptionRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('admin'), updateSubscriptionStatus);
 
 /**
  * @swagger
@@ -640,6 +639,49 @@ subscriptionRouter.post('/create-payment-intent', requestLogger, verifyJWT, crea
  *         description: Subscription not found
  */
 subscriptionRouter.post('/confirm-payment', requestLogger, verifyJWT, confirmPayment);
+
+// =============================================
+// PARAMETRIC ID ROUTES (MUST BE AT END)
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/subscriptions/{id}/status:
+ *   patch:
+ *     summary: Update subscription status (Admin only)
+ *     tags: [Subscriptions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Subscription ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: ["active", "inactive", "cancelled", "expired"]
+ *     responses:
+ *       200:
+ *         description: Subscription status updated successfully
+ *       400:
+ *         description: Invalid status value
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       404:
+ *         description: Subscription not found
+ */
+subscriptionRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('admin'), updateSubscriptionStatus);
 
 // Export the router
 export default subscriptionRouter;

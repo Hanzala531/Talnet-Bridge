@@ -278,50 +278,6 @@ courseRouter.get('/provider/:providerId', requestLogger,authorizeRoles('school')
 
 /**
  * @swagger
- * /api/v1/courses/{id}:
- *   get:
- *     summary: Get course by ID
- *     description: Retrieve detailed information about a specific course including instructor details and enrollment information
- *     tags: [Courses]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Course unique identifier
- *         example: "64f456def789abc123456789"
- *     responses:
- *       200:
- *         description: Course retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 statusCode:
- *                   type: integer
- *                   example: 200
- *                 data:
- *                   type: object
- *                   properties:
- *                     course:
- *                       $ref: '#/components/schemas/Course'
- *                 message:
- *                   type: string
- *                   example: "Course retrieved successfully"
- *       404:
- *         $ref: '#/components/responses/NotFoundError'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-courseRouter.get('/:id', requestLogger,authorizeRoles('school' , 'student'), coursesCache, getCoursesById);
-
-/**
- * @swagger
  * /api/v1/courses:
  *   post:
  *     summary: Create a new course
@@ -568,6 +524,54 @@ courseRouter.get('/:id', requestLogger,authorizeRoles('school' , 'student'), cou
  *         $ref: '#/components/responses/InternalServerError'
  */
 courseRouter.post('/', requestLogger, verifyJWT, authorizeRoles('school'), requireActiveSubscription, checkCourseLimit, upload.single('coverImage'), createCourse);
+
+// =============================================
+// PARAMETRIC ID ROUTES (MUST BE AT END)
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/courses/{id}:
+ *   get:
+ *     summary: Get course by ID
+ *     description: Retrieve detailed information about a specific course including instructor details and enrollment information
+ *     tags: [Courses]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Course unique identifier
+ *         example: "64f456def789abc123456789"
+ *     responses:
+ *       200:
+ *         description: Course retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     course:
+ *                       $ref: '#/components/schemas/Course'
+ *                 message:
+ *                   type: string
+ *                   example: "Course retrieved successfully"
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+courseRouter.get('/:id', requestLogger,verifyJWT ,authorizeRoles('school' , 'student'), coursesCache, getCoursesById);
 
 /**
  * @swagger
