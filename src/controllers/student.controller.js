@@ -971,18 +971,14 @@ const getStudentDashboard = asyncHandler(async (req, res) => {
       enrollment.status === "enrolled" || enrollment.status === "in-progress"
     ).length;
 
-    // Get course IDs for currently enrolled courses
-    const currentlyEnrolledCourseIds = enrollments
-      .filter(enrollment => enrollment.status === "enrolled" || enrollment.status === "in-progress")
-      .map(enrollment => enrollment.courseId);
+    // Get all course IDs that the user has ever enrolled in
+    const allEnrolledCourseIds = enrollments.map(enrollment => enrollment.courseId);
 
-    // Count active courses (courses with status "approved")
+    // Count active courses (all courses user has ever enrolled in that are still approved/active)
     const activeCourses = await Course.countDocuments({
-      _id: { $in: currentlyEnrolledCourseIds },
+      _id: { $in: allEnrolledCourseIds },
       status: "approved"
-    });
-
-    const dashboardData = {
+    });    const dashboardData = {
       totalCoursesEnrolled,
       completedCourses,
       currentlyEnrolled,
