@@ -293,6 +293,7 @@ courseRouter.get('/provider/:providerId', requestLogger,authorizeRoles('school')
  *             type: object
  *             required:
  *               - coverImage
+ *               - instructorImage
  *               - title
  *               - instructor
  *               - duration
@@ -308,6 +309,10 @@ courseRouter.get('/provider/:providerId', requestLogger,authorizeRoles('school')
  *                 type: string
  *                 format: binary
  *                 description: Course cover image file (JPEG, PNG, WebP, max 5MB)
+ *               instructorImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: Instructor profile image (JPEG, PNG, WebP, max 5MB)
  *               title:
  *                 type: string
  *                 minLength: 3
@@ -523,7 +528,19 @@ courseRouter.get('/provider/:providerId', requestLogger,authorizeRoles('school')
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-courseRouter.post('/', requestLogger, verifyJWT, authorizeRoles('school'), requireActiveSubscription, checkCourseLimit, upload.single('coverImage'), createCourse);
+courseRouter.post(
+    '/',
+    requestLogger,
+    verifyJWT,
+    authorizeRoles('school'),
+    requireActiveSubscription,
+    checkCourseLimit,
+    upload.fields([
+        { name: 'coverImage', maxCount: 1 },
+        { name: 'instructorImage', maxCount: 1 }
+    ]),
+    createCourse
+);
 
 // =============================================
 // PARAMETRIC ID ROUTES (MUST BE AT END)

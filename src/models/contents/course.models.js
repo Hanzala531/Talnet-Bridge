@@ -21,6 +21,11 @@ const courseSchema = new mongoose.Schema({
         trim: true
     },
 
+    instructorPicture :{
+        type : String,
+        required :true
+    },
+    
     // Course Duration (e.g., "10 hours", "4 weeks")
     duration: {
         type: String,

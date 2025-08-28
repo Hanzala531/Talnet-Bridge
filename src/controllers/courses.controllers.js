@@ -10,6 +10,7 @@ import {
   conflictResponse,
 } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import fs from 'fs'
 
 // ===============================
 // GET ALL COURSES
@@ -102,9 +103,9 @@ const getCoursesById = asyncHandler(async (req, res) => {
   }
 });
 
-// ===============================
+// ==============
 // CREATE COURSE
-// ===============================
+// ==============
 const createCourse = asyncHandler(async (req, res) => {
   try {
     const {
@@ -129,7 +130,6 @@ const createCourse = asyncHandler(async (req, res) => {
     }
     const trainingProvider = school._id;
 
-    // Schema-level validations already exist, but we also check at controller-level for clarity
     if (
       !title ||
       !instructor ||
@@ -147,7 +147,6 @@ const createCourse = asyncHandler(async (req, res) => {
       );
     }
 
-    // Checking if the course already exists
     const existingCourses = await Course.findOne({
       trainingProvider,
       title,
@@ -158,21 +157,29 @@ const createCourse = asyncHandler(async (req, res) => {
       return res.json(conflictResponse("Course already exists"));
     }
 
-    // checking if image is uploaded
-    const imageLocalPath = req.file?.path;
-    if (!imageLocalPath)
+    // Expecting req.files.coverImage and req.files.instructorImage (Multer array fields)
+    const coverImagePath = req.files?.coverImage?.[0]?.path;
+    const instructorImagePath = req.files?.instructorImage?.[0]?.path;
+
+    if (!coverImagePath)
       return res.json(badRequestResponse("Course image is not uploaded"));
+    if (!instructorImagePath)
+      return res.json(badRequestResponse("Instructor image is not uploaded"));
 
-    // upload image to cloudinary
-    const imageUploadPath = await uploadOnCloudinary(imageLocalPath);
-    if (!imageUploadPath)
+    // Upload images to cloudinary
+    const coverImageUpload = await uploadOnCloudinary(coverImagePath);
+    const instructorImageUpload = await uploadOnCloudinary(instructorImagePath);
+
+    if (!coverImageUpload || !instructorImageUpload){
+      if(coverImagePath) fs.unlinkSync(coverImagePath);
+      if(instructorImagePath) fs.unlinkSync(instructorImagePath);
       return res.json(
-        serverErrorResponse("Failed to upload course image due to some issue")
-      );
+        serverErrorResponse("Failed to upload images due to some issue")
+      )};
 
-    // Create new course
     const course = await Course.create({
-      coverImage: imageUploadPath.url,
+      coverImage: coverImageUpload.url,
+      instructorPicture: instructorImageUpload.url,
       title,
       instructor,
       duration,
@@ -188,7 +195,6 @@ const createCourse = asyncHandler(async (req, res) => {
       status: "approved",
     });
 
-    // Push course _id into the school's courses array
     school.courses.push(course._id);
     await school.save();
 
