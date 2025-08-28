@@ -274,7 +274,7 @@ courseRouter.get('/search', requestLogger,authorizeRoles('school' , 'student'), 
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-courseRouter.get('/provider/:providerId', requestLogger, verifyJWT , authorizeRoles('school'), getCoursesByProvider);
+courseRouter.get('/provider/:providerId', requestLogger, verifyJWT , authorizeRoles('school','student'), getCoursesByProvider);
 
 /**
  * @swagger
