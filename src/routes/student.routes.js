@@ -18,7 +18,9 @@ import {
     updatePrivacySettings,
     updateCommunicationPreferences,
     getPrivacySettings,
-    getCommunicationPreferences
+    getCommunicationPreferences,
+    getStudentDashboard,
+    getCurrentlyEnrolledCourses
 } from '../controllers/student.controller.js';
 import {
     createExperience,
@@ -1328,6 +1330,186 @@ studentRouter.get('/communication-preferences', requestLogger, verifyJWT, author
  *         $ref: '#/components/responses/InternalServerError'
  */
 studentRouter.put('/communication-preferences', requestLogger, verifyJWT, authorizeRoles('student'), updateCommunicationPreferences);
+
+// =============================================
+// DASHBOARD AND ENROLLED COURSES ROUTES
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/students/dashboard:
+ *   get:
+ *     summary: Get student dashboard data
+ *     description: Retrieve dashboard statistics including total courses enrolled, completed courses, currently enrolled courses, and active courses for the authenticated student.
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Dashboard data retrieved successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalCoursesEnrolled:
+ *                       type: number
+ *                       description: Total number of courses the student has enrolled in
+ *                       example: 15
+ *                     completedCourses:
+ *                       type: number
+ *                       description: Number of courses completed by the student
+ *                       example: 8
+ *                     currentlyEnrolled:
+ *                       type: number
+ *                       description: Number of courses currently enrolled (enrolled or in-progress)
+ *                       example: 5
+ *                     activeCourses:
+ *                       type: number
+ *                       description: Number of currently enrolled courses that are active/approved
+ *                       example: 4
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+studentRouter.get('/dashboard', requestLogger, verifyJWT, authorizeRoles('student'), getStudentDashboard);
+
+/**
+ * @swagger
+ * /api/v1/students/currently-enrolled:
+ *   get:
+ *     summary: Get currently enrolled courses
+ *     description: Retrieve all courses in which the authenticated student is currently enrolled (enrolled or in-progress status) with complete course details.
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Currently enrolled courses retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "5 currently enrolled courses retrieved successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       enrollmentId:
+ *                         type: string
+ *                         description: Unique enrollment ID
+ *                         example: "60f0f4f4f4f4f4f4f4f4f4f4"
+ *                       enrollmentDate:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Date when student enrolled in the course
+ *                         example: "2024-01-15T10:30:00.000Z"
+ *                       enrollmentStatus:
+ *                         type: string
+ *                         enum: [enrolled, in-progress]
+ *                         description: Current enrollment status
+ *                         example: "in-progress"
+ *                       course:
+ *                         type: object
+ *                         properties:
+ *                           _id:
+ *                             type: string
+ *                             example: "60f0f4f4f4f4f4f4f4f4f4f4"
+ *                           title:
+ *                             type: string
+ *                             description: Course title
+ *                             example: "Advanced JavaScript Development"
+ *                           instructor:
+ *                             type: string
+ *                             description: Instructor name
+ *                             example: "John Doe"
+ *                           instructorPicture:
+ *                             type: string
+ *                             description: Instructor profile picture URL
+ *                             example: "https://example.com/instructor.jpg"
+ *                           duration:
+ *                             type: string
+ *                             description: Course duration
+ *                             example: "8 weeks"
+ *                           price:
+ *                             type: number
+ *                             description: Course price
+ *                             example: 299.99
+ *                           language:
+ *                             type: string
+ *                             description: Course language
+ *                             example: "English"
+ *                           type:
+ *                             type: string
+ *                             description: Course type
+ *                             example: "Online"
+ *                           objectives:
+ *                             type: array
+ *                             items:
+ *                               type: string
+ *                             description: Course objectives
+ *                             example: ["Master advanced JavaScript concepts", "Build real-world applications"]
+ *                           description:
+ *                             type: string
+ *                             description: Course description
+ *                             example: "Comprehensive course covering advanced JavaScript topics"
+ *                           skills:
+ *                             type: array
+ *                             items:
+ *                               type: string
+ *                             description: Skills to be learned
+ *                             example: ["JavaScript", "Node.js", "React"]
+ *                           category:
+ *                             type: string
+ *                             description: Course category
+ *                             example: "Programming"
+ *                           status:
+ *                             type: string
+ *                             description: Course approval status
+ *                             example: "approved"
+ *                           coverImage:
+ *                             type: string
+ *                             description: Course cover image URL
+ *                             example: "https://example.com/course-cover.jpg"
+ *                           currentEnrollments:
+ *                             type: number
+ *                             description: Number of current enrollments
+ *                             example: 45
+ *                           maxEnrollments:
+ *                             type: number
+ *                             description: Maximum allowed enrollments
+ *                             example: 100
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2023-12-01T08:00:00.000Z"
+ *                           updatedAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2024-01-10T14:30:00.000Z"
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+studentRouter.get('/currently-enrolled', requestLogger, verifyJWT, authorizeRoles('student'), getCurrentlyEnrolledCourses);
 
 // =============================================
 // PARAMETRIC ID ROUTES (MUST BE AT END)

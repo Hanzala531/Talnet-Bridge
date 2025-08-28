@@ -1,5 +1,7 @@
 import { Student } from "../models/student models/students.models.js";
 import { User } from "../models/contents/User.models.js";
+import { Enrollment } from "../models/contents/enrollments.models.js";
+import { Course } from "../models/contents/course.models.js";
 import {
     successResponse,
     createdResponse,
@@ -75,7 +77,7 @@ const createStudentProfile = asyncHandler(async (req, res) => {
     };
 
     return res
-      .json(successResponse(response, "Student profile created successfully"));
+      .json(createdResponse({response}, "Student profile created successfully"));
   } catch (error) {
       console.error("Error in createStudentProfile:", error);
     throw internalServer(error.message);
@@ -242,31 +244,61 @@ const getMyStudentProfile = asyncHandler(async (req, res) => {
   try {
     const reqUser = req.user;
     if (!reqUser || reqUser.role !== "student") {
-      return res.json(unauthorizedResponse("You do not have permission to view student profile"));
+      return res.json(
+        unauthorizedResponse("You do not have permission to view student profile")
+      );
     }
 
-    // Try to load student profile and populate related data
+    // Load student profile with related data
     let studentProfile = await Student.findOne({ userId: reqUser._id })
       .populate({ path: "kycVerification", select: "_id status" })
-      .populate({ path: "certifications", select: "_id name issuedBy issueDate" })
+      .populate({ path: "certifications", select: "_id name issuedBy issueDate description" })      
       .populate("experience")
-      .populate("enrollments")
+      .populate({
+        path: "enrollments",
+        populate: {
+          path: "courseId",
+          select: "title instructor duration price language type status coverImage category"
+        }
+      })
       .lean();
 
-    // If student profile does not exist, return null
     if (!studentProfile) {
-      return res.json(successResponse({ studentId: null }, "Student profile not found."));
+      return res.json(notFoundResponse("Student profile not found"));
     }
 
-    // Get user profile picture from User model
-    const userDetails = await User.findById(reqUser._id).select("profilePicture").lean();
+    // Get user details (profile picture + status if available)
+    const userDetails = await User.findById(reqUser._id)
+      .select("profilePicture status")
+      .lean();
 
-    // Only return _id and name for certifications if populated
-    const certifications = Array.isArray(studentProfile?.certifications)
-      ? studentProfile.certifications.map((c) => ({ _id: c._id, name: c.name }))
+    // Get enrollments - if the student's enrollments array is empty, fetch directly from Enrollment collection
+    let enrollments = studentProfile.enrollments || [];
+    
+    if (!enrollments || enrollments.length === 0) {
+      // Fetch enrollments directly from Enrollment collection
+      enrollments = await Enrollment.find({ studentId: reqUser._id })
+        .populate({
+          path: "courseId",
+          select: "title instructor duration price language type status coverImage category"
+        })
+        .select("enrollmentDate status createdAt updatedAt")
+        .sort({ enrollmentDate: -1 })
+        .lean();
+    }
+
+    // Map certifications (return all available fields)
+    const certifications = Array.isArray(studentProfile.certifications)
+      ? studentProfile.certifications.map((c) => ({
+          _id: c._id,
+          name: c.name,
+          issuedBy: c.issuedBy,
+          issueDate: c.issueDate,
+          description: c.description,
+        }))
       : [];
 
-    // Compose the response with student details
+    // Final profile object
     const completeProfile = {
       studentId: studentProfile._id,
       userId: studentProfile.userId,
@@ -274,8 +306,8 @@ const getMyStudentProfile = asyncHandler(async (req, res) => {
       lastName: studentProfile.lastName,
       email: studentProfile.email,
       phone: studentProfile.phone,
-      profilePicture: userDetails?.profilePicture,
-      status: reqUser.status,
+      profilePicture: userDetails?.profilePicture || null,
+      status: userDetails?.status || null,
       role: "student",
       bio: studentProfile.bio,
       location: studentProfile.location,
@@ -283,7 +315,7 @@ const getMyStudentProfile = asyncHandler(async (req, res) => {
       certifications,
       kycVerification: studentProfile.kycVerification,
       experience: studentProfile.experience,
-      enrollments: studentProfile.enrollments,
+      enrollments,
       skills: studentProfile.skills,
       gsceResult: studentProfile.gsceResult,
       isPublic: studentProfile.isPublic,
@@ -295,11 +327,13 @@ const getMyStudentProfile = asyncHandler(async (req, res) => {
       updatedAt: studentProfile.updatedAt,
     };
 
-    return res.json(successResponse(completeProfile, "Student profile retrieved successfully"));
+    return res.json(
+      successResponse(completeProfile, "Student profile retrieved successfully")
+    );
   } catch (error) {
-      console.error("Error in getMyStudentProfile:", error);
-      throw internalServer(error.message || "Failed to retrieve student profile");
-    }
+    console.error("Error in getMyStudentProfile:", error);
+    throw internalServer(error.message || "Failed to retrieve student profile");
+  }
 });
 
 // ===============================
@@ -906,6 +940,107 @@ const getCommunicationPreferences = asyncHandler(async (req, res) => {
   }
 });
 
+// ===============================
+// STUDENT DASHBOARD API
+// ===============================
+const getStudentDashboard = asyncHandler(async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || user.role !== "student") {
+      return res.json(unauthorizedResponse(
+        "You do not have permission to access dashboard"
+      ));
+    }
+
+    // Get all enrollments for the student
+    const enrollments = await Enrollment.find({ studentId: user._id });
+
+    if (!enrollments || enrollments.length === 0) {
+      return res.json(successResponse({
+        totalCoursesEnrolled: 0,
+        completedCourses: 0,
+        currentlyEnrolled: 0,
+        activeCourses: 0
+      }, "Dashboard data retrieved successfully"));
+    }
+
+    // Count different enrollment statuses
+    const totalCoursesEnrolled = enrollments.length;
+    const completedCourses = enrollments.filter(enrollment => enrollment.status === "completed").length;
+    const currentlyEnrolled = enrollments.filter(enrollment => 
+      enrollment.status === "enrolled" || enrollment.status === "in-progress"
+    ).length;
+
+    // Get course IDs for currently enrolled courses
+    const currentlyEnrolledCourseIds = enrollments
+      .filter(enrollment => enrollment.status === "enrolled" || enrollment.status === "in-progress")
+      .map(enrollment => enrollment.courseId);
+
+    // Count active courses (courses with status "approved")
+    const activeCourses = await Course.countDocuments({
+      _id: { $in: currentlyEnrolledCourseIds },
+      status: "approved"
+    });
+
+    const dashboardData = {
+      totalCoursesEnrolled,
+      completedCourses,
+      currentlyEnrolled,
+      activeCourses
+    };
+
+    return res.json(successResponse(dashboardData, "Dashboard data retrieved successfully"));
+
+  } catch (error) {
+    console.error("Error in getStudentDashboard:", error);
+    return res.json(internalServer("Failed to retrieve dashboard data"));
+  }
+});
+
+// ===============================
+// GET CURRENTLY ENROLLED COURSES
+// ===============================
+const getCurrentlyEnrolledCourses = asyncHandler(async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || user.role !== "student") {
+      return res.json(unauthorizedResponse(
+        "You do not have permission to access enrolled courses"
+      ));
+    }
+
+    // Get currently enrolled enrollments with course details
+    const enrolledCourses = await Enrollment.find({
+      studentId: user._id,
+      status: { $in: ["enrolled", "in-progress"] }
+    })
+    .populate({
+      path: "courseId",
+      select: "title instructor instructorPicture duration price language type objectives description skills category status coverImage currentEnrollments maxEnrollments createdAt updatedAt",
+      match: { status: "approved" } // Only get approved courses
+    })
+    .select("enrollmentDate status createdAt updatedAt")
+    .sort({ enrollmentDate: -1 });
+
+    // Filter out enrollments where course was not found (due to populate match condition)
+    const validEnrolledCourses = enrolledCourses.filter(enrollment => enrollment.courseId !== null);
+
+    // Format the response
+    const formattedCourses = validEnrolledCourses.map(enrollment => ({
+      enrollmentId: enrollment._id,
+      enrollmentDate: enrollment.enrollmentDate,
+      enrollmentStatus: enrollment.status,
+      course: enrollment.courseId
+    }));
+
+    return res.json(successResponse(formattedCourses, `${formattedCourses.length} currently enrolled courses retrieved successfully`));
+
+  } catch (error) {
+    console.error("Error in getCurrentlyEnrolledCourses:", error);
+    return res.json(internalServer("Failed to retrieve currently enrolled courses"));
+  }
+});
+
 export {
   createStudentProfile,
   getAllStudents,
@@ -921,7 +1056,9 @@ export {
   updatePrivacySettings,
   updateCommunicationPreferences,
   getPrivacySettings,
-  getCommunicationPreferences
+  getCommunicationPreferences,
+  getStudentDashboard,
+  getCurrentlyEnrolledCourses
 };
 
 function splitFullName(fullName = "") {

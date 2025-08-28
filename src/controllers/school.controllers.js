@@ -399,6 +399,7 @@ const matchStudents = asyncHandler(async (req, res) => {
         notFoundResponse("Job not found")
       );
     }
+    // Extract only skill names (ignore proficiency levels)
     const requiredSkills = (job.skillsRequired || []).map((s) =>
       typeof s === "string"
         ? s.trim().toLowerCase()
@@ -450,10 +451,10 @@ const matchStudents = asyncHandler(async (req, res) => {
           matchPercent,
         };
       })
-      .filter((s) => s.matchPercent >= 80)
+      .filter((s) => s.matchPercent >= 70)
       .sort((a, b) => b.matchPercent - a.matchPercent);
 
-    return res.status(200).json(successResponse({
+    return res.json(successResponse({
       payload: {
         job: {
           _id: job._id,
@@ -463,7 +464,7 @@ const matchStudents = asyncHandler(async (req, res) => {
         matchedStudents: matched,
       },
     }  , 
-     `Found ${matched.length} students matching at least 80% of required skills.`)
+     `Found ${matched.length} students matching at least 70% of required skills.`)
   );
   } catch (error) {throw internalServer("Failed to match students for the job");
   }

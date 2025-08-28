@@ -47,8 +47,15 @@ const createEnrollment = asyncHandler(async (req, res) => {
         });
 
         if (enrollment) {
-    await Course.findByIdAndUpdate(courseId, { $inc: { currentEnrollments: 1 } });
-}
+            // Update course enrollment count
+            await Course.findByIdAndUpdate(courseId, { $inc: { currentEnrollments: 1 } });
+            
+            // Add enrollment to student's enrollments array
+            await Student.findOneAndUpdate(
+                { userId: studentId },
+                { $addToSet: { enrollments: enrollment._id } }
+            );
+        }
 
 
         // Populate enrollment with course and student details
@@ -373,6 +380,9 @@ const withdrawFromCourse = asyncHandler(async (req, res) => {
         // Update enrollment status
         enrollment.status = 'withdrawn';
         await enrollment.save();
+
+        // Decrease course enrollment count
+        await Course.findByIdAndUpdate(enrollment.courseId._id, { $inc: { currentEnrollments: -1 } });
 
         return res.json(
             successResponse(
