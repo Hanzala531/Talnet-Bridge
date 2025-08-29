@@ -395,49 +395,47 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
             isActive: true 
         }).select('_id jobTitle matchedCandidates skillsRequired');
         
-        // For legacy jobs without matchedCandidates, calculate them on-the-fly
-        for (const job of employerJobs) {
-            if (!job.matchedCandidates || job.matchedCandidates.length === 0) {
-                if (job.skillsRequired && Array.isArray(job.skillsRequired) && job.skillsRequired.length > 0) {
-                    // This is a legacy job that needs matching calculation
-                    console.log(`Legacy job detected: ${job.jobTitle}. Calculating matches...`);
-                    
-                    // Get all active students for this legacy job
-                    const students = await Student.find({
-                        skills: { $exists: true, $ne: [] },
-                        isPublic: true,
-                        isOpenToWork: true
-                    }).select('skills firstName lastName email location');
-                    
-                    // Find matching students with ≥90% match (using skill name-focused matching)
-                    const skillNameMatchingOptions = {
-                        fuzzyThreshold: 0.85, // Higher threshold for stricter matching
-                        exactMatchWeight: 1.0,
-                        abbreviationMatchWeight: 0.98, // High weight for abbreviations
-                        partialMatchWeight: 0.85, // Good weight for partial skill name matches
-                        fuzzyMatchWeight: 0.6 // Lower weight for fuzzy matches to prioritize exact names
-                    };
-                    const matchedStudents = findMatchingStudents(students, job.skillsRequired, 90, skillNameMatchingOptions);
-                    
-                    // Format matched candidates for storage
-                    const formattedMatches = matchedStudents.map(match => ({
-                        student: match.student,
-                        matchPercentage: match.matchPercentage,
-                        matchedAt: new Date()
-                    }));
-                    
-                    // Update the job with matched candidates
-                    await Job.findByIdAndUpdate(job._id, {
-                        matchedCandidates: formattedMatches
-                    });
-                    
-                    // Update the job object in our array for immediate use
-                    job.matchedCandidates = formattedMatches;
-                    
-                    console.log(`Updated legacy job ${job.jobTitle} with ${formattedMatches.length} matches`);
-                }
+        // Process all jobs to ensure they have up-to-date matches
+        await Promise.all(employerJobs.map(async (job) => {
+            // Always recalculate matches for all jobs to ensure fresh data
+            if (job.skillsRequired && Array.isArray(job.skillsRequired) && job.skillsRequired.length > 0) {
+                console.log(`Calculating matches for job: ${job.jobTitle}`);
+                
+                // Get all active students
+                const students = await Student.find({
+                    skills: { $exists: true, $ne: [] },
+                    isPublic: true,
+                    isOpenToWork: true
+                }).select('skills firstName lastName email location');
+                
+                // Find matching students with ≥90% match
+                const skillNameMatchingOptions = {
+                    fuzzyThreshold: 0.85,
+                    exactMatchWeight: 1.0,
+                    abbreviationMatchWeight: 0.98,
+                    partialMatchWeight: 0.85,
+                    fuzzyMatchWeight: 0.6
+                };
+                const matchedStudents = findMatchingStudents(students, job.skillsRequired, 90, skillNameMatchingOptions);
+                
+                // Format matched candidates for storage
+                const formattedMatches = matchedStudents.map(match => ({
+                    student: match.student,
+                    matchPercentage: match.matchPercentage,
+                    matchedAt: new Date()
+                }));
+                
+                // Update the job with matched candidates
+                await Job.findByIdAndUpdate(job._id, {
+                    matchedCandidates: formattedMatches
+                });
+                
+                // Update the job object in our array for immediate use
+                job.matchedCandidates = formattedMatches;
+                
+                console.log(`Updated job ${job.jobTitle} with ${formattedMatches.length} matches`);
             }
-        }
+        }));
         
         if (!employerJobs || employerJobs.length === 0) {
             return res.json(successResponse(
@@ -563,7 +561,7 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
  */
 const getPotentialStudents = asyncHandler(async (req, res) => {
     try {
-        const { page = 1, limit = 10, minMatch = 20, maxMatch = 89, sortBy = 'matchPercentage', sortOrder = 'desc' } = req.query;
+        const { page = 1, limit = 10, minMatch = 20, maxMatch = 100, sortBy = 'matchPercentage', sortOrder = 'desc' } = req.query;
         const userId = req.user._id;
         
         // Find employer profile for the logged-in user

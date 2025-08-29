@@ -184,7 +184,7 @@ const createJobPost = asyncHandler(async (req, res) => {
                 console.log('Job skills required:', skillsRequired);
                 console.log('Sample student skills:', students[0]?.skills);
                 
-                // Find matching students with ≥90% match (using skill name-focused matching)
+                // Define matching options first
                 const skillNameMatchingOptions = {
                     fuzzyThreshold: 0.85, // Higher threshold for stricter matching
                     exactMatchWeight: 1.0,
@@ -192,9 +192,23 @@ const createJobPost = asyncHandler(async (req, res) => {
                     partialMatchWeight: 0.85, // Good weight for partial skill name matches
                     fuzzyMatchWeight: 0.6 // Lower weight for fuzzy matches to prioritize exact names
                 };
-                const matchedStudents = findMatchingStudents(students, skillsRequired, 90, skillNameMatchingOptions);
                 
-                console.log(`Found ${matchedStudents.length} matching students with ≥90% skill name match`);
+                // Debug each student's match percentage
+                for (let i = 0; i < Math.min(students.length, 3); i++) {
+                    const student = students[i];
+                    const matchPercentage = calculateMatchPercentage(student.skills, skillsRequired, skillNameMatchingOptions);
+                    console.log(`Student ${i + 1} (${student.firstName} ${student.lastName}): ${student.skills} -> ${matchPercentage}%`);
+                }
+                
+                // Find matching students with ≥20% match (store all potential matches)
+                const matchedStudents = findMatchingStudents(students, skillsRequired, 20, skillNameMatchingOptions);
+                
+                console.log(`Found ${matchedStudents.length} matching students with ≥20% skill match`);
+                console.log('Matched students details:', matchedStudents.map(m => ({ 
+                    student: m.student, 
+                    percentage: m.matchPercentage,
+                    name: m.studentData?.firstName + ' ' + m.studentData?.lastName
+                })));
                 
                 // Format matched candidates for storage
                 const formattedMatches = matchedStudents.map(match => ({
@@ -587,7 +601,11 @@ const checkSkillMatch = (studentSkill, jobSkill, fuzzyThreshold = 0.85) => {
     };
     
     // Check if either skill matches a known abbreviation
-    if (abbreviationMap[normalizedStudentSkill] === normalizedJobSkill || 
+    const studentCanonical = abbreviationMap[normalizedStudentSkill] || normalizedStudentSkill;
+    const jobCanonical = abbreviationMap[normalizedJobSkill] || normalizedJobSkill;
+    
+    if (studentCanonical === jobCanonical || 
+        abbreviationMap[normalizedStudentSkill] === normalizedJobSkill || 
         abbreviationMap[normalizedJobSkill] === normalizedStudentSkill) {
         return { isMatch: true, score: 0.98, type: 'abbreviation' };
     }
@@ -610,8 +628,6 @@ const checkSkillMatch = (studentSkill, jobSkill, fuzzyThreshold = 0.85) => {
     if (similarity >= fuzzyThreshold) {
         return { isMatch: true, score: similarity * 0.8, type: 'fuzzy' };
     }
-    
-    return { isMatch: false, score: similarity, type: 'none' };
     
     return { isMatch: false, score: similarity, type: 'none' };
 };
