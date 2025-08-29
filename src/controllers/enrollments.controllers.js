@@ -181,8 +181,11 @@ const updateEnrollmentStatus = asyncHandler(async (req, res) => {
       return res.json(badRequestResponse("Invalid status value"));
     }
 
+    // find schol id
+    const school = await TrainingInstitute.findOne({userId : userId})
+
     // Find all enrollments for this user
-    const enrollments = await Enrollment.find({ studentId: userId })
+    const enrollments = await Enrollment.find({ schoolId: school._id })
       .populate("courseId", "trainingProvider");
 
     if (!enrollments || enrollments.length === 0) {
