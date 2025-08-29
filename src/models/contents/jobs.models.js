@@ -72,7 +72,7 @@ const jobSchema = new mongoose.Schema(
     
     postedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // The company or training provider
+      ref: "Employer", // Reference to Employer profile, not User directly
       required: true,
     },
     
@@ -97,6 +97,23 @@ const jobSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    
+    // Matched candidates for this job (≥95% skill match)
+    matchedCandidates: [{
+      student: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Student"
+      },
+      matchPercentage: {
+        type: Number,
+        min: 0,
+        max: 100
+      },
+      matchedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
   },
   { timestamps: true }
 );

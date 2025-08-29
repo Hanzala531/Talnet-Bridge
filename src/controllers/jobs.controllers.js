@@ -18,10 +18,11 @@
  * - Admin: Full access to all job operations
  */
 
-import { Job } from "../models/index.js";
+import { Job, Student, Employer } from "../models/index.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { badRequest, notFound, internalServer, forbidden } from "../utils/ApiError.js";
 import { successResponse, createdResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from "../utils/ApiResponse.js";
+import { calculateMatchPercentage, findMatchingStudents } from "../utils/matchingUtils.js";
 
 
 
@@ -44,11 +45,29 @@ const getAllJobs = asyncHandler(async (req, res) => {
             { $match: filter },
             {
                 $lookup: {
-                    from: "users",
+                    from: "employers",
                     localField: "postedBy",
                     foreignField: "_id",
-                    as: "poster",
-                    pipeline: [{ $project: { fullName: 1, email: 1, role: 1 } }]
+                    as: "employer",
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "userId",
+                                foreignField: "_id",
+                                as: "userInfo",
+                                pipeline: [{ $project: { fullName: 1, email: 1, role: 1 } }]
+                            }
+                        },
+                        {
+                            $project: {
+                                name: 1,
+                                industry: 1,
+                                location: 1,
+                                userInfo: { $arrayElemAt: ["$userInfo", 0] }
+                            }
+                        }
+                    ]
                 }
             },
             {
@@ -62,7 +81,7 @@ const getAllJobs = asyncHandler(async (req, res) => {
                     applicationDeadline: 1,
                     createdAt: 1,
                     updatedAt: 1,
-                    postedBy: { $arrayElemAt: ["$poster", 0] }
+                    postedBy: { $arrayElemAt: ["$employer", 0] }
                 }
             },
             { $sort: sort.startsWith('-') ? { [sort.slice(1)]: -1 } : { [sort]: 1 } },
@@ -105,7 +124,10 @@ const getJobById = asyncHandler(async (req, res) => {
         if (!id) return res.json(badRequestResponse("Job ID is required."));
         const job = await Job.findById(id).populate({
             path: 'postedBy',
-            select: 'fullName email role'
+            populate: {
+                path: 'userId',
+                select: 'fullName email role'
+            }
         });
         if (!job) return res.json(notFoundResponse("Job not found."));
         return res.json(successResponse(job, "Job fetched successfully."));
@@ -115,13 +137,23 @@ const getJobById = asyncHandler(async (req, res) => {
 });
 
 // Create a job post
+// Create job post with automatic candidate matching
 const createJobPost = asyncHandler(async (req, res) => {
     try {
         const { jobTitle, department, location, employmentType, salary, jobDescription, skillsRequired, benefits, category, applicationDeadline } = req.body;
-        const postedBy = req.user?._id;
+        const userId = req.user?._id;
+        
         if (!jobTitle || !department || !location || !employmentType || !jobDescription || !category) {
             return res.json(badRequestResponse("Missing required fields: jobTitle, department, location, employmentType, jobDescription, category"));
         }
+        
+        // Validate that user has an employer profile
+        const employer = await Employer.findOne({ userId });
+        if (!employer) {
+            return res.json(badRequestResponse("Employer profile required. Please create your employer profile first before posting jobs."));
+        }
+        
+        // Create the job with employer ID as postedBy
         const job = await Job.create({
             jobTitle,
             department,
@@ -131,12 +163,67 @@ const createJobPost = asyncHandler(async (req, res) => {
             jobDescription,
             skillsRequired,
             benefits,
-            postedBy,
+            postedBy: employer._id, // Use employer ID, not user ID
             category,
-            applicationDeadline
+            applicationDeadline,
+            matchedCandidates: [] // Initialize empty array
         });
+        
         if (!job) throw internalServer("Failed to create job");
-        return res.json(createdResponse(job, "Job created successfully."));
+        
+        // Find and store matched candidates (≥95% match) if skills are provided
+        if (skillsRequired && Array.isArray(skillsRequired) && skillsRequired.length > 0) {
+            try {
+                // Fetch all active students with skills
+                const students = await Student.find({
+                    skills: { $exists: true, $ne: [] },
+                    isPublic: true, // Only consider public profiles
+                    isOpenToWork: true // Only consider students open to work
+                }).select('skills firstName lastName email location');
+                
+                // Find matching students with ≥95% match (using enhanced fuzzy search)
+                const fuzzyOptions = {
+                    fuzzyThreshold: 0.8,
+                    exactMatchWeight: 1.0,
+                    partialMatchWeight: 0.9,
+                    fuzzyMatchWeight: 0.7,
+                    abbreviationMatchWeight: 0.95
+                };
+                const matchedStudents = findMatchingStudents(students, skillsRequired, 95, fuzzyOptions);
+                
+                // Format matched candidates for storage
+                const formattedMatches = matchedStudents.map(match => ({
+                    student: match.student,
+                    matchPercentage: match.matchPercentage,
+                    matchedAt: new Date()
+                }));
+                
+                // Update job with matched candidates
+                await Job.findByIdAndUpdate(job._id, {
+                    matchedCandidates: formattedMatches
+                });
+                
+                console.log(`Job created with ${formattedMatches.length} matched candidates`);
+                
+            } catch (matchingError) {
+                console.error('Error finding matched candidates:', matchingError);
+                // Don't fail job creation if matching fails
+            }
+        }
+        
+        // Fetch the updated job with populated matched candidates
+        const populatedJob = await Job.findById(job._id)
+            .populate('matchedCandidates.student', 'firstName lastName email location skills')
+            .populate({
+                path: 'postedBy',
+                populate: {
+                    path: 'userId',
+                    select: 'fullName email'
+                }
+            });
+        
+        return res.json(createdResponse(populatedJob, "Job created successfully with matched candidates."));
+        
     } catch (error) {
         throw internalServer(error.message);
     }
@@ -147,13 +234,19 @@ const updateJobPost = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
+        const userId = req.user._id;
+        
         if (!id) return res.json(badRequestResponse("Job ID is required."));
-        const job = await Job.findById(id);
+        
+        // Find the job with employer info
+        const job = await Job.findById(id).populate('postedBy');
         if (!job) return res.json(notFoundResponse("Job not found."));
-        // Only allow the user who posted the job to update
-        if (job.postedBy.toString() !== req.user._id.toString()) {
-            return res.json(forbiddenResponse("You are not authorized to update this job post."));
+        
+        // Validate that user owns this employer profile
+        if (job.postedBy.userId.toString() !== userId.toString()) {
+            return res.json(forbiddenResponse("You can only update your own job posts."));
         }
+        
         const updated = await Job.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
         return res.json(successResponse(updated, "Job updated successfully."));
     } catch (error) {
@@ -165,13 +258,19 @@ const updateJobPost = asyncHandler(async (req, res) => {
 const deleteJobPost = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
+        const userId = req.user._id;
+        
         if (!id) return res.json(badRequestResponse("Job ID is required."));
-        const job = await Job.findById(id);
+        
+        // Find the job with employer info
+        const job = await Job.findById(id).populate('postedBy');
         if (!job) return res.json(notFoundResponse("Job not found or already deleted."));
-        // Only allow the user who posted the job to delete
-        if (job.postedBy.toString() !== req.user._id.toString()) {
-            return res.json(forbiddenResponse("You are not authorized to delete this job post."));
+        
+        // Validate that user owns this employer profile
+        if (job.postedBy.userId.toString() !== userId.toString()) {
+            return res.json(forbiddenResponse("You can only delete your own job posts."));
         }
+        
         await Job.findByIdAndDelete(id);
         return res.json(successResponse(null, "Job deleted successfully."));
     } catch (error) {
@@ -236,7 +335,13 @@ const searchJobs = asyncHandler(async (req, res) => {
 
         const [jobs, total] = await Promise.all([
             Job.find(filter)
-                .populate('postedBy', 'fullName email')
+                .populate({
+                    path: 'postedBy',
+                    populate: {
+                        path: 'userId',
+                        select: 'fullName email'
+                    }
+                })
                 .select('-__v')
                 .sort('-createdAt')
                 .skip(skip)
@@ -266,10 +371,16 @@ const searchJobs = asyncHandler(async (req, res) => {
 
 const getMyJobs = asyncHandler(async (req, res) => {
     try {
-        const {employerId} = req.body|| req.user._id;
+        const userId = req.user._id;
         const { page = 1, limit = 10, status } = req.query;
 
-        const filter = { postedBy: employerId };
+        // Find employer profile for the logged-in user
+        const employer = await Employer.findOne({ userId });
+        if (!employer) {
+            return res.json(badRequestResponse("Employer profile required. Please create your employer profile first."));
+        }
+
+        const filter = { postedBy: employer._id };
         if (status) filter.status = status;
 
         const skip = (page - 1) * Math.min(limit, 100);
@@ -281,6 +392,13 @@ const getMyJobs = asyncHandler(async (req, res) => {
                 .sort('-createdAt')
                 .skip(skip)
                 .limit(limitNum)
+                .populate({
+                    path: 'postedBy',
+                    populate: {
+                        path: 'userId',
+                        select: 'fullName email'
+                    }
+                })
                 .lean(),
             Job.countDocuments(filter)
         ]);

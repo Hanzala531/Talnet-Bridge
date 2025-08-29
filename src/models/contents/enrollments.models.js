@@ -17,7 +17,7 @@ const enrollmentSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ["enrolled", "in-progress", "completed", "withdrawn", "suspended"],
+        enum: ["enrolled", "completed", "withdrawn", "suspended"],
         default: "enrolled"
     },    
     

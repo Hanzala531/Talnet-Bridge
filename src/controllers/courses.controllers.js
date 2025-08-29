@@ -41,6 +41,8 @@ const getCourses = asyncHandler(async (req, res) => {
       },
       {
         $project: {
+          coverImage : 1,
+          instructorPicture: 1,
           title: 1,
           instructor: 1,
           duration: 1,

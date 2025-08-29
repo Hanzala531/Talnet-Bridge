@@ -171,53 +171,59 @@ const getEnrollmentById = asyncHandler(async (req, res) => {
 // UPDATE ENROLLMENT STATUS
 // ===============================
 const updateEnrollmentStatus = asyncHandler(async (req, res) => {
-    try {
-        const { id } = req.params;
+  try {
     const { status } = req.body;
-        const userId = req.user._id;
-        const userRole = req.user.role;
+    const userId = req.user._id;
+    const userRole = req.user.role;
 
-        const validStatuses = ["enrolled", "in-progress", "completed", "withdrawn", "suspended"];
-        if (status && !validStatuses.includes(status)) {
-            return res.json (badRequestResponse("Invalid status value"));
-        }
-
-        const enrollment = await Enrollment.findById(id)
-            .populate('courseId', 'trainingProvider');
-
-        if (!enrollment) {
-            return res.json (notFoundResponse("Enrollment not found"));
-        }
-
-        // Authorization check
-        const isStudent = enrollment.studentId.toString() === userId.toString();
-        const isProvider = enrollment.courseId.trainingProvider.toString() === userId.toString();
-        const isAdmin = userRole === 'admin';
-
-        if (!isStudent && !isProvider && !isAdmin) {
-            return res.json (badRequestResponse("Access denied"));
-        }
-
-    // Update fields
-    const updateData = {};
-    if (status) updateData.status = status;
-
-        const updatedEnrollment = await Enrollment.findByIdAndUpdate(
-            id,
-            updateData,
-            { new: true, runValidators: true }
-    ).populate('courseId', 'title instructor')
-     .populate('studentId', 'fullName email');
-
-        return res.json(
-            successResponse(
-                { enrollment: updatedEnrollment },
-                "Enrollment updated successfully"
-            )
-        );
-    } catch (error) {throw internalServer("Failed to update enrollment");
+    const validStatuses = ["enrolled", "in-progress", "completed", "withdrawn", "suspended"];
+    if (status && !validStatuses.includes(status)) {
+      return res.json(badRequestResponse("Invalid status value"));
     }
+
+    // Find all enrollments for this user
+    const enrollments = await Enrollment.find({ studentId: userId })
+      .populate("courseId", "trainingProvider");
+
+    if (!enrollments || enrollments.length === 0) {
+      return res.json(notFoundResponse("No enrollments found for this user"));
+    }
+
+    // Authorization check
+    const isStudent = userRole === "student";
+    const isAdmin = userRole === "admin";
+    // Providers can only update if they own the training provider
+    const isProvider = enrollments.some(
+      (en) => en.courseId?.trainingProvider?.toString() === userId.toString()
+    );
+
+    if (!isStudent && !isProvider && !isAdmin) {
+      return res.json(badRequestResponse("Access denied"));
+    }
+
+    // Update all enrollments for this user
+    const updatedEnrollments = await Enrollment.updateMany(
+      { studentId: userId },
+      { $set: { status } },
+      { new: true, runValidators: true }
+    );
+
+    // Re-fetch updated enrollments with details
+    const refreshed = await Enrollment.find({ studentId: userId })
+      .populate("courseId", "title instructor")
+      .populate("studentId", "fullName email");
+
+    return res.json(
+      successResponse(
+        { enrollments: refreshed },
+        "Enrollments updated successfully"
+      )
+    );
+  } catch (error) {
+    throw internalServer("Failed to update enrollment");
+  }
 });
+
 
 // ===============================
 // UPDATE PAYMENT STATUS (REMOVED: not in model)
