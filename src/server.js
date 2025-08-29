@@ -5,6 +5,7 @@ import { app } from './app.js';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import registerChatSockets from './sockets/chat.socket.js';
+import { initNotificationSocket } from './sockets/notification.socket.js';
 
 dotenv.config({
     path: './.env'
@@ -28,6 +29,9 @@ connectDB()
     
     // Register chat socket handlers
     registerChatSockets(io);
+    
+    // Register notification socket handlers
+    initNotificationSocket(io);
     
     // Make io accessible to routes
     app.set("io", io);

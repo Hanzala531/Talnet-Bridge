@@ -38,7 +38,8 @@ const notificationSchema = new mongoose.Schema({
             "security_alert",
             "subscription_expiry",
             "course_approved",
-            "course_rejected"
+            "course_rejected",
+            "course_created"
         ],
         required: true
     },

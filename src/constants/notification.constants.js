@@ -10,6 +10,7 @@ export const NOTIFICATION_TYPES = {
   COURSE_COMPLETION: 'course_completion',
   COURSE_APPROVED: 'course_approved',
   COURSE_REJECTED: 'course_rejected',
+  COURSE_CREATED: 'course_created',
   CERTIFICATE_ISSUED: 'certificate_issued',
   
   // Job Related

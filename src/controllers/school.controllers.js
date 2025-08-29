@@ -512,7 +512,7 @@ const studentsDirectory = asyncHandler(async (req, res) => {
 
     // Get all enrollments without pagination first to get unique students
     const allEnrollments = await Enrollment.find(enrollmentFilter)
-      .select("studentId courseId status enrolledAt")
+      .select("_id studentId courseId status enrolledAt")
       .lean();
 
     if (!allEnrollments.length) {
@@ -534,6 +534,7 @@ const studentsDirectory = asyncHandler(async (req, res) => {
           acc[studentId] = [];
         }
         acc[studentId].push({
+          enrollmentId: enrollment._id,
           courseId: enrollment.courseId,
           status: enrollment.status,
           enrolledAt: enrollment.enrolledAt,
@@ -583,9 +584,11 @@ const studentsDirectory = asyncHandler(async (req, res) => {
           return courseDetails && courseDetails.trainingProvider?.toString() === schoolId.toString();
         })
         .map(enrollment => ({
+          enrollmentId: enrollment.enrollmentId,
           courseId: enrollment.courseId,
           courseName: enrollment.courseDetails?.title || "Unknown Course",
-        
+          status: enrollment.status,
+          enrolledAt: enrollment.enrolledAt
         }));
 
       return {

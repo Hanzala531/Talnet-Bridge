@@ -1,5 +1,8 @@
 import { Notification } from "../models/contents/notification.models.js";
 import { User } from "../models/contents/User.models.js";
+import { Enrollment } from "../models/contents/enrollments.models.js";
+import { Course } from "../models/contents/course.models.js";
+import { NOTIFICATION_TYPES } from "../constants/notification.constants.js";
 import redisClient from "../config/redis.config.js";
 import { ApiError } from "../utils/ApiError.js";
 
@@ -345,4 +348,105 @@ export async function createPaymentNotification(userId, amount, description, sta
     actionUrl: `/payments/${paymentId}`,
     priority: isSuccess ? "normal" : "high",
   });
+}
+
+/**
+ * Get students who have enrolled in courses from a specific school
+ * @param {string} schoolId - Training Institute ID
+ * @returns {Promise<Array>} Array of unique student user IDs
+ */
+export async function getSchoolStudents(schoolId) {
+  try {
+    // Find all courses from this school
+    const schoolCourses = await Course.find({ trainingProvider: schoolId }).select('_id');
+    const courseIds = schoolCourses.map(course => course._id);
+
+    if (courseIds.length === 0) {
+      return [];
+    }
+
+    // Find students enrolled in any of these courses
+    const enrollments = await Enrollment.find({ 
+      courseId: { $in: courseIds },
+      status: { $in: ['enrolled', 'completed'] } // Only active/completed enrollments
+    }).select('studentId');
+
+    // Get unique student IDs
+    const uniqueStudentIds = [...new Set(enrollments.map(enrollment => enrollment.studentId.toString()))];
+    
+    return uniqueStudentIds;
+  } catch (error) {
+    console.error('Error fetching school students:', error);
+    return [];
+  }
+}
+
+/**
+ * Create notifications for new course creation to school students
+ * @param {Object} course - The created course object
+ * @param {string} schoolName - Name of the school
+ * @param {Object} io - Socket.io instance for real-time notifications (optional)
+ * @returns {Promise<Array>} Array of created notifications
+ */
+export async function createCourseCreationNotifications(course, schoolName, io = null) {
+  try {
+    // Get all students who have enrolled in courses from this school
+    const studentIds = await getSchoolStudents(course.trainingProvider);
+    
+    if (studentIds.length === 0) {
+      console.log('No students found for this school to notify');
+      return [];
+    }
+
+    // Create notification data
+    const notificationData = {
+      title: "New Course Available!",
+      message: `${schoolName} has launched a new course: "${course.title}". Check it out and enroll if interested!`,
+      type: NOTIFICATION_TYPES.COURSE_CREATED,
+      relatedEntity: {
+        entityType: "course",
+        entityId: course._id,
+      },
+      actionUrl: `/courses/${course._id}`,
+      priority: "normal",
+      metadata: {
+        courseId: course._id,
+        schoolId: course.trainingProvider,
+        courseTitle: course.title,
+        instructor: course.instructor,
+        category: course.category
+      }
+    };
+
+    // Create notifications for all students
+    const notifications = await createBulkNotifications(studentIds, notificationData);
+    
+    // Send real-time notifications if socket.io instance is provided
+    if (io && notifications.length > 0) {
+      const notificationNamespace = io.of('/notifications');
+      
+      notifications.forEach(notification => {
+        const userRoom = `user:${notification.recipient}`;
+        notificationNamespace.to(userRoom).emit('new_notification', {
+          id: notification._id,
+          title: notification.title,
+          message: notification.message,
+          type: notification.type,
+          actionUrl: notification.actionUrl,
+          priority: notification.priority,
+          createdAt: notification.createdAt,
+          metadata: notification.metadata
+        });
+      });
+      
+      console.log(`Sent real-time notifications to ${notifications.length} students`);
+    }
+    
+    console.log(`Created ${notifications.length} course creation notifications for course: ${course.title}`);
+    return notifications;
+
+  } catch (error) {
+    console.error('Error creating course creation notifications:', error);
+    throw new ApiError(500, `Failed to create course creation notifications: ${error.message}`);
+  }
 }
