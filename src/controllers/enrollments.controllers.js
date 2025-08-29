@@ -226,11 +226,6 @@ const updateEnrollmentStatus = asyncHandler(async (req, res) => {
 
 
 // ===============================
-// UPDATE PAYMENT STATUS (REMOVED: not in model)
-// ===============================
-// This controller is removed because payment fields are not in the Enrollment model.
-
-// ===============================
 // GET COURSE ENROLLMENTS (Provider/Admin)
 // ===============================
 const getCourseEnrollments = asyncHandler(async (req, res) => {

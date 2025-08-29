@@ -483,8 +483,10 @@ const studentsDirectory = asyncHandler(async (req, res) => {
       return res.json(badRequestResponse("SchoolId query parameter is required"));
     }
 
-    // Find all courses for this school
-    const courses = await Course.find({ trainingProvider: schoolId }).select('_id');
+    // Find all courses for this school with their details
+    const courses = await Course.find({ trainingProvider: schoolId })
+      .select('_id title instructor duration price category trainingProvider')
+      .lean();
     const courseIds = courses.map((c) => c._id);
     if (!courseIds.length) {
       return res.json(notFoundResponse(
@@ -492,19 +494,28 @@ const studentsDirectory = asyncHandler(async (req, res) => {
       ));
     }
 
+    // Create a course map for quick lookup (only courses belonging to this school)
+    const courseMap = courses.reduce((acc, course) => {
+      // Double-check that course belongs to this school
+      if (course.trainingProvider.toString() === schoolId.toString()) {
+        acc[course._id.toString()] = course;
+      }
+      return acc;
+    }, {});
+
     // Find enrollments for these courses (status: enrolled/in-progress)
+    // This ensures we only get enrollments for courses that belong to this school
     const enrollmentFilter = {
       courseId: { $in: courseIds },
-      status: { $in: ["enrolled", "in-progress"] },
+      status: { $in: ["enrolled"] },
     };
-    const skip = (Number(page) - 1) * Number(limit);
-    const enrollments = await Enrollment.find(enrollmentFilter)
-      .select("studentId courseId")
-      .skip(skip)
-      .limit(Number(limit))
+
+    // Get all enrollments without pagination first to get unique students
+    const allEnrollments = await Enrollment.find(enrollmentFilter)
+      .select("studentId courseId status enrolledAt")
       .lean();
 
-    if (!enrollments.length) {
+    if (!allEnrollments.length) {
       return res.json(
         notFoundResponse(
           "No enrollments found for this school"
@@ -512,58 +523,97 @@ const studentsDirectory = asyncHandler(async (req, res) => {
       );
     }
 
-    // Collect unique studentIds
-    const studentIds = [...new Set(enrollments.map((e) => e.studentId?.toString()))];
+    // Group enrollments by studentId (only for courses belonging to this school)
+    const enrollmentsByStudent = allEnrollments.reduce((acc, enrollment) => {
+      const studentId = enrollment.studentId?.toString();
+      const courseId = enrollment.courseId?.toString();
+      
+      // Only include enrollments for courses that belong to this school
+      if (courseMap[courseId]) {
+        if (!acc[studentId]) {
+          acc[studentId] = [];
+        }
+        acc[studentId].push({
+          courseId: enrollment.courseId,
+          status: enrollment.status,
+          enrolledAt: enrollment.enrolledAt,
+          courseDetails: courseMap[courseId]
+        });
+      }
+      return acc;
+    }, {});
+
+    // Get unique student IDs
+    const studentIds = Object.keys(enrollmentsByStudent);
     if (!studentIds.length) {
       return res.json(notFoundResponse(
         "No currently enrolled students found for this school"
       ));
     }
 
+    // Apply pagination to students
+    const skip = (Number(page) - 1) * Number(limit);
+    const paginatedStudentIds = studentIds.slice(skip, skip + Number(limit));
 
-    // Fetch Student and User info by userId (Enrollment.studentId is a User _id)
-    const students = await Student.find({ userId: { $in: studentIds } })
-      .select("_id userId courses")
+    // Fetch Student and User info for paginated students
+    const students = await Student.find({ userId: { $in: paginatedStudentIds } })
+      .select("_id userId ")
       .lean();
+    
     const userIds = students.map((s) => s.userId);
     const users = await User.find({ _id: { $in: userIds } })
       .select("fullName email phone location status")
       .lean();
+    
     const usersMap = users.reduce((acc, user) => {
       acc[user._id.toString()] = user;
       return acc;
     }, {});
 
-    // Format response
+    // Format response with enrolled courses (only for courses belonging to this school)
     const formatted = students.map((s) => {
       const user = usersMap[s.userId?.toString()] || {};
+      const studentEnrollments = enrollmentsByStudent[s.userId?.toString()] || [];
+      
+      // Format courses with details - only courses that belong to this school
+      const enrolledCourses = studentEnrollments
+        .filter(enrollment => {
+          // Additional safety check: ensure course belongs to this school
+          const courseDetails = enrollment.courseDetails;
+          return courseDetails && courseDetails.trainingProvider?.toString() === schoolId.toString();
+        })
+        .map(enrollment => ({
+          courseId: enrollment.courseId,
+          courseName: enrollment.courseDetails?.title || "Unknown Course",
+        
+        }));
+
       return {
         studentId: s._id,
         name: user.fullName || "",
         email: user.email || "",
         phone: user.phone || "",
-        courses: s.courses || [],
         status: user.status || "",
+        enrolledCourses: enrolledCourses,
+        totalEnrollments: enrolledCourses.length
       };
     });
 
-    // Total count for pagination
-    const total = await Enrollment.countDocuments(enrollmentFilter);
+    // Total count for pagination (unique students)
+    const total = studentIds.length;
 
     return res.status(200).json(
       successResponse(
         {
-      payload: {
-        students: formatted,
-        pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          total,
-          totalPages: Math.ceil(total / Number(limit)),
+          students: formatted,
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            totalPages: Math.ceil(total / Number(limit)),
+          },
         },
-      },
-    },
-    "Students directory fetched successfully"
+        "Students directory fetched successfully"
       )
     );
   } catch (error) {

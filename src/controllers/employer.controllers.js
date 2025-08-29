@@ -8,7 +8,7 @@ import {
     filterByMatchPercentage,
     fuzzyTextSearch,
     fuzzyFilter 
-} from "../utils/matchingUtils.js";
+} from "./jobs.controllers.js";
 
 
 // Create company profile
@@ -375,7 +375,7 @@ const deleteCompanyProfile = asyncHandler(async (req, res) => {
 });
 
 /**
- * Get all matched candidates (≥95% match) for the logged-in employer across all their jobs
+ * Get all matched candidates (≥90% match) for the logged-in employer across all their jobs
  * GET /api/employers/my-matched-candidates
  */
 const getMatchedCandidates = asyncHandler(async (req, res) => {
@@ -409,15 +409,15 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
                         isOpenToWork: true
                     }).select('skills firstName lastName email location');
                     
-                    // Find matching students with ≥95% match (using fuzzy search)
-                    const fuzzyOptions = {
-                        fuzzyThreshold: 0.8,
+                    // Find matching students with ≥90% match (using skill name-focused matching)
+                    const skillNameMatchingOptions = {
+                        fuzzyThreshold: 0.85, // Higher threshold for stricter matching
                         exactMatchWeight: 1.0,
-                        partialMatchWeight: 0.9,
-                        fuzzyMatchWeight: 0.7,
-                        abbreviationMatchWeight: 0.95
+                        abbreviationMatchWeight: 0.98, // High weight for abbreviations
+                        partialMatchWeight: 0.85, // Good weight for partial skill name matches
+                        fuzzyMatchWeight: 0.6 // Lower weight for fuzzy matches to prioritize exact names
                     };
-                    const matchedStudents = findMatchingStudents(students, job.skillsRequired, 95, fuzzyOptions);
+                    const matchedStudents = findMatchingStudents(students, job.skillsRequired, 90, skillNameMatchingOptions);
                     
                     // Format matched candidates for storage
                     const formattedMatches = matchedStudents.map(match => ({
@@ -454,14 +454,14 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
             ));
         }
         
-        // Collect all matched candidates from all jobs (≥95% match)
+        // Collect all matched candidates from all jobs (≥90% match)
         const allMatchedCandidates = [];
         const candidateMap = new Map(); // To avoid duplicates
         
         for (const job of employerJobs) {
             if (job.matchedCandidates && job.matchedCandidates.length > 0) {
                 for (const match of job.matchedCandidates) {
-                    // Only include candidates with ≥95% match
+                    // Only include candidates with ≥90% match
                     if (match.matchPercentage >= 95) {
                         const candidateId = match.student.toString();
                         
@@ -563,7 +563,7 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
  */
 const getPotentialStudents = asyncHandler(async (req, res) => {
     try {
-        const { page = 1, limit = 10, minMatch = 20, maxMatch = 94, sortBy = 'matchPercentage', sortOrder = 'desc' } = req.query;
+        const { page = 1, limit = 10, minMatch = 20, maxMatch = 89, sortBy = 'matchPercentage', sortOrder = 'desc' } = req.query;
         const userId = req.user._id;
         
         // Find employer profile for the logged-in user
@@ -620,7 +620,7 @@ const getPotentialStudents = asyncHandler(async (req, res) => {
             ));
         }
         
-        // Calculate matches for each student against all employer jobs (with fuzzy search)
+        // Calculate matches for each student against all employer jobs (with skill name-focused matching)
         const studentMatches = new Map();
         
         for (const student of students) {
@@ -628,16 +628,16 @@ const getPotentialStudents = asyncHandler(async (req, res) => {
             let bestJobTitle = '';
             let bestJobId = null;
             
-            // Find the best match across all employer jobs (using enhanced fuzzy search)
+            // Find the best match across all employer jobs (using skill name-focused matching)
             for (const job of employerJobs) {
-                const fuzzyOptions = {
-                    fuzzyThreshold: 0.8,
+                const skillNameMatchingOptions = {
+                    fuzzyThreshold: 0.85, // Higher threshold for stricter matching
                     exactMatchWeight: 1.0,
-                    partialMatchWeight: 0.9,
-                    fuzzyMatchWeight: 0.7,
-                    abbreviationMatchWeight: 0.95
+                    abbreviationMatchWeight: 0.98, // High weight for abbreviations
+                    partialMatchWeight: 0.85, // Good weight for partial skill name matches
+                    fuzzyMatchWeight: 0.6 // Lower weight for fuzzy matches to prioritize exact names
                 };
-                const matchPercentage = calculateMatchPercentage(student.skills, job.skillsRequired, fuzzyOptions);
+                const matchPercentage = calculateMatchPercentage(student.skills, job.skillsRequired, skillNameMatchingOptions);
                 
                 if (matchPercentage > bestMatch) {
                     bestMatch = matchPercentage;
@@ -646,7 +646,7 @@ const getPotentialStudents = asyncHandler(async (req, res) => {
                 }
             }
             
-            // Only include students with ≥20% and <95% match (potential students, not matched candidates)
+            // Only include students with ≥20% and <90% match (potential students, not matched candidates)
             if (bestMatch >= minMatch && bestMatch <= maxMatch) {
                 studentMatches.set(student._id.toString(), {
                     student: student,
@@ -770,14 +770,14 @@ const getEmployerMatchedCandidatesById = asyncHandler(async (req, res) => {
             ));
         }
         
-        // Collect all matched candidates from all jobs (≥95% match)
+        // Collect all matched candidates from all jobs (≥90% match)
         const allMatchedCandidates = [];
         const candidateMap = new Map(); // To avoid duplicates
         
         for (const job of employerJobs) {
             if (job.matchedCandidates && job.matchedCandidates.length > 0) {
                 for (const match of job.matchedCandidates) {
-                    // Only include candidates with ≥95% match
+                    // Only include candidates with ≥90% match
                     if (match.matchPercentage >= 95) {
                         const candidateId = match.student.toString();
                         
@@ -938,7 +938,7 @@ const getEmployerPotentialStudentsById = asyncHandler(async (req, res) => {
             ));
         }
         
-        // Calculate matches for each student against all employer jobs (with fuzzy search)
+        // Calculate matches for each student against all employer jobs (with skill name-focused matching)
         const studentMatches = new Map();
         
         for (const student of students) {
@@ -946,16 +946,16 @@ const getEmployerPotentialStudentsById = asyncHandler(async (req, res) => {
             let bestJobTitle = '';
             let bestJobId = null;
             
-            // Find the best match across all employer jobs (using enhanced fuzzy search)
+            // Find the best match across all employer jobs (using skill name-focused matching)
             for (const job of employerJobs) {
-                const fuzzyOptions = {
-                    fuzzyThreshold: 0.8,
+                const skillNameMatchingOptions = {
+                    fuzzyThreshold: 0.85, // Higher threshold for stricter matching
                     exactMatchWeight: 1.0,
-                    partialMatchWeight: 0.9,
-                    fuzzyMatchWeight: 0.7,
-                    abbreviationMatchWeight: 0.95
+                    abbreviationMatchWeight: 0.98, // High weight for abbreviations
+                    partialMatchWeight: 0.85, // Good weight for partial skill name matches
+                    fuzzyMatchWeight: 0.6 // Lower weight for fuzzy matches to prioritize exact names
                 };
-                const matchPercentage = calculateMatchPercentage(student.skills, job.skillsRequired, fuzzyOptions);
+                const matchPercentage = calculateMatchPercentage(student.skills, job.skillsRequired, skillNameMatchingOptions);
                 
                 if (matchPercentage > bestMatch) {
                     bestMatch = matchPercentage;
@@ -964,7 +964,7 @@ const getEmployerPotentialStudentsById = asyncHandler(async (req, res) => {
                 }
             }
             
-            // Only include students with ≥20% and <95% match (potential students, not matched candidates)
+            // Only include students with ≥20% and <90% match (potential students, not matched candidates)
             if (bestMatch >= minMatch && bestMatch <= maxMatch) {
                 studentMatches.set(student._id.toString(), {
                     student: student,

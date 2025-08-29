@@ -6,7 +6,57 @@
  */
 
 import { Job, Student } from "../models/index.js";
-import { findMatchingStudents } from "./matchingUtils.js";
+// Note: Matching utilities are now part of the job controller
+// Import the entire job controller module to access matching functions
+
+/**
+ * Simple matching function for maintenance tasks
+ * This is a simplified version since the full matching utilities are now in the job controller
+ */
+const calculateSimpleMatchPercentage = (studentSkills, jobSkills) => {
+    if (!Array.isArray(studentSkills) || !Array.isArray(jobSkills)) return 0;
+    if (studentSkills.length === 0 || jobSkills.length === 0) return 0;
+    
+    const jobSkillNames = jobSkills.map(skill => 
+        typeof skill === 'string' ? skill.toLowerCase() : skill.skill?.toLowerCase()
+    ).filter(Boolean);
+    
+    const normalizedStudentSkills = studentSkills.map(skill => skill.toLowerCase());
+    
+    let matches = 0;
+    for (const jobSkill of jobSkillNames) {
+        if (normalizedStudentSkills.some(studentSkill => 
+            studentSkill.includes(jobSkill) || jobSkill.includes(studentSkill)
+        )) {
+            matches++;
+        }
+    }
+    
+    return (matches / jobSkillNames.length) * 100;
+};
+
+/**
+ * Find matching students for maintenance tasks
+ */
+const findMatchingStudentsForMaintenance = (students, jobSkills, minMatchPercentage = 20) => {
+    const matchingStudents = [];
+    
+    for (const student of students) {
+        if (!student.skills || !Array.isArray(student.skills)) continue;
+        
+        const matchPercentage = calculateSimpleMatchPercentage(student.skills, jobSkills);
+        
+        if (matchPercentage >= minMatchPercentage) {
+            matchingStudents.push({
+                student: student._id,
+                matchPercentage,
+                studentData: student
+            });
+        }
+    }
+    
+    return matchingStudents.sort((a, b) => b.matchPercentage - a.matchPercentage);
+};
 
 /**
  * Recalculate matched candidates for a specific job
@@ -34,7 +84,7 @@ export const recalculateJobMatches = async (jobId) => {
         }).select('skills firstName lastName email location');
         
         // Find matching students with ≥95% match
-        const matchedStudents = findMatchingStudents(students, job.skillsRequired, 95);
+        const matchedStudents = findMatchingStudentsForMaintenance(students, job.skillsRequired, 95);
         
         // Format matched candidates for storage
         const formattedMatches = matchedStudents.map(match => ({

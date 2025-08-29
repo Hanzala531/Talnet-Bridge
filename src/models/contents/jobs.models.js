@@ -32,12 +32,12 @@ const jobSchema = new mongoose.Schema(
       required: true,
       maxLength: 2000
     },
-    requirements: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
+    // requirements: [
+    //   {
+    //     type: String,
+    //     trim: true,
+    //   },
+    // ],
     benefits: 
       {
         type: String,
