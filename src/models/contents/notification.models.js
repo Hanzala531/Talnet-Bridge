@@ -71,47 +71,11 @@ const notificationSchema = new mongoose.Schema({
         default: "normal"
     },
     
-    // Delivery Channels
-    channels: {
-        inApp: {
-            type: Boolean,
-            default: true
-        },
-        email: {
-            type: Boolean,
-            default: false
-        },
-        sms: {
-            type: Boolean,
-            default: false
-        },
-        push: {
-            type: Boolean,
-            default: false
-        }
-    },
-    
-    // Delivery Status
+    // Delivery Status (Web App Only)
     delivery: {
         inApp: {
-            delivered: { type: Boolean, default: false },
-            deliveredAt: Date
-        },
-        email: {
-            delivered: { type: Boolean, default: false },
-            deliveredAt: Date,
-            opened: { type: Boolean, default: false },
-            openedAt: Date
-        },
-        sms: {
-            delivered: { type: Boolean, default: false },
-            deliveredAt: Date
-        },
-        push: {
-            delivered: { type: Boolean, default: false },
-            deliveredAt: Date,
-            clicked: { type: Boolean, default: false },
-            clickedAt: Date
+            delivered: { type: Boolean, default: true },
+            deliveredAt: { type: Date, default: Date.now }
         }
     },
     
@@ -151,12 +115,20 @@ notificationSchema.methods.markAsRead = function() {
     return this.save();
 };
 
-// Static method to create notification
+// Static method to create notification (Web App Only)
 notificationSchema.statics.createNotification = async function(data) {
-    const notification = new this(data);
+    const notification = new this({
+        ...data,
+        delivery: {
+            inApp: {
+                delivered: true,
+                deliveredAt: new Date()
+            }
+        }
+    });
     await notification.save();
     
-    // Here you could trigger real-time notification via socket.io
+    // Real-time notification delivery via socket.io for web app
     // socketIO.to(data.recipient).emit('new-notification', notification);
     
     return notification;

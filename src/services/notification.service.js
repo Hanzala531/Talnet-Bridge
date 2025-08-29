@@ -4,7 +4,7 @@ import redisClient from "../config/redis.config.js";
 import { ApiError } from "../utils/ApiError.js";
 
 /**
- * Create a notification for a user
+ * Create a notification for a user (Web App Only)
  * @param {Object} data - Notification data
  * @param {string} data.recipient - User ID of the recipient
  * @param {string} data.title - Notification title
@@ -13,7 +13,6 @@ import { ApiError } from "../utils/ApiError.js";
  * @param {Object} data.relatedEntity - Related entity information
  * @param {string} data.actionUrl - URL for notification action
  * @param {string} data.priority - Notification priority (low, normal, high)
- * @param {Object} data.channels - Delivery channels configuration
  * @param {Object} data.metadata - Additional metadata
  * @param {Date} data.expiresAt - Expiration date
  * @returns {Promise<Object>} Created notification
@@ -26,7 +25,7 @@ export async function createNotification(data) {
       throw new ApiError(404, "Recipient user not found");
     }
 
-    // Create notification
+    // Create notification (Web App Only)
     const notification = new Notification({
       recipient: data.recipient,
       title: data.title,
@@ -35,9 +34,14 @@ export async function createNotification(data) {
       relatedEntity: data.relatedEntity,
       actionUrl: data.actionUrl,
       priority: data.priority || "normal",
-      channels: data.channels || { inApp: true },
       metadata: data.metadata,
       expiresAt: data.expiresAt,
+      delivery: {
+        inApp: {
+          delivered: true,
+          deliveredAt: new Date()
+        }
+      }
     });
 
     await notification.save();
@@ -62,7 +66,7 @@ export async function createNotification(data) {
 }
 
 /**
- * Create notification for new chat message
+ * Create notification for new chat message (Web App Only)
  * @param {Object} data - Message data
  * @param {string} data.senderId - ID of message sender
  * @param {string} data.recipientId - ID of message recipient
@@ -98,10 +102,6 @@ export async function createChatMessageNotification({
     },
     actionUrl: `/chat/conversations/${conversationId}`,
     priority: "normal",
-    channels: {
-      inApp: true,
-      push: true,
-    },
     metadata: {
       senderId,
       conversationId,
@@ -251,14 +251,16 @@ export async function getNotificationCounts(userId) {
 }
 
 /**
- * Send real-time notification via Socket.IO
+ * Send real-time notification via Socket.IO (Web App Only)
  * @param {Object} io - Socket.IO instance
  * @param {string} userId - Recipient user ID
  * @param {Object} notification - Notification object
  */
 export function sendRealTimeNotification(io, userId, notification) {
   if (io) {
-    io.to(`user:${userId}`).emit("notification:new", {
+    // Send to notification namespace
+    const notificationNamespace = io.of('/notifications');
+    notificationNamespace.to(`user:${userId}`).emit("notification:new", {
       _id: notification._id,
       title: notification.title,
       message: notification.message,
@@ -267,12 +269,13 @@ export function sendRealTimeNotification(io, userId, notification) {
       relatedEntity: notification.relatedEntity,
       actionUrl: notification.actionUrl,
       createdAt: notification.createdAt,
+      delivery: notification.delivery
     });
   }
 }
 
 /**
- * Create notification for course enrollment
+ * Create notification for course enrollment (Web App Only)
  * @param {string} studentId - Student user ID
  * @param {string} courseTitle - Course title
  * @param {string} courseId - Course ID
@@ -290,15 +293,11 @@ export async function createCourseEnrollmentNotification(studentId, courseTitle,
     },
     actionUrl: `/courses/${courseId}`,
     priority: "normal",
-    channels: {
-      inApp: true,
-      email: true,
-    },
   });
 }
 
 /**
- * Create notification for job application
+ * Create notification for job application (Web App Only)
  * @param {string} employerId - Employer user ID
  * @param {string} applicantName - Applicant name
  * @param {string} jobTitle - Job title
@@ -317,15 +316,11 @@ export async function createJobApplicationNotification(employerId, applicantName
     },
     actionUrl: `/jobs/applications/${applicationId}`,
     priority: "high",
-    channels: {
-      inApp: true,
-      email: true,
-    },
   });
 }
 
 /**
- * Create notification for payment
+ * Create notification for payment (Web App Only)
  * @param {string} userId - User ID
  * @param {string} amount - Payment amount
  * @param {string} description - Payment description
@@ -349,9 +344,5 @@ export async function createPaymentNotification(userId, amount, description, sta
     },
     actionUrl: `/payments/${paymentId}`,
     priority: isSuccess ? "normal" : "high",
-    channels: {
-      inApp: true,
-      email: true,
-    },
   });
 }

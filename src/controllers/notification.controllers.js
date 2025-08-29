@@ -606,24 +606,23 @@ const getNotificationPreferences = asyncHandler(async (req, res) => {
             return res.status(200).json(JSON.parse(cached));
         }
 
-        // Get from user preferences model or use defaults
+        // Get notification preferences (Web App Only)
         const preferences = {
-            email: {
-                course_enrollment: true,
-                payment_received: true,
-                job_application: true,
-                security_alert: true,
-                system_update: false
-            },
-            push: {
-                course_enrollment: true,
-                payment_received: true,
-                job_application: true,
-                message_received: true,
-                security_alert: true
-            },
             inApp: {
-                all: true
+                course_enrollment: true,
+                course_completion: true,
+                certificate_issued: true,
+                payment_received: true,
+                payment_failed: true,
+                job_application: true,
+                interview_scheduled: true,
+                profile_verified: true,
+                message_received: true,
+                system_update: true,
+                security_alert: true,
+                subscription_expiry: true,
+                course_approved: true,
+                course_rejected: true
             }
         };
 
@@ -639,11 +638,11 @@ const getNotificationPreferences = asyncHandler(async (req, res) => {
 });
 
 /**
- * Update notification preferences
+ * Update notification preferences (Web App Only)
  * 
  * @function updateNotificationPreferences
  * @param {Object} req - Express request object
- * @param {Object} req.body - Preference updates
+ * @param {Object} req.body - Preference updates for in-app notifications
  * @param {Object} res - Express response object
  * @returns {Promise<Object>} Updated preferences
  */
@@ -652,16 +651,22 @@ const updateNotificationPreferences = asyncHandler(async (req, res) => {
         const userId = req.user._id;
         const updates = req.body;
 
-        // Here you would update the user preferences model
-        // For now, we'll simulate the update
+        // Validate that only inApp preferences are being updated
+        if (updates.email || updates.push || updates.sms) {
+            throw new ApiError(400, "Only in-app notification preferences can be updated. Email, push, and SMS notifications are not supported.");
+        }
+
+        // Update user preferences for in-app notifications only
+        // Here you would update the user preferences model with the inApp settings
         
         // Invalidate cache
         await redisClient.del(`notification:preferences:${userId}`);
 
         res.status(200).json(
-            successResponse(200, updates, "Notification preferences updated successfully")
+            successResponse(200, updates, "In-app notification preferences updated successfully")
         );
     } catch (error) {
+        if (error instanceof ApiError) throw error;
         throw new ApiError(500, "Failed to update notification preferences");
     }
 });

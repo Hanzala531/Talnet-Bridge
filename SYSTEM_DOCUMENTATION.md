@@ -139,7 +139,7 @@ const matchingOptions = {
 
 ### Architecture Overview
 
-The notification system provides real-time, multi-channel communication with users through in-app notifications, email, and push notifications.
+The notification system provides real-time communication with users through in-app notifications only. The system has been simplified to focus on web application notifications, removing email, SMS, and push notification complexity.
 
 ### Key Components
 
@@ -154,7 +154,7 @@ The notification system provides real-time, multi-channel communication with use
 
 **Core Functions**:
 
-- `createNotification()`: Creates single notifications with validation
+- `createNotification()`: Creates single notifications with validation (Web App Only)
 - `createBulkNotifications()`: Handles mass notification creation
 - `markNotificationAsRead()`: Updates read status
 - `sendRealTimeNotification()`: WebSocket delivery
@@ -166,35 +166,48 @@ The notification system provides real-time, multi-channel communication with use
 const NOTIFICATION_TYPES = [
   "course_enrollment",
   "course_completion",
+  "course_approved",
+  "course_rejected",
+  "certificate_issued",
   "job_application",
-  "application_status_update",
-  "payment_confirmation",
-  "subscription_reminder",
-  "system_maintenance",
-  "profile_update",
-  "message_received",
-  "job_match_found",
+  "interview_scheduled",
+  "profile_verified",
+  "payment_received", 
+  "payment_failed",
+  "subscription_expiry",
+  "system_update",
+  "security_alert",
+  "message_received"
 ];
 ```
 
-#### 4. Delivery Channels
+#### 4. Delivery Channel (Simplified)
 
 ```javascript
-const DELIVERY_CHANNELS = {
-  inApp: true, // Platform notifications
-  email: false, // Email notifications
-  push: false, // Push notifications
-  sms: false, // SMS notifications
+// All notifications are delivered in-app only
+const DELIVERY_STATUS = {
+  inApp: {
+    delivered: true, // Auto-delivered on creation
+    deliveredAt: Date.now() // Timestamp of delivery
+  }
 };
 ```
 
-### Real-time Notification Flow
+### Real-time Notification Flow (Web App Only)
 
 1. **Trigger Event**: User action or system event occurs
-2. **Notification Creation**: Service creates notification record
+2. **Notification Creation**: Service creates notification record with in-app delivery
 3. **Cache Update**: Redis cache invalidation for affected users
-4. **Real-time Delivery**: WebSocket emission to connected clients
-5. **Email Queue**: Background email sending for important notifications
+4. **Real-time Delivery**: WebSocket emission to connected web clients
+5. **Instant Display**: Notification appears in user's web interface immediately
+
+### Key Changes Made
+
+- **Removed Multi-Channel Support**: Eliminated email, SMS, and push notification channels
+- **Simplified Model**: Streamlined notification schema to focus on web app delivery
+- **Reduced Complexity**: Removed delivery tracking for non-web channels
+- **Updated Preferences**: User preferences now only manage in-app notification types
+- **Improved Performance**: Faster notification creation without external channel validation
 
 ---
 

@@ -680,8 +680,8 @@ notificationRouter.delete('/bulk/delete', requestLogger, verifyJWT, bulkDeleteNo
  * @swagger
  * /api/v1/notifications/preferences:
  *   get:
- *     summary: Get user notification preferences
- *     description: Get notification preferences for email, push, and in-app notifications
+ *     summary: Get user notification preferences (Web App Only)
+ *     description: Get notification preferences for in-app notifications. Email, push, and SMS notifications are not supported.
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
@@ -699,42 +699,54 @@ notificationRouter.delete('/bulk/delete', requestLogger, verifyJWT, bulkDeleteNo
  *                 data:
  *                   type: object
  *                   properties:
- *                     email:
+ *                     inApp:
  *                       type: object
  *                       properties:
  *                         course_enrollment:
+ *                           type: boolean
+ *                           example: true
+ *                         course_completion:
+ *                           type: boolean
+ *                           example: true
+ *                         certificate_issued:
  *                           type: boolean
  *                           example: true
  *                         payment_received:
  *                           type: boolean
  *                           example: true
+ *                         payment_failed:
+ *                           type: boolean
+ *                           example: true
  *                         job_application:
  *                           type: boolean
  *                           example: true
- *                         security_alert:
+ *                         interview_scheduled:
  *                           type: boolean
  *                           example: true
- *                         system_update:
- *                           type: boolean
- *                           example: false
- *                     push:
- *                       type: object
- *                       properties:
- *                         course_enrollment:
+ *                         profile_verified:
  *                           type: boolean
  *                           example: true
  *                         message_received:
  *                           type: boolean
  *                           example: true
- *                     inApp:
- *                       type: object
- *                       properties:
- *                         all:
+ *                         system_update:
+ *                           type: boolean
+ *                           example: true
+ *                         security_alert:
+ *                           type: boolean
+ *                           example: true
+ *                         subscription_expiry:
+ *                           type: boolean
+ *                           example: true
+ *                         course_approved:
+ *                           type: boolean
+ *                           example: true
+ *                         course_rejected:
  *                           type: boolean
  *                           example: true
  *   patch:
- *     summary: Update notification preferences
- *     description: Update user's notification preferences for different channels
+ *     summary: Update notification preferences (Web App Only)
+ *     description: Update user's notification preferences for in-app notifications only
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
@@ -745,29 +757,45 @@ notificationRouter.delete('/bulk/delete', requestLogger, verifyJWT, bulkDeleteNo
  *           schema:
  *             type: object
  *             properties:
- *               email:
+ *               inApp:
  *                 type: object
  *                 properties:
  *                   course_enrollment:
  *                     type: boolean
+ *                   course_completion:
+ *                     type: boolean
+ *                   certificate_issued:
+ *                     type: boolean
  *                   payment_received:
  *                     type: boolean
- *               push:
- *                 type: object
- *                 properties:
+ *                   payment_failed:
+ *                     type: boolean
+ *                   job_application:
+ *                     type: boolean
+ *                   interview_scheduled:
+ *                     type: boolean
+ *                   profile_verified:
+ *                     type: boolean
  *                   message_received:
+ *                     type: boolean
+ *                   system_update:
+ *                     type: boolean
+ *                   security_alert:
+ *                     type: boolean
+ *                   subscription_expiry:
+ *                     type: boolean
+ *                   course_approved:
+ *                     type: boolean
+ *                   course_rejected:
  *                     type: boolean
  *           examples:
  *             updatePreferences:
- *               summary: Update notification preferences
+ *               summary: Update in-app notification preferences
  *               value:
- *                 email:
+ *                 inApp:
  *                   course_enrollment: true
  *                   payment_received: false
- *                   system_update: false
- *                 push:
  *                   message_received: true
- *                   course_enrollment: false
  *     responses:
  *       200:
  *         description: Preferences updated successfully

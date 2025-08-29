@@ -1227,8 +1227,8 @@ studentRouter.get('/communication-preferences', requestLogger, verifyJWT, author
  * @swagger
  * /api/v1/students/communication-preferences:
  *   put:
- *     summary: Update student communication preferences
- *     description: Update notification and communication preferences for various student activities
+ *     summary: Update student communication preferences (Web App Only)
+ *     description: Update notification preferences for web app notifications and content alerts
  *     tags: [Students]
  *     security:
  *       - bearerAuth: []
@@ -1239,18 +1239,10 @@ studentRouter.get('/communication-preferences', requestLogger, verifyJWT, author
  *           schema:
  *             type: object
  *             properties:
- *               emailNotifications:
+ *               webAppNotifications:
  *                 type: boolean
- *                 description: Whether to receive email notifications for important updates
+ *                 description: Whether to receive in-app notifications for important updates
  *                 example: true
- *               pushNotifications:
- *                 type: boolean
- *                 description: Whether to receive push notifications on mobile/web
- *                 example: true
- *               smsNotifications:
- *                 type: boolean
- *                 description: Whether to receive SMS notifications for urgent matters
- *                 example: false
  *               jobAlerts:
  *                 type: boolean
  *                 description: Whether to receive notifications about new job opportunities
@@ -1259,22 +1251,20 @@ studentRouter.get('/communication-preferences', requestLogger, verifyJWT, author
  *                 type: boolean
  *                 description: Whether to receive notifications about course updates and announcements
  *                 example: true
- *               marketingEmails:
+ *               applicationUpdates:
  *                 type: boolean
- *                 description: Whether to receive promotional and marketing emails
- *                 example: false
- *               weeklyDigest:
+ *                 description: Whether to receive notifications about job application status changes
+ *                 example: true
+ *               systemAlerts:
  *                 type: boolean
- *                 description: Whether to receive weekly summary digest emails
+ *                 description: Whether to receive system and security notifications
  *                 example: true
  *           example:
- *             emailNotifications: true
- *             pushNotifications: true
- *             smsNotifications: false
+ *             webAppNotifications: true
  *             jobAlerts: true
  *             courseUpdates: true
- *             marketingEmails: false
- *             weeklyDigest: true
+ *             applicationUpdates: true
+ *             systemAlerts: true
  *     responses:
  *       200:
  *         description: Communication preferences updated successfully
@@ -1288,29 +1278,23 @@ studentRouter.get('/communication-preferences', requestLogger, verifyJWT, author
  *                   example: 200
  *                 message:
  *                   type: string
- *                   example: "Communication preferences updated successfully"
+ *                   example: "Web app notification preferences updated successfully"
  *                 payload:
  *                   type: object
  *                   properties:
- *                     emailNotifications:
+ *                     webAppNotifications:
  *                       type: boolean
  *                       example: true
- *                     pushNotifications:
- *                       type: boolean
- *                       example: true
- *                     smsNotifications:
- *                       type: boolean
- *                       example: false
  *                     jobAlerts:
  *                       type: boolean
  *                       example: true
  *                     courseUpdates:
  *                       type: boolean
  *                       example: true
- *                     marketingEmails:
+ *                     applicationUpdates:
  *                       type: boolean
- *                       example: false
- *                     weeklyDigest:
+ *                       example: true
+ *                     systemAlerts:
  *                       type: boolean
  *                       example: true
  *                 success:
