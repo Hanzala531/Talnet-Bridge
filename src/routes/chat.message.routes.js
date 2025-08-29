@@ -4,16 +4,20 @@ import {
   sendMessage, 
   getMessages, 
   markMessagesAsRead, 
-  sendTypingIndicator 
+  sendTypingIndicator,
+  editMessage,
+  deleteMessage
 } from "../controllers/chat.message.controller.js";
 import { 
   sendMessageSchema, 
   getMessagesSchema, 
   markReadSchema, 
   typingSchema,
+  editMessageSchema,
+  deleteMessageSchema,
   handleValidationErrors 
 } from "../validators/chat.validators.js";
-import {requestLogger} from '../middlewares/ReqLog.middlewares.js'
+
 const router = Router();
 
 // Apply JWT verification to all chat routes
@@ -83,7 +87,6 @@ router.use(verifyJWT);
 // Send a message
 router.post(
   "/",
-  requestLogger,
   sendMessageSchema,
   handleValidationErrors,
   sendMessage
@@ -333,6 +336,22 @@ router.post(
   typingSchema, 
   handleValidationErrors,
   sendTypingIndicator
+);
+
+// Edit a message
+router.patch(
+  "/messages/:messageId",
+  editMessageSchema,
+  handleValidationErrors,
+  editMessage
+);
+
+// Delete a message
+router.delete(
+  "/messages/:messageId",
+  deleteMessageSchema,
+  handleValidationErrors,
+  deleteMessage
 );
 
 export default router;

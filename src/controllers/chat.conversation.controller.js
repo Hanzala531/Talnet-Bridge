@@ -5,7 +5,8 @@ import { User } from "../models/index.js";
 import { 
   findOrCreateDm, 
   listConversationsForUser, 
-  getConversationWithAccess 
+  getConversationWithAccess,
+  getOnlineUsersInConversation
 } from "../services/chat.service.js";
 
 /**
@@ -29,18 +30,10 @@ import {
  *               targetUserId:
  *                 type: string
  *                 description: ID of the user to start conversation with
- *                 example: "60f7b3b3b3b3b3b3b3b3b3b3"
- *               isGroup:
- *                 type: boolean
- *                 default: false
- *                 description: Whether this is a group conversation (future feature)
- *               name:
- *                 type: string
- *                 description: Name for group conversation (required if isGroup is true)
- *                 example: "Project Discussion"
+ *                 example: "64f123abc456def789012345"
  *     responses:
  *       200:
- *         description: Conversation created or returned successfully
+ *         description: Conversation retrieved or created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -49,18 +42,18 @@ import {
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Conversation retrieved successfully"
  *                 data:
  *                   type: object
  *                   properties:
  *                     conversation:
  *                       $ref: '#/components/schemas/ChatConversation'
+ *                 message:
+ *                   type: string
+ *                   example: "Conversation retrieved successfully"
  *       400:
- *         description: Validation error
+ *         description: Invalid user ID or cannot start conversation with self
  *       403:
- *         description: Not allowed by role rules
+ *         description: Role permissions don't allow this conversation
  *       404:
  *         description: Target user not found
  *       500:
@@ -73,18 +66,18 @@ export const startConversation = asyncHandler(async (req, res) => {
   
   // For now, only support DM conversations
   if (isGroup) {
-    return res.json (serverErrorResponse("Group conversations are not implemented yet"));
+    return res.json(serverErrorResponse("Group conversations are not implemented yet"));
   }
   
   // Validate that initiator is not trying to message themselves
   if (initiatorId.toString() === targetUserId.toString()) {
-    return res.json(notFoundResponse( "Cannot start conversation with yourself"));
+    return res.json(notFoundResponse("Cannot start conversation with yourself"));
   }
   
   // Find target user and verify they exist
   const targetUser = await User.findById(targetUserId).select("fullName email role");
   if (!targetUser) {
-    return res.json(notFoundResponse( "Target user not found"));
+    return res.json(notFoundResponse("Target user not found"));
   }
   
   // Create or find existing conversation
@@ -237,6 +230,86 @@ export const getConversationDetails = asyncHandler(async (req, res) => {
     successResponse(
       { conversation: conversationPreview },
       "Conversation details retrieved successfully"
+    )
+  );
+});
+
+/**
+ * @swagger
+ * /api/v1/chat/conversations/{conversationId}/online:
+ *   get:
+ *     summary: Get online users in conversation
+ *     description: Get list of users currently online in a specific conversation
+ *     security:
+ *       - bearerAuth: []
+ *     tags: [Chat]
+ *     parameters:
+ *       - in: path
+ *         name: conversationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Conversation ID
+ *     responses:
+ *       200:
+ *         description: Online users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     onlineUsers:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                         description: User IDs of online users
+ *                     count:
+ *                       type: integer
+ *                       description: Number of online users
+ *                 message:
+ *                   type: string
+ *                   example: "Online users retrieved successfully"
+ *       403:
+ *         description: Access denied to this conversation
+ *       404:
+ *         description: Conversation not found
+ *       500:
+ *         description: Internal server error
+ */
+export const getOnlineUsers = asyncHandler(async (req, res) => {
+  const { conversationId } = req.params;
+  const userId = req.user._id;
+  
+  // Verify access to conversation
+  await getConversationWithAccess(conversationId, userId);
+  
+  // Get socket.io instance
+  const io = req.app.get("io");
+  if (!io) {
+    return res.json(
+      successResponse(
+        { onlineUsers: [], count: 0 },
+        "Socket.io not available, no online users detected"
+      )
+    );
+  }
+  
+  // Get online users from socket rooms
+  const onlineUsers = getOnlineUsersInConversation(conversationId, io);
+  
+  res.json(
+    successResponse(
+      { 
+        onlineUsers,
+        count: onlineUsers.length 
+      },
+      "Online users retrieved successfully"
     )
   );
 });

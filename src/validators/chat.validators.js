@@ -166,6 +166,39 @@ export const typingSchema = [
     .withMessage("isTyping must be a boolean"),
 ];
 
+// Validation for editing messages
+export const editMessageSchema = [
+  param("messageId")
+    .notEmpty()
+    .withMessage("Message ID is required")
+    .custom((value) => {
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error("Invalid message ID format");
+      }
+      return true;
+    }),
+  
+  body("text")
+    .notEmpty()
+    .withMessage("Message text is required")
+    .trim()
+    .isLength({ min: 1, max: 5000 })
+    .withMessage("Message text must be between 1 and 5000 characters"),
+];
+
+// Validation for deleting messages
+export const deleteMessageSchema = [
+  param("messageId")
+    .notEmpty()
+    .withMessage("Message ID is required")
+    .custom((value) => {
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error("Invalid message ID format");
+      }
+      return true;
+    }),
+];
+
 // Validation error handler
 export const handleValidationErrors = (req, res, next) => {
   try {

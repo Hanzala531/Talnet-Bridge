@@ -5,7 +5,9 @@ import {
     markAllNotificationsAsRead,
     deleteNotification,
     getNotificationCount,
-    createNotification,
+    createNotificationAdmin,
+    createNotificationController,
+    createBulkNotificationsController,
     bulkCreateNotifications,
     bulkDeleteNotifications,
     getNotificationPreferences,
@@ -546,7 +548,7 @@ notificationRouter.delete('/:id', requestLogger, verifyJWT, deleteNotification);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-notificationRouter.post('/create', requestLogger, verifyJWT, authorizeRoles('admin'), createNotification);
+notificationRouter.post('/create', requestLogger, verifyJWT, authorizeRoles('admin'), createNotificationAdmin);
 
 /**
  * @swagger

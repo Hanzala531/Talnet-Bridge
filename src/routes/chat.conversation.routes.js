@@ -3,7 +3,8 @@ import { verifyJWT } from "../middlewares/Auth.middlewares.js";
 import { 
   startConversation, 
   listConversations, 
-  getConversationDetails 
+  getConversationDetails,
+  getOnlineUsers
 } from "../controllers/chat.conversation.controller.js";
 import { 
   startConversationSchema, 
@@ -39,9 +40,9 @@ router.use(verifyJWT);
  *           schema:
  *             type: object
  *             required:
- *               - participantId
+ *               - targetUserId
  *             properties:
- *               participantId:
+ *               targetUserId:
  *                 type: string
  *                 description: ID of the other user to start conversation with
  *                 example: "64f123abc456def789012345"
@@ -292,6 +293,12 @@ router.get(
 router.get(
   "/conversations/:conversationId", 
   getConversationDetails
+);
+
+// Get online users in conversation
+router.get(
+  "/conversations/:conversationId/online",
+  getOnlineUsers
 );
 
 export default router;

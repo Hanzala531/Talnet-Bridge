@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { ChatConversation, ChatMessage, User } from "../models/index.js";
 import { ApiError } from "../utils/ApiError.js";
 import { assertCanStartConversation } from "./chat.roleRules.js";
+import { createChatMessageNotification, sendRealTimeNotification } from "./notification.service.js";
 
 /**
  * Find or create a DM conversation between two users
@@ -57,9 +58,10 @@ export async function findOrCreateDm({ userA, roleA, userB, roleB }) {
  * @param {string} params.senderId - Sender user ID
  * @param {string} params.text - Message text (required)
  * @param {string} params.replyTo - Reply to message ID (optional)
+ * @param {Object} params.io - Socket.IO instance (optional, for notifications)
  * @returns {Promise<Object>} Created message
  */
-export async function appendMessage({ conversationId, senderId, text, replyTo }) {
+export async function appendMessage({ conversationId, senderId, text, replyTo, io }) {
   const session = await mongoose.startSession();
   
   try {
@@ -103,11 +105,41 @@ export async function appendMessage({ conversationId, senderId, text, replyTo })
     
     await session.commitTransaction();
     
-    // Populate and return the message
-    return await ChatMessage.findById(message._id)
+    // Populate and get the final message
+    const populatedMessage = await ChatMessage.findById(message._id)
       .populate("sender", "fullName email role")
       .populate("replyTo")
       .lean();
+    
+    // Create notifications for other participants
+    if (io) {
+      const sender = await User.findById(senderId).select("fullName").lean();
+      
+      for (const participant of conversation.participants) {
+        if (participant.user.toString() !== senderId.toString()) {
+          try {
+            // Create notification
+            const notification = await createChatMessageNotification({
+              senderId: senderId.toString(),
+              recipientId: participant.user.toString(),
+              conversationId: conversationId.toString(),
+              messageText: sanitizedText,
+              senderName: sender?.fullName || "Someone",
+            });
+            
+            // Send real-time notification
+            if (notification) {
+              sendRealTimeNotification(io, participant.user.toString(), notification);
+            }
+          } catch (error) {
+            console.error("Failed to create chat notification:", error);
+            // Don't fail message sending if notification fails
+          }
+        }
+      }
+    }
+      
+    return populatedMessage;
       
   } catch (error) {
     await session.abortTransaction();

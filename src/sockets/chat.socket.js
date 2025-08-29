@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
 import { User } from "../models/index.js";
-// import { validateSocketEvent } from "../validators/chat.validators.js";
 import { 
   findOrCreateDm, 
   getConversationWithAccess, 
@@ -13,377 +12,353 @@ import mongoose from "mongoose";
  * @param {Object} io - Socket.io server instance
  */
 export default function registerChatSockets(io) {
-  // Middleware to authenticate socket connections
+  // Middleware for socket authentication
   io.use(async (socket, next) => {
     try {
-      // Extract token from query parameters or auth header
-      const token = socket.handshake.auth?.token || 
-                   socket.handshake.query?.token ||
-                   socket.handshake.headers?.authorization?.replace("Bearer ", "");
+      const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace("Bearer ", "");
       
       if (!token) {
-        return next(new Error("Authentication error: No token provided"));
+        return next(new Error("No authentication token provided"));
       }
       
-      // Verify JWT token
       const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+      const user = await User.findById(decoded._id).select("_id fullName email role profilePicture");
       
-      // Find user and attach to socket
-      const user = await User.findById(decoded._id).select("-password -refreshToken");
       if (!user) {
-        return next(new Error("Authentication error: User not found"));
+        return next(new Error("User not found"));
       }
       
-      // Attach user info to socket
       socket.userId = user._id.toString();
-      socket.userRole = user.role;
       socket.userInfo = {
         _id: user._id,
         fullName: user.fullName,
         email: user.email,
         role: user.role,
+        profilePicture: user.profilePicture,
       };
       
+      console.log(`User connected: ${user.fullName} (${user._id})`);
       next();
-    } catch (error) {next(new Error("Authentication error: Invalid token"));
+    } catch (error) {
+      console.error("Socket authentication error:", error);
+      next(new Error("Authentication failed"));
     }
   });
   
-  // Handle socket connections
-  io.on("connection", (socket) => {// Join user to their personal room
+  io.on("connection", (socket) => {
+    console.log(`Socket connected: ${socket.id} for user ${socket.userInfo.fullName}`);
+    
+    // Join user to their personal room for notifications
     socket.join(`user:${socket.userId}`);
     
-    // Emit user online status
-    socket.broadcast.emit("user:online", {
-      userId: socket.userId,
-      userInfo: socket.userInfo,
-    });
-    
     // Handle joining conversation rooms
-    socket.on("conversation:join", async (data, callback) => {
+    socket.on("conversation:join", async (conversationId, callback) => {
       try {
-        const { conversationId } = data;
-        
-        if (!conversationId) {
-          const error = "Conversation ID is required";
-          socket.emit("error", { 
-            message: error,
-            event: "conversation:join",
-            timestamp: new Date().toISOString()
-          });
-          if (callback) callback({ success: false, message: error });
+        // Validate conversation ID
+        if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+          if (callback) callback({ success: false, error: "Invalid conversation ID" });
           return;
         }
         
-        socket.join(`conv:${conversationId}`);// Notify others in the conversation that user is online
-        socket.to(`conv:${conversationId}`).emit("user:joined", {
+        // Verify user has access to this conversation
+        await getConversationWithAccess(conversationId, socket.userId);
+        
+        socket.join(`conv:${conversationId}`);
+        
+        // Notify others in the conversation that user is online
+        socket.to(`conv:${conversationId}`).emit("user:online", {
+          userId: socket.userId,
+          userInfo: socket.userInfo,
           conversationId,
-          user: socket.userInfo,
-          timestamp: new Date().toISOString()
         });
         
-        // Send acknowledgment to the sender
-        if (callback && typeof callback === 'function') {
-          callback({ success: true, message: 'Joined conversation successfully' });
+        if (callback) {
+          callback({ 
+            success: true, 
+            message: "Joined conversation successfully" 
+          });
         }
-      } catch (error) {socket.emit("error", { 
-          message: "Failed to join conversation",
-          event: "conversation:join",
-          timestamp: new Date().toISOString()
-        });
         
-        if (callback && typeof callback === 'function') {
-          callback({ success: false, message: 'Failed to join conversation' });
+      } catch (error) {
+        console.error("Error joining conversation:", error);
+        if (callback) {
+          callback({ 
+            success: false, 
+            error: error.message || "Failed to join conversation"
+          });
         }
       }
     });
-
+    
     // Handle leaving conversation rooms
-    socket.on("conversation:leave", async (data, callback) => {
+    socket.on("conversation:leave", (conversationId, callback) => {
       try {
-        const { conversationId } = data;
+        socket.leave(`conv:${conversationId}`);
         
-        if (!conversationId) {
-          const error = "Conversation ID is required";
-          socket.emit("error", { 
-            message: error,
-            event: "conversation:leave",
-            timestamp: new Date().toISOString()
-          });
-          if (callback) callback({ success: false, message: error });
-          return;
-        }
-        
-        socket.leave(`conv:${conversationId}`);// Notify others in the conversation that user left
-        socket.to(`conv:${conversationId}`).emit("user:left", {
+        // Notify others that user left
+        socket.to(`conv:${conversationId}`).emit("user:offline", {
+          userId: socket.userId,
+          userInfo: socket.userInfo,
           conversationId,
-          user: socket.userInfo,
-          timestamp: new Date().toISOString()
         });
         
-        // Send acknowledgment to the sender
-        if (callback && typeof callback === 'function') {
-          callback({ success: true, message: 'Left conversation successfully' });
+        if (callback) {
+          callback({ 
+            success: true, 
+            message: "Left conversation successfully" 
+          });
         }
-      } catch (error) {socket.emit("error", { 
-          message: "Failed to leave conversation",
-          event: "conversation:leave",
-          timestamp: new Date().toISOString()
-        });
         
-        if (callback && typeof callback === 'function') {
-          callback({ success: false, message: 'Failed to leave conversation' });
+      } catch (error) {
+        console.error("Error leaving conversation:", error);
+        if (callback) {
+          callback({ 
+            success: false, 
+            error: "Failed to leave conversation"
+          });
         }
       }
     });
-
-    // Handle typing indicators
-    socket.on("typing:start", (data, callback) => {
-  // const validator = validateSocketEvent('typing:start');
-      validator(data, socket, () => {
-        try {
-          const { conversationId } = data;
-          
-          // Broadcast typing indicator to others in the conversation
-          socket.to(`conv:${conversationId}`).emit("typing:start", {
-            conversationId,
-            user: socket.userInfo,
-            timestamp: new Date().toISOString(),
-          });
-          
-          // Send acknowledgment to the sender
-          if (callback && typeof callback === 'function') {
-            callback({ success: true, message: 'Typing indicator sent' });
-          }
-        } catch (error) {socket.emit("error", { 
-            message: "Failed to send typing indicator",
-            event: "typing:start",
-            timestamp: new Date().toISOString()
-          });
-          
-          if (callback && typeof callback === 'function') {
-            callback({ success: false, message: 'Failed to send typing indicator' });
-          }
-        }
-      });
-    });
-
-    socket.on("typing:stop", (data, callback) => {
-  // const validator = validateSocketEvent('typing:stop');
-      validator(data, socket, () => {
-        try {
-          const { conversationId } = data;
-          
-          // Broadcast typing stop to others in the conversation
-          socket.to(`conv:${conversationId}`).emit("typing:stop", {
-            conversationId,
-            user: socket.userInfo,
-            timestamp: new Date().toISOString(),
-          });
-          
-          // Send acknowledgment to the sender
-          if (callback && typeof callback === 'function') {
-            callback({ success: true, message: 'Typing indicator stopped' });
-          }
-        } catch (error) {socket.emit("error", { 
-            message: "Failed to send typing indicator",
-            event: "typing:stop",
-            timestamp: new Date().toISOString()
-          });
-          
-          if (callback && typeof callback === 'function') {
-            callback({ success: false, message: 'Failed to send typing indicator' });
-          }
-        }
-      });
-    });
     
-    // Handle direct message sending via socket (optional - messages can also be sent via HTTP)
-    socket.on("message:send", async (data, callback) => {
-  // const validator = validateSocketEvent('message:send');
-      validator(data, socket, async () => {
-        try {
-          const { conversationId, text, replyTo } = data;
-          
-          // Verify conversation access
-          const conversation = await getConversationWithAccess(conversationId, socket.userId);
-          if (!conversation) {
-            socket.emit("error", { 
-              message: "Conversation not found or access denied",
-              event: "message:send",
-              timestamp: new Date().toISOString()
-            });
-            if (callback) callback({ success: false, message: 'Access denied' });
-            return;
-          }
-          
-          // Create message in database
-          const messageData = {
-            conversationId,
-            senderId: socket.userId,
-            text: text?.trim(),
-            replyTo: replyTo || null
-          };
-          
-          const message = await appendMessage(messageData);
-          
-          // Emit to conversation room (including sender)
-          io.to(`conv:${conversationId}`).emit("message:new", {
-            _id: message._id,
-            conversationId: message.conversationId,
-            senderId: message.senderId,
-            text: message.text,
-            replyTo: message.replyTo,
-            sender: socket.userInfo,
-            timestamp: message.createdAt,
-            attachments: message.attachments || []
-          });
-          
-          // Acknowledge to sender
-          if (callback && typeof callback === 'function') {
-            callback({ 
-              success: true, 
-              messageId: message._id,
-              message: 'Message sent successfully'
-            });
-          }
-          
-        } catch (error) {socket.emit("error", { 
-            message: "Failed to send message",
-            event: "message:send", 
-            error: error.message,
-            timestamp: new Date().toISOString()
-          });
-          
-          if (callback && typeof callback === 'function') {
-            callback({ success: false, message: 'Failed to send message' });
-          }
-        }
-      });
-    });
-
-    // Handle message read receipts
-    socket.on("message:read", async (data, callback) => {
-  // const validator = validateSocketEvent('message:read');
-      validator(data, socket, async () => {
-        try {
-          const { conversationId, messageId } = data;
-          
-          // Verify conversation access
-          const conversation = await getConversationWithAccess(conversationId, socket.userId);
-          if (!conversation) {
-            socket.emit("error", { 
-              message: "Conversation not found or access denied",
-              event: "message:read",
-              timestamp: new Date().toISOString()
-            });
-            if (callback) callback({ success: false, message: 'Access denied' });
-            return;
-          }
-          
-          // Update read status in database (implementation would go here)
-          // For now, just emit the read receipt
-          
-          // Notify others in the conversation
-          socket.to(`conv:${conversationId}`).emit("message:read", {
-            conversationId,
-            messageId,
-            readBy: socket.userInfo,
-            timestamp: new Date().toISOString()
-          });
-          
-          // Acknowledge to sender
-          if (callback && typeof callback === 'function') {
-            callback({ 
-              success: true, 
-              message: 'Message marked as read'
-            });
-          }
-          
-        } catch (error) {socket.emit("error", { 
-            message: "Failed to mark message as read",
-            event: "message:read",
-            error: error.message,
-            timestamp: new Date().toISOString()
-          });
-          
-          if (callback && typeof callback === 'function') {
-            callback({ success: false, message: 'Failed to mark message as read' });
-          }
-        }
-      });
-    });
-    
-    // Handle getting online users in a conversation
-    socket.on("conversation:getOnlineUsers", async (data, callback) => {
+    // Handle sending messages via socket
+    socket.on("message:send", async (messageData, callback) => {
       try {
-        const { conversationId } = data || {};
+        const { conversationId, text, replyTo } = messageData;
         
-        if (!conversationId) {
-          socket.emit("error", { 
-            message: "Conversation ID is required",
-            event: "conversation:getOnlineUsers",
-            timestamp: new Date().toISOString()
-          });
-          if (callback) callback({ success: false, message: 'Conversation ID required' });
+        // Validate required fields
+        if (!conversationId || !text?.trim()) {
+          if (callback) {
+            callback({ 
+              success: false, 
+              error: "Conversation ID and message text are required" 
+            });
+          }
           return;
         }
         
+        // Validate conversation ID
+        if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+          if (callback) {
+            callback({ 
+              success: false, 
+              error: "Invalid conversation ID" 
+            });
+          }
+          return;
+        }
+        
+        // Verify access to conversation
+        await getConversationWithAccess(conversationId, socket.userId);
+        
+        // Create the message
+        const message = await appendMessage({
+          conversationId,
+          senderId: socket.userId,
+          text: text.trim(),
+          replyTo,
+          io, // Pass io instance for notifications
+        });
+        
+        // Emit to conversation room (including sender)
+        io.to(`conv:${conversationId}`).emit("message:new", {
+          _id: message._id,
+          conversationId: message.conversationId,
+          senderId: message.sender._id,
+          text: message.text,
+          replyTo: message.replyTo,
+          sender: message.sender,
+          timestamp: message.createdAt,
+          edited: message.edited,
+          editedAt: message.editedAt,
+        });
+        
+        // Acknowledge to sender
+        if (callback) {
+          callback({ 
+            success: true, 
+            messageId: message._id,
+            message: 'Message sent successfully'
+          });
+        }
+        
+      } catch (error) {
+        console.error("Error sending message:", error);
+        socket.emit("error", { 
+          message: "Failed to send message",
+          event: "message:send", 
+          error: error.message,
+        });
+        
+        if (callback) {
+          callback({ 
+            success: false, 
+            error: error.message || "Failed to send message"
+          });
+        }
+      }
+    });
+    
+    // Handle typing indicators
+    socket.on("typing:start", async (conversationId) => {
+      try {
+        if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+          return;
+        }
+        
+        // Verify access to conversation
+        await getConversationWithAccess(conversationId, socket.userId);
+        
+        // Emit to others in the conversation
+        socket.to(`conv:${conversationId}`).emit("typing:start", {
+          userId: socket.userId,
+          userInfo: socket.userInfo,
+          conversationId,
+          timestamp: new Date(),
+        });
+        
+      } catch (error) {
+        console.error("Error handling typing start:", error);
+      }
+    });
+    
+    socket.on("typing:stop", async (conversationId) => {
+      try {
+        if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+          return;
+        }
+        
+        // Verify access to conversation
+        await getConversationWithAccess(conversationId, socket.userId);
+        
+        // Emit to others in the conversation
+        socket.to(`conv:${conversationId}`).emit("typing:stop", {
+          userId: socket.userId,
+          userInfo: socket.userInfo,
+          conversationId,
+          timestamp: new Date(),
+        });
+        
+      } catch (error) {
+        console.error("Error handling typing stop:", error);
+      }
+    });
+    
+    // Handle marking messages as read
+    socket.on("messages:mark_read", async (data, callback) => {
+      try {
+        const { conversationId, upToMessageId } = data;
+        
+        if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+          if (callback) {
+            callback({ 
+              success: false, 
+              error: "Invalid conversation ID" 
+            });
+          }
+          return;
+        }
+        
+        // Verify access to conversation
+        await getConversationWithAccess(conversationId, socket.userId);
+        
+        // Emit read receipt to others in conversation
+        socket.to(`conv:${conversationId}`).emit("messages:read", {
+          conversationId,
+          userId: socket.userId,
+          upToMessageId,
+          timestamp: new Date(),
+        });
+        
+        if (callback) {
+          callback({ 
+            success: true, 
+            message: "Messages marked as read" 
+          });
+        }
+        
+      } catch (error) {
+        console.error("Error marking messages as read:", error);
+        if (callback) {
+          callback({ 
+            success: false, 
+            error: error.message || "Failed to mark messages as read"
+          });
+        }
+      }
+    });
+    
+    // Handle getting online users in conversation
+    socket.on("conversation:get_online_users", async (conversationId, callback) => {
+      try {
+        if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+          if (callback) {
+            callback({ 
+              success: false, 
+              error: "Invalid conversation ID" 
+            });
+          }
+          return;
+        }
+        
+        // Verify access to conversation
+        await getConversationWithAccess(conversationId, socket.userId);
+        
+        // Get users in the conversation room
         const room = io.sockets.adapter.rooms.get(`conv:${conversationId}`);
         const onlineUsers = [];
         
         if (room) {
           for (const socketId of room) {
             const userSocket = io.sockets.sockets.get(socketId);
-            if (userSocket && userSocket.userInfo) {
-              onlineUsers.push(userSocket.userInfo);
+            if (userSocket && userSocket.userId) {
+              onlineUsers.push({
+                userId: userSocket.userId,
+                userInfo: userSocket.userInfo,
+              });
             }
           }
         }
         
-        const uniqueUsers = onlineUsers.filter((user, index, self) => 
-          index === self.findIndex(u => u._id.toString() === user._id.toString())
-        );
-        
-        socket.emit("conversation:onlineUsers", {
-          conversationId,
-          onlineUsers: uniqueUsers,
-        });
-        
-        if (callback && typeof callback === 'function') {
+        if (callback) {
           callback({ 
             success: true, 
-            onlineUsers: uniqueUsers 
+            onlineUsers,
+            count: onlineUsers.length 
           });
         }
-      } catch (error) {socket.emit("error", { 
-          message: "Failed to get online users",
-          event: "conversation:getOnlineUsers",
-          timestamp: new Date().toISOString()
-        });
         
-        if (callback && typeof callback === 'function') {
-          callback({ success: false, message: 'Failed to get online users' });
+      } catch (error) {
+        console.error("Error getting online users:", error);
+        if (callback) {
+          callback({ 
+            success: false, 
+            error: error.message || "Failed to get online users"
+          });
         }
       }
     });
-
+    
     // Handle disconnect
-    socket.on("disconnect", (reason) => {// Emit user offline status
-      socket.broadcast.emit("user:offline", {
-        userId: socket.userId,
-        userInfo: socket.userInfo,
-        reason,
-        timestamp: new Date().toISOString()
+    socket.on("disconnect", (reason) => {
+      console.log(`User disconnected: ${socket.userInfo?.fullName} (${socket.userId}) - ${reason}`);
+      
+      // Notify all conversations that user went offline
+      const rooms = Array.from(socket.rooms);
+      rooms.forEach(room => {
+        if (room.startsWith("conv:")) {
+          socket.to(room).emit("user:offline", {
+            userId: socket.userId,
+            userInfo: socket.userInfo,
+            conversationId: room.replace("conv:", ""),
+            timestamp: new Date(),
+          });
+        }
       });
     });
     
-    // Handle connection errors
-    socket.on("error", (error) => {});
+    // Handle errors
+    socket.on("error", (error) => {
+      console.error(`Socket error for user ${socket.userId}:`, error);
+    });
   });
-  
-  // Handle socket server errors
-  io.on("error", (error) => {});}
-
-
-
+}

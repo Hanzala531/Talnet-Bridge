@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError, internalServer } from "../utils/ApiError.js";
-import { serverErrorResponse, successResponse } from "../utils/ApiResponse.js";
+import { serverErrorResponse, successResponse, notFoundResponse } from "../utils/ApiResponse.js";
+import { ChatMessage } from "../models/contents/chat.message.models.js";
 import { 
   appendMessage, 
   listMessages, 
@@ -80,16 +81,19 @@ export const sendMessage = asyncHandler(async (req, res) => {
     return res.json(serverErrorResponse("Message text is required"));
   }
   
+  // Get socket.io instance
+  const io = req.app.get("io");
+  
   // Create message
   const message = await appendMessage({
     conversationId,
     senderId,
     text: text.trim(),
     replyTo,
+    io, // Pass Socket.IO instance for notifications
   });
   
   // Emit socket events if socket.io is available
-  const io = req.app.get("io");
   if (io) {
     // Emit to conversation room
     io.to(`conv:${conversationId}`).emit("message:new", {
@@ -195,8 +199,7 @@ export const getMessages = asyncHandler(async (req, res) => {
   
   res.json(
     successResponse(
-      {result}
-      ,
+      result,
       "Messages retrieved successfully"
     )
   );
@@ -345,6 +348,56 @@ export const markMessagesAsRead = asyncHandler(async (req, res) => {
  *       500:
  *         description: Internal server error
  */
+/**
+ * @swagger
+ * /api/v1/chat/typing:
+ *   post:
+ *     summary: Send typing indicator
+ *     description: Send real-time typing indicator to other conversation participants
+ *     security:
+ *       - bearerAuth: []
+ *     tags: [Chat]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - conversationId
+ *               - isTyping
+ *             properties:
+ *               conversationId:
+ *                 type: string
+ *                 description: Conversation ID where typing indicator should be sent
+ *                 example: "64f456def789abc123456789"
+ *               isTyping:
+ *                 type: boolean
+ *                 description: Whether user is currently typing
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Typing indicator sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Typing indicator sent"
+ *       400:
+ *         description: Validation error
+ *       403:
+ *         description: Access denied to conversation
+ *       404:
+ *         description: Conversation not found
+ *       500:
+ *         description: Internal server error
+ */
 export const sendTypingIndicator = asyncHandler(async (req, res) => {
   const { conversationId, isTyping } = req.body;
   const userId = req.user._id;
@@ -360,25 +413,270 @@ export const sendTypingIndicator = asyncHandler(async (req, res) => {
   // Emit typing indicator via socket if available
   const io = req.app.get("io");
   if (io) {
-    const eventName = isTyping ? "typing:start" : "typing:stop";
-    io.to(`conv:${conversationId}`).emit(eventName, {
+    io.to(`conv:${conversationId}`).emit("typing:indicator", {
       conversationId,
       user: userInfo,
+      isTyping,
       timestamp: new Date(),
     });
   }
   
   res.json(
     successResponse(
-      {
-        conversationId,
-        isTyping,
-        user: userInfo,
-      },
+      { isTyping },
       "Typing indicator sent"
     )
   );
 });
+
+/**
+ * @swagger
+ * /api/v1/chat/messages/{messageId}:
+ *   patch:
+ *     summary: Edit a message
+ *     description: Edit the text content of an existing message
+ *     security:
+ *       - bearerAuth: []
+ *     tags: [Chat]
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Message ID to edit
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - text
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 description: New message text
+ *                 maxLength: 5000
+ *                 example: "Updated message content"
+ *     responses:
+ *       200:
+ *         description: Message edited successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       $ref: '#/components/schemas/ChatMessage'
+ *                 message:
+ *                   type: string
+ *                   example: "Message edited successfully"
+ *       400:
+ *         description: Validation error or message cannot be edited
+ *       403:
+ *         description: Not authorized to edit this message
+ *       404:
+ *         description: Message not found
+ *       500:
+ *         description: Internal server error
+ */
+export const editMessage = asyncHandler(async (req, res) => {
+  const { messageId } = req.params;
+  const { text } = req.body;
+  const userId = req.user._id;
+  
+  // Validate text
+  if (!text || !text.trim()) {
+    return res.json(serverErrorResponse("Message text is required"));
+  }
+  
+  // Find the message
+  const message = await ChatMessage.findById(messageId).populate("sender", "fullName email role");
+  
+  if (!message) {
+    return res.json(notFoundResponse("Message not found"));
+  }
+  
+  // Check if user is the sender
+  if (message.sender._id.toString() !== userId.toString()) {
+    return res.json(serverErrorResponse("You can only edit your own messages"));
+  }
+  
+  // Verify access to conversation
+  await getConversationWithAccess(message.conversationId, userId);
+  
+  // Update message
+  const sanitizedText = ChatMessage.sanitizeText(text);
+  message.text = sanitizedText;
+  message.edited = true;
+  message.editedAt = new Date();
+  
+  await message.save();
+  
+  // Emit socket event for real-time update
+  const io = req.app.get("io");
+  if (io) {
+    io.to(`conv:${message.conversationId}`).emit("message:edited", {
+      messageId: message._id,
+      text: sanitizedText,
+      editedAt: message.editedAt,
+      conversationId: message.conversationId,
+    });
+  }
+  
+  res.json(
+    successResponse(
+      { message },
+      "Message edited successfully"
+    )
+  );
+});
+
+/**
+ * @swagger
+ * /api/v1/chat/messages/{messageId}:
+ *   delete:
+ *     summary: Delete a message
+ *     description: Delete a message (soft delete - marks as deleted)
+ *     security:
+ *       - bearerAuth: []
+ *     tags: [Chat]
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Message ID to delete
+ *     responses:
+ *       200:
+ *         description: Message deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Message deleted successfully"
+ *       403:
+ *         description: Not authorized to delete this message
+ *       404:
+ *         description: Message not found
+ *       500:
+ *         description: Internal server error
+ */
+export const deleteMessage = asyncHandler(async (req, res) => {
+  const { messageId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+  
+  // Find the message
+  const message = await ChatMessage.findById(messageId).populate("sender", "fullName email role");
+  
+  if (!message) {
+    return res.json(notFoundResponse("Message not found"));
+  }
+  
+  // Check if user is the sender or admin
+  if (message.sender._id.toString() !== userId.toString() && userRole !== "admin") {
+    return res.json(serverErrorResponse("You can only delete your own messages"));
+  }
+  
+  // Verify access to conversation
+  await getConversationWithAccess(message.conversationId, userId);
+  
+  // Soft delete - replace text with deleted message
+  message.text = "[This message was deleted]";
+  message.edited = true;
+  message.editedAt = new Date();
+  
+  await message.save();
+  
+  // Emit socket event for real-time update
+  const io = req.app.get("io");
+  if (io) {
+    io.to(`conv:${message.conversationId}`).emit("message:deleted", {
+      messageId: message._id,
+      conversationId: message.conversationId,
+      deletedBy: userId,
+    });
+  }
+  
+  res.json(
+    successResponse(
+      null,
+      "Message deleted successfully"
+    )
+  );
+});
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     ChatMessage:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: Message ID
+ *         conversationId:
+ *           type: string
+ *           description: ID of the conversation this message belongs to
+ *         sender:
+ *           $ref: '#/components/schemas/UserBasic'
+ *         text:
+ *           type: string
+ *           description: Message text content
+ *           maxLength: 5000
+ *         readBy:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Array of user IDs who have read this message
+ *         edited:
+ *           type: boolean
+ *           description: Whether the message has been edited
+ *         editedAt:
+ *           type: string
+ *           format: date-time
+ *           description: When the message was last edited
+ *         replyTo:
+ *           type: string
+ *           description: ID of the message this is replying to
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *     
+ *     ChatMessageBasic:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         text:
+ *           type: string
+ *         sender:
+ *           $ref: '#/components/schemas/UserBasic'
+ *         timestamp:
+ *           type: string
+ *           format: date-time
+ *         edited:
+ *           type: boolean
+ */
 
 /**
  * @swagger

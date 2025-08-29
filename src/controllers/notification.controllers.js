@@ -23,9 +23,18 @@
 import { Notification } from "../models/index.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
-import { successResponse } from "../utils/ApiResponse.js";
+import { successResponse, badRequestResponse, notFoundResponse } from "../utils/ApiResponse.js";
 import redisClient from "../config/redis.config.js";
 import mongoose from "mongoose";
+import { 
+  createNotification, 
+  markNotificationAsRead as markAsRead,
+  markAllNotificationsAsRead as markAllAsRead,
+  deleteNotification as deleteNotif,
+  getNotificationCounts,
+  createBulkNotifications,
+  sendRealTimeNotification
+} from "../services/notification.service.js";
 
 /**
  * Get user notifications with Redis caching
@@ -162,6 +171,154 @@ const getUserNotifications = asyncHandler(async (req, res) => {
  *   "message": "Notification count retrieved successfully"
  * }
  */
+/**
+ * Create notification for authenticated user or specified user (admin only)
+ * 
+ * @function createNotification
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.recipient - Recipient user ID (optional, defaults to authenticated user)
+ * @param {string} req.body.title - Notification title
+ * @param {string} req.body.message - Notification message
+ * @param {string} req.body.type - Notification type
+ * @param {Object} req.body.relatedEntity - Related entity information
+ * @param {string} req.body.actionUrl - Action URL
+ * @param {string} req.body.priority - Priority level
+ * @param {Object} req.body.channels - Delivery channels
+ * @param {Object} req.body.metadata - Additional metadata
+ * @param {Date} req.body.expiresAt - Expiration date
+ * @param {Object} req.user - Authenticated user
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} Created notification
+ */
+const createNotificationController = asyncHandler(async (req, res) => {
+    try {
+        const { 
+            recipient, 
+            title, 
+            message, 
+            type, 
+            relatedEntity, 
+            actionUrl, 
+            priority, 
+            channels, 
+            metadata, 
+            expiresAt 
+        } = req.body;
+
+        // If recipient is not specified, use authenticated user
+        const targetRecipient = recipient || req.user._id;
+
+        // Only admins can create notifications for other users
+        if (recipient && recipient !== req.user._id.toString() && req.user.role !== 'admin') {
+            throw new ApiError(403, "Only admins can create notifications for other users");
+        }
+
+        const notification = await createNotification({
+            recipient: targetRecipient,
+            title,
+            message,
+            type,
+            relatedEntity,
+            actionUrl,
+            priority,
+            channels,
+            metadata,
+            expiresAt,
+        });
+
+        // Send real-time notification
+        const io = req.app.get("io");
+        if (io) {
+            sendRealTimeNotification(io, targetRecipient, notification);
+        }
+
+        res.status(201).json(
+            successResponse(201, { notification }, "Notification created successfully")
+        );
+    } catch (error) {
+        if (error instanceof ApiError) throw error;
+        throw new ApiError(500, "Failed to create notification");
+    }
+});
+
+/**
+ * Create bulk notifications (admin only)
+ * 
+ * @function createBulkNotificationsController
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {Array<string>} req.body.recipients - Array of recipient user IDs
+ * @param {string} req.body.title - Notification title
+ * @param {string} req.body.message - Notification message
+ * @param {string} req.body.type - Notification type
+ * @param {Object} req.body.relatedEntity - Related entity information
+ * @param {string} req.body.actionUrl - Action URL
+ * @param {string} req.body.priority - Priority level
+ * @param {Object} req.body.channels - Delivery channels
+ * @param {Object} req.body.metadata - Additional metadata
+ * @param {Date} req.body.expiresAt - Expiration date
+ * @param {Object} req.user - Authenticated user
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} Created notifications
+ */
+const createBulkNotificationsController = asyncHandler(async (req, res) => {
+    try {
+        const { 
+            recipients, 
+            title, 
+            message, 
+            type, 
+            relatedEntity, 
+            actionUrl, 
+            priority, 
+            channels, 
+            metadata, 
+            expiresAt 
+        } = req.body;
+
+        // Only admins can create bulk notifications
+        if (req.user.role !== 'admin') {
+            throw new ApiError(403, "Only admins can create bulk notifications");
+        }
+
+        if (!Array.isArray(recipients) || recipients.length === 0) {
+            throw new ApiError(400, "Recipients must be a non-empty array");
+        }
+
+        const notifications = await createBulkNotifications(recipients, {
+            title,
+            message,
+            type,
+            relatedEntity,
+            actionUrl,
+            priority,
+            channels,
+            metadata,
+            expiresAt,
+        });
+
+        // Send real-time notifications
+        const io = req.app.get("io");
+        if (io) {
+            notifications.forEach(notification => {
+                sendRealTimeNotification(io, notification.recipient, notification);
+            });
+        }
+
+        res.status(201).json(
+            successResponse(201, { 
+                notifications,
+                count: notifications.length,
+                totalRequested: recipients.length 
+            }, "Bulk notifications created successfully")
+        );
+    } catch (error) {
+        if (error instanceof ApiError) throw error;
+        throw new ApiError(500, "Failed to create bulk notifications");
+    }
+});
+
 // Get notification count
 const getNotificationCount = asyncHandler(async (req, res) => {
     try {
@@ -204,7 +361,8 @@ const getNotificationCount = asyncHandler(async (req, res) => {
         await redisClient.setEx(cacheKey, 300, JSON.stringify(response));
 
         res.status(200).json(response);
-    } catch (error) {throw new ApiError(500, "Failed to get notification count");
+    } catch (error) {
+        throw new ApiError(500, "Failed to get notification count");
     }
 });
 
@@ -214,27 +372,23 @@ const markNotificationAsRead = asyncHandler(async (req, res) => {
         const userId = req.user._id;
         const { id } = req.params;
 
-        const notification = await Notification.findOneAndUpdate(
-            { _id: id, recipient: userId },
-            { status: 'read', readAt: new Date() },
-            { new: true }
-        );
+        const notification = await markAsRead(id, userId);
 
-        if (!notification) {
-            throw new ApiError(404, "Notification not found");
-        }
-
-        // Invalidate cache
-        const keys = await redisClient.keys(`notification*:${userId}*`);
-        if (keys.length > 0) {
-            await redisClient.del(keys);
+        // Send real-time update
+        const io = req.app.get("io");
+        if (io) {
+            io.to(`user:${userId}`).emit("notification:read", {
+                notificationId: id,
+                timestamp: new Date(),
+            });
         }
 
         res.status(200).json(
             successResponse(200, notification, "Notification marked as read")
         );
     } catch (error) {
-        if (error instanceof ApiError) throw error;throw new ApiError(500, "Failed to mark notification as read");
+        if (error instanceof ApiError) throw error;
+        throw new ApiError(500, "Failed to mark notification as read");
     }
 });
 
@@ -243,15 +397,15 @@ const markAllNotificationsAsRead = asyncHandler(async (req, res) => {
     try {
         const userId = req.user._id;
 
-        const result = await Notification.updateMany(
-            { recipient: userId, status: 'unread' },
-            { status: 'read', readAt: new Date() }
-        );
+        const result = await markAllAsRead(userId);
 
-        // Invalidate cache
-        const keys = await redisClient.keys(`notification*:${userId}*`);
-        if (keys.length > 0) {
-            await redisClient.del(keys);
+        // Send real-time update
+        const io = req.app.get("io");
+        if (io) {
+            io.to(`user:${userId}`).emit("notification:all_read", {
+                timestamp: new Date(),
+                modifiedCount: result.modifiedCount,
+            });
         }
 
         res.status(200).json(
@@ -259,7 +413,8 @@ const markAllNotificationsAsRead = asyncHandler(async (req, res) => {
                 modifiedCount: result.modifiedCount
             }, "All notifications marked as read")
         );
-    } catch (error) {throw new ApiError(500, "Failed to mark all notifications as read");
+    } catch (error) {
+        throw new ApiError(500, "Failed to mark all notifications as read");
     }
 });
 
@@ -282,14 +437,15 @@ const deleteNotification = asyncHandler(async (req, res) => {
             new successResponse(200, null, "Notification deleted successfully")
         );
     } catch (error) {
-        if (error instanceof ApiError) throw error;throw new ApiError(500, "Failed to delete notification");
+        if (error instanceof ApiError) throw error;
+        throw new ApiError(500, "Failed to delete notification");
     }
 });
 
 /**
  * Create a new notification (Admin/System use)
  * 
- * @function createNotification
+ * @function createNotificationAdmin
  * @param {Object} req - Express request object
  * @param {Object} req.body - Request body
  * @param {string} req.body.userId - Recipient user ID
@@ -300,7 +456,7 @@ const deleteNotification = asyncHandler(async (req, res) => {
  * @param {Object} res - Express response object
  * @returns {Promise<Object>} Created notification
  */
-const createNotification = asyncHandler(async (req, res) => {
+const createNotificationAdmin = asyncHandler(async (req, res) => {
     try {
         const { userId, title, message, type, relatedEntity, priority = 'normal' } = req.body;
 
@@ -332,7 +488,8 @@ const createNotification = asyncHandler(async (req, res) => {
         res.status(201).json(
             successResponse(201, notification, "Notification created successfully")
         );
-    } catch (error) {throw new ApiError(500, "Failed to create notification");
+    } catch (error) {
+        throw new ApiError(500, "Failed to create notification");
     }
 });
 
@@ -385,7 +542,8 @@ const bulkCreateNotifications = asyncHandler(async (req, res) => {
                 notifications: createdNotifications
             }, "Bulk notifications created successfully")
         );
-    } catch (error) {throw new ApiError(500, "Failed to create bulk notifications");
+    } catch (error) {
+        throw new ApiError(500, "Failed to create bulk notifications");
     }
 });
 
@@ -424,7 +582,8 @@ const bulkDeleteNotifications = asyncHandler(async (req, res) => {
                 deletedCount: result.deletedCount
             }, "Notifications deleted successfully")
         );
-    } catch (error) {throw new ApiError(500, "Failed to delete notifications");
+    } catch (error) {
+        throw new ApiError(500, "Failed to delete notifications");
     }
 });
 
@@ -474,7 +633,8 @@ const getNotificationPreferences = asyncHandler(async (req, res) => {
         await redisClient.setEx(cacheKey, 3600, JSON.stringify(response));
 
         res.status(200).json(response);
-    } catch (error) {throw new ApiError(500, "Failed to get notification preferences");
+    } catch (error) {
+        throw new ApiError(500, "Failed to get notification preferences");
     }
 });
 
@@ -501,7 +661,8 @@ const updateNotificationPreferences = asyncHandler(async (req, res) => {
         res.status(200).json(
             successResponse(200, updates, "Notification preferences updated successfully")
         );
-    } catch (error) {throw new ApiError(500, "Failed to update notification preferences");
+    } catch (error) {
+        throw new ApiError(500, "Failed to update notification preferences");
     }
 });
 
@@ -511,7 +672,9 @@ export {
     markAllNotificationsAsRead,
     deleteNotification,
     getNotificationCount,
-    createNotification,
+    createNotificationAdmin,
+    createNotificationController,
+    createBulkNotificationsController,
     bulkCreateNotifications,
     bulkDeleteNotifications,
     getNotificationPreferences,
