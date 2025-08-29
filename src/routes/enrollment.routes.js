@@ -6,7 +6,8 @@ import {
     updateEnrollmentStatus,
     getCourseEnrollments,
     getEnrollmentStatistics,
-    withdrawFromCourse
+    withdrawFromCourse,
+    debugEnrollments
 } from '../controllers/enrollments.controllers.js';
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
@@ -623,5 +624,8 @@ enrollmentRouter.patch('/:id/status', requestLogger, verifyJWT, updateEnrollment
  *         description: Enrollment not found
  */
 enrollmentRouter.patch('/:id/withdraw', requestLogger, verifyJWT, authorizeRoles('student'), withdrawFromCourse);
+
+// DEBUG ROUTE - Remove in production
+enrollmentRouter.get('/debug/all', requestLogger, verifyJWT, authorizeRoles('admin', 'school'), debugEnrollments);
 
 export default enrollmentRouter;

@@ -132,6 +132,22 @@ const getEnrollmentById = asyncHandler(async (req, res) => {
         const userId = req.user._id;
         const userRole = req.user.role;
 
+        // Debug logging
+        console.log("=== DEBUG GET ENROLLMENT ===");
+        console.log("Enrollment ID:", id);
+        console.log("User ID:", userId);
+        console.log("User Role:", userRole);
+
+        // Validate ObjectId format
+        if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+            console.log("❌ Invalid ObjectId format:", id);
+            return res.json(badRequestResponse("Invalid enrollment ID format"));
+        }
+
+        // Check total enrollments first
+        const totalEnrollments = await Enrollment.countDocuments();
+        console.log("Total enrollments in database:", totalEnrollments);
+
         const enrollment = await Enrollment.findById(id)
             .populate('courseId', 'title instructor duration price category status trainingProvider')
             .populate('studentId', 'fullName email')
@@ -143,8 +159,13 @@ const getEnrollmentById = asyncHandler(async (req, res) => {
                 }
             });
 
+        console.log("Enrollment found:", !!enrollment);
+
         if (!enrollment) {
-            return res.json (notFoundResponse("Enrollment not found"));
+            // Show sample enrollments for debugging
+            const samples = await Enrollment.find({}).limit(3).select('_id studentId courseId status');
+            console.log("Sample enrollments:", JSON.stringify(samples, null, 2));
+            return res.json(notFoundResponse("Enrollment not found"));
         }
 
         // Authorization check
@@ -172,61 +193,56 @@ const getEnrollmentById = asyncHandler(async (req, res) => {
 // ===============================
 const updateEnrollmentStatus = asyncHandler(async (req, res) => {
   try {
+    const { id } = req.params; // Get enrollment ID from URL params
     const { status } = req.body;
-    const userId = req.user._id;
     const userRole = req.user.role;
 
+    console.log("=== UPDATE ENROLLMENT STATUS ===");
+    console.log("Enrollment ID:", id);
+    console.log("New Status:", status);
+    console.log("User Role:", userRole);
+
+    // Validate required fields
+    if (!id) {
+      return res.json(badRequestResponse("Enrollment ID is required"));
+    }
+
+    if (!status) {
+      return res.json(badRequestResponse("Status is required"));
+    }
+
+    // Validate status value
     const validStatuses = ["enrolled", "in-progress", "completed", "withdrawn", "suspended"];
-    if (status && !validStatuses.includes(status)) {
-      return res.json(badRequestResponse("Invalid status value"));
+    if (!validStatuses.includes(status)) {
+      return res.json(badRequestResponse(`Invalid status. Must be one of: ${validStatuses.join(", ")}`));
     }
 
-    // find schol id
-    const school = await TrainingInstitute.findOne({userId : userId})
+    // Find and update enrollment in one operation
+    const enrollment = await Enrollment.findByIdAndUpdate(
+      id,
+      { status: status },
+      { new: true } // Return updated document
+    ).populate("courseId", "title")
+     .populate("studentId", "fullName email");
 
-    // Find all enrollments for this user
-    const enrollments = await Enrollment.find({ schoolId: school._id })
-      .populate("courseId", "trainingProvider");
-
-    if (!enrollments || enrollments.length === 0) {
-      return res.json(notFoundResponse("No enrollments found for this user"));
+    if (!enrollment) {
+      return res.json(notFoundResponse("Enrollment not found"));
     }
 
-    // Authorization check
-    const isStudent = userRole === "student";
-    const isAdmin = userRole === "admin";
-    // Providers can only update if they own the training provider
-    const isProvider = enrollments.some(
-      (en) => en.courseId?.trainingProvider?.toString() === userId.toString()
-    );
-
-    if (!isStudent && !isProvider && !isAdmin) {
-      return res.json(badRequestResponse("Access denied"));
-    }
-
-    // Update all enrollments for this user
-    const updatedEnrollments = await Enrollment.updateMany(
-      { studentId: userId },
-      { $set: { status } },
-      { new: true, runValidators: true }
-    );
-
-    // Re-fetch updated enrollments with details
-    const refreshed = await Enrollment.find({ studentId: userId })
-      .populate("courseId", "title instructor")
-      .populate("studentId", "fullName email");
+    console.log("✅ Enrollment status updated successfully");
 
     return res.json(
       successResponse(
-        { enrollments: refreshed },
-        "Enrollments updated successfully"
+        { enrollment },
+        `Enrollment status updated to ${status}`
       )
     );
+
   } catch (error) {
-    throw internalServer("Failed to update enrollment");
+    console.error("Update enrollment error:", error);
+    throw internalServer("Failed to update enrollment status");
   }
 });
-
 
 // ===============================
 // GET COURSE ENROLLMENTS (Provider/Admin)
@@ -398,6 +414,46 @@ const withdrawFromCourse = asyncHandler(async (req, res) => {
     }
 });
 
+// DEBUG ENDPOINT - Remove in production
+const debugEnrollments = asyncHandler(async (req, res) => {
+    try {
+        console.log("=== DEBUG ENROLLMENTS DATABASE ===");
+        
+        const totalCount = await Enrollment.countDocuments();
+        console.log("Total enrollments:", totalCount);
+        
+        const enrollments = await Enrollment.find({})
+            .limit(10)
+            .select('_id studentId courseId status createdAt')
+            .populate('studentId', 'fullName email role')
+            .populate('courseId', 'title');
+            
+        console.log("Sample enrollments:");
+        enrollments.forEach((enrollment, index) => {
+            console.log(`${index + 1}. ID: ${enrollment._id}`);
+            console.log(`   Student: ${enrollment.studentId?.fullName} (${enrollment.studentId?.email})`);
+            console.log(`   Course: ${enrollment.courseId?.title}`);
+            console.log(`   Status: ${enrollment.status}`);
+            console.log(`   Created: ${enrollment.createdAt}`);
+            console.log("---");
+        });
+        
+        res.json({
+            success: true,
+            totalCount,
+            enrollments: enrollments.map(e => ({
+                id: e._id,
+                student: e.studentId?.fullName,
+                course: e.courseId?.title,
+                status: e.status
+            }))
+        });
+    } catch (error) {
+        console.error("Debug error:", error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
 export {
     createEnrollment,
     getUserEnrollments,
@@ -405,5 +461,6 @@ export {
     updateEnrollmentStatus,
     getCourseEnrollments,
     getEnrollmentStatistics,
-    withdrawFromCourse
+    withdrawFromCourse,
+    debugEnrollments
 };
