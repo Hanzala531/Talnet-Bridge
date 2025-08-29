@@ -624,25 +624,44 @@ const studentsDirectory = asyncHandler(async (req, res) => {
   }
 });
 
-// Employers directory
+// Employers directory controller
 const employerDirectory = asyncHandler(async (req, res) => {
   try {
-    // Query params: page, limit
-    const { page = 1, limit = 20 } = req.query;
+    // Query params: page, limit, search filters
+    const { page = 1, limit = 20, industry, location, companyName } = req.query;
 
     // Validate and sanitize pagination parameters
     const pageNum = Math.max(Number(page) || 1, 1);
     const limitNum = Math.min(Math.max(Number(limit) || 20, 1), 100); // Enforce a max limit of 100
 
-    // Pagination
+    // Build filter object for search functionality
+    const filter = {};
+    
+    if (industry) {
+      filter.industry = { $regex: industry, $options: "i" };
+    }
+    
+    if (location) {
+      filter.companyLocation = { $regex: location, $options: "i" };
+    }
+    
+    if (companyName) {
+      filter.companyName = { $regex: companyName, $options: "i" };
+    }
+
+    // Calculate pagination
     const skip = (pageNum - 1) * limitNum;
 
-    // Find all employers (without populate)
-    const employers = await Employer.find({})
-      .select("_id userId companyName companyLocation industry")
+    // Find employers with filters applied
+    const employers = await Employer.find(filter)
+      .select("_id userId companyName companyLocation industry establishedYear companySize website")
       .skip(skip)
       .limit(limitNum)
+      .sort({ createdAt: -1 }) // Sort by newest first
       .lean();
+
+    // Get total count for pagination with same filters
+    const total = await Employer.countDocuments(filter);
 
     if (!employers.length) {
       return res.json(
@@ -655,45 +674,56 @@ const employerDirectory = asyncHandler(async (req, res) => {
               total: 0,
               totalPages: 0,
             },
+            filters: {
+              industry,
+              location,
+              companyName
+            }
           },
-          "No employers found"
+          "No employers found matching the criteria"
         )
       );
     }  
 
     // Collect userIds for batch lookup
-    const userIds = employers.map((e) => e.userId);
+    const userIds = employers.map((e) => e.userId).filter(Boolean); // Filter out null/undefined userIds
 
     // Batch fetch user info
     const users = await User.find({ _id: { $in: userIds } })
-      .select("fullName email phone")
+      .select("fullName email phone profilePicture role createdAt")
       .lean();
 
+    // Create users map for quick lookup
     const usersMap = users.reduce((acc, user) => {
       acc[user._id.toString()] = user;
       return acc;
     }, {});
 
-    // Format response
-    const formatted = employers.map((e) => {
-      const user = usersMap[e.userId?.toString()] || {};
+    // Format response with comprehensive employer data
+    const formatted = employers.map((employer) => {
+      const user = usersMap[employer.userId?.toString()] || {};
+      
       return {
-        employerId: e._id,
-        name: {
-          fullName: user.fullName || "",
-          email: user.email || "",
-          phone: user.phone || "",
+        employerId: employer._id,
+        user: {
+          userId: employer.userId,
+          fullName: user.fullName || "N/A",
+          email: user.email || "N/A",
+          phone: user.phone || "N/A",
+          profilePicture: user.profilePicture || null,
+          joinedAt: user.createdAt || null
         },
         company: {
-          name: e.companyName || "",
-          location: e.companyLocation || "",
+          name: employer.companyName || "N/A",
+          location: employer.companyLocation || "N/A",
+          website: employer.website || null,
+          establishedYear: employer.establishedYear || null,
+          size: employer.companySize || null
         },
-        industry: e.industry || "",
+        industry: employer.industry || "N/A",
+        profileCreatedAt: employer.createdAt || null
       };
     });
-
-    // Total count for pagination
-    const total = await Employer.countDocuments({});
 
     return res.json(
       successResponse(
@@ -705,8 +735,19 @@ const employerDirectory = asyncHandler(async (req, res) => {
             total,
             totalPages: Math.ceil(total / limitNum),
           },
+          filters: {
+            industry: industry || null,
+            location: location || null,
+            companyName: companyName || null
+          },
+          summary: {
+            totalEmployers: total,
+            currentPageResults: formatted.length,
+            hasNextPage: pageNum < Math.ceil(total / limitNum),
+            hasPreviousPage: pageNum > 1
+          }
         },
-        "Employers directory fetched successfully"
+        `Successfully fetched ${formatted.length} employers (page ${pageNum} of ${Math.ceil(total / limitNum)})`
       )
     );
   } catch (error) {
