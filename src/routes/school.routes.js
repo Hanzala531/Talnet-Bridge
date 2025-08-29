@@ -672,7 +672,7 @@ schoolRouter.get(
 // Route for employer directory
 /**
  * @swagger
- * /api/v1/schools/employers:
+ * /api/v1/schools/employers-directory:
  *   get:
  *     summary: Retrieve a list of employers
  *     description: Returns a list of employers with optional filters and pagination.
@@ -726,7 +726,7 @@ schoolRouter.get(
  *                       type: integer
  *                       example: 10
  */
-schoolRouter.get('/employers/dir', requestLogger, verifyJWT, authorizeRoles('school'), employerDirectory);
+schoolRouter.get('/employers-directory', requestLogger, verifyJWT, authorizeRoles('school'), employerDirectory);
 
 /**
  * @swagger

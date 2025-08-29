@@ -685,12 +685,51 @@ const employerDirectory = asyncHandler(async (req, res) => {
       );
     }  
 
-    // Collect userIds for batch lookup
-    const userIds = employers.map((e) => e.userId).filter(Boolean); // Filter out null/undefined userIds
+    // Collect userIds for batch lookup - fix ObjectId casting issue
+    const userIds = employers
+      .map((e) => e.userId)
+      .filter(Boolean) // Filter out null/undefined userIds
+      .map((userId) => {
+        // Handle malformed ObjectIds from database
+        if (typeof userId === 'object' && userId.$oid) {
+          return userId.$oid;
+        }
+        return userId.toString();
+      })
+      .filter((userId) => {
+        // Validate ObjectId format (24 character hex string)
+        return /^[0-9a-fA-F]{24}$/.test(userId);
+      });
 
-    // Batch fetch user info
-    const users = await User.find({ _id: { $in: userIds } })
-      .select("fullName email phone profilePicture role createdAt")
+    if (userIds.length === 0) {
+      return res.json(
+        successResponse(
+          {
+            employers: [],
+            pagination: {
+              page: pageNum,
+              limit: limitNum,
+              total: 0,
+              totalPages: 0,
+            },
+            filters: {
+              industry,
+              location,
+              companyName
+            }
+          },
+          "No valid employer user IDs found"
+        )
+      );
+    }
+
+    // Batch fetch user info - only get approved users
+    const users = await User.find({ 
+      _id: { $in: userIds },
+      role: 'employer',
+      status: 'approved' // Only get approved users
+    })
+      .select("fullName email phone profilePicture role createdAt status")
       .lean();
 
     // Create users map for quick lookup
@@ -699,31 +738,60 @@ const employerDirectory = asyncHandler(async (req, res) => {
       return acc;
     }, {});
 
-    // Format response with comprehensive employer data
-    const formatted = employers.map((employer) => {
-      const user = usersMap[employer.userId?.toString()] || {};
-      
-      return {
-        employerId: employer._id,
-        user: {
-          userId: employer.userId,
-          fullName: user.fullName || "N/A",
-          email: user.email || "N/A",
-          phone: user.phone || "N/A",
-          profilePicture: user.profilePicture || null,
-          joinedAt: user.createdAt || null
-        },
-        company: {
-          name: employer.companyName || "N/A",
-          location: employer.companyLocation || "N/A",
-          website: employer.website || null,
-          establishedYear: employer.establishedYear || null,
-          size: employer.companySize || null
-        },
-        industry: employer.industry || "N/A",
-        profileCreatedAt: employer.createdAt || null
-      };
-    });
+    // Format response with comprehensive employer data - only include those with approved users
+    const formatted = employers
+      .filter((employer) => {
+        const userId = employer.userId;
+        let userIdString;
+        
+        // Handle different userId formats
+        if (typeof userId === 'object' && userId.$oid) {
+          userIdString = userId.$oid;
+        } else {
+          userIdString = userId?.toString();
+        }
+        
+        // Only include if user exists and is approved
+        return userIdString && usersMap[userIdString];
+      })
+      .map((employer) => {
+        const userId = employer.userId;
+        let userIdString;
+        
+        // Handle different userId formats
+        if (typeof userId === 'object' && userId.$oid) {
+          userIdString = userId.$oid;
+        } else {
+          userIdString = userId?.toString();
+        }
+        
+        const user = usersMap[userIdString] || {};
+        
+        return {
+          employerId: employer._id,
+          user: {
+            userId: userIdString,
+            fullName: user.fullName || "N/A",
+            email: user.email || "N/A",
+            phone: user.phone || "N/A",
+            profilePicture: user.profilePicture || null,
+            status: user.status || "N/A",
+            joinedAt: user.createdAt || null
+          },
+          company: {
+            name: employer.companyName || "N/A",
+            location: employer.companyLocation || "N/A",
+            website: employer.website || null,
+            establishedYear: employer.establishedYear || null,
+            size: employer.companySize || null
+          },
+          industry: employer.industry || "N/A",
+          profileCreatedAt: employer.createdAt || null
+        };
+      });
+
+    // Recalculate total for approved users only
+    const approvedTotal = formatted.length;
 
     return res.json(
       successResponse(
@@ -732,22 +800,23 @@ const employerDirectory = asyncHandler(async (req, res) => {
           pagination: {
             page: pageNum,
             limit: limitNum,
-            total,
-            totalPages: Math.ceil(total / limitNum),
+            total: approvedTotal,
+            totalPages: Math.ceil(approvedTotal / limitNum),
           },
           filters: {
             industry: industry || null,
             location: location || null,
-            companyName: companyName || null
+            companyName: companyName || null,
+            userStatus: 'approved' // Indicate we're filtering by approved status
           },
           summary: {
-            totalEmployers: total,
+            totalEmployers: approvedTotal,
             currentPageResults: formatted.length,
-            hasNextPage: pageNum < Math.ceil(total / limitNum),
+            hasNextPage: pageNum < Math.ceil(approvedTotal / limitNum),
             hasPreviousPage: pageNum > 1
           }
         },
-        `Successfully fetched ${formatted.length} employers (page ${pageNum} of ${Math.ceil(total / limitNum)})`
+        `Successfully fetched ${formatted.length} approved employers (page ${pageNum} of ${Math.ceil(approvedTotal / limitNum)})`
       )
     );
   } catch (error) {

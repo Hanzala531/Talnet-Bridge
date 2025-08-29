@@ -1,7 +1,5 @@
 import { Course, TrainingInstitute } from "../models/index.js";
-import { createCourseCreationNotifications } from "../services/notification.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { badRequest, notFound, internalServer } from "../utils/ApiError.js";
 import {
   successResponse,
   createdResponse,
@@ -11,7 +9,9 @@ import {
   conflictResponse,
 } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { createCourseCreationNotifications } from "../services/notification.service.js";
 import fs from 'fs'
+import { badRequest, notFound, internalServer } from "../utils/ApiError.js";
 
 // ===============================
 // GET ALL COURSES
