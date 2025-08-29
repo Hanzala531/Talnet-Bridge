@@ -642,11 +642,11 @@ const employerDirectory = asyncHandler(async (req, res) => {
     }
     
     if (location) {
-      filter.companyLocation = { $regex: location, $options: "i" };
+      filter.location = { $regex: location, $options: "i" }; // Fixed: using 'location' instead of 'companyLocation'
     }
     
     if (companyName) {
-      filter.companyName = { $regex: companyName, $options: "i" };
+      filter.name = { $regex: companyName, $options: "i" }; // Fixed: using 'name' instead of 'companyName'
     }
 
     // Calculate pagination
@@ -654,7 +654,7 @@ const employerDirectory = asyncHandler(async (req, res) => {
 
     // Find employers with filters applied
     const employers = await Employer.find(filter)
-      .select("_id userId companyName companyLocation industry establishedYear companySize website")
+      .select("_id userId name description industry location establishedYear companySize websiteLink verified totalEmployees createdAt") // Fixed: using correct field names
       .skip(skip)
       .limit(limitNum)
       .sort({ createdAt: -1 }) // Sort by newest first
@@ -779,11 +779,12 @@ const employerDirectory = asyncHandler(async (req, res) => {
             joinedAt: user.createdAt || null
           },
           company: {
-            name: employer.companyName || "N/A",
-            location: employer.companyLocation || "N/A",
-            website: employer.website || null,
+            name: employer.name || "N/A", // Fixed: using 'name' instead of 'companyName'
+            website: employer.websiteLink || null, // Fixed: using 'websiteLink' instead of 'website'
+            description: employer.description || null, // Added: company description
             establishedYear: employer.establishedYear || null,
-            size: employer.companySize || null
+            size: employer.companySize || null,
+            totalEmployees: employer.totalEmployees || null, // Added: total employees
           },
           industry: employer.industry || "N/A",
           profileCreatedAt: employer.createdAt || null
