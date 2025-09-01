@@ -11,7 +11,8 @@ import {
     bulkCreateNotifications,
     bulkDeleteNotifications,
     getNotificationPreferences,
-    updateNotificationPreferences
+    updateNotificationPreferences,
+    getNonMessageNotifications
 } from '../controllers/notification.controllers.js';
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
@@ -802,5 +803,57 @@ notificationRouter.delete('/bulk/delete', requestLogger, verifyJWT, bulkDeleteNo
  */
 notificationRouter.get('/preferences', requestLogger, verifyJWT, getNotificationPreferences);
 notificationRouter.patch('/preferences', requestLogger, verifyJWT, updateNotificationPreferences);
+
+/**
+ * @swagger
+ * /api/v1/notifications/other:
+ *   get:
+ *     summary: Get user notifications excluding message-related ones
+ *     description: Retrieve paginated notifications for authenticated user, excluding 'message_received' type
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 10
+ *         description: Number of notifications per page (max 50)
+ *       - in: query
+ *         name: unread
+ *         schema:
+ *           type: boolean
+ *         description: Filter unread notifications only
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [course_enrollment, course_completion, certificate_issued, payment_received, payment_failed, job_application, interview_scheduled, profile_verified, system_update, security_alert, subscription_expiry]
+ *         description: Additional filter by notification type
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           default: "-createdAt"
+ *         description: Sort order (field with optional - for descending)
+ *     responses:
+ *       200:
+ *         description: Non-message notifications retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/NotificationResponse'
+ */
+notificationRouter.get('/other', requestLogger, verifyJWT, getNonMessageNotifications);
 
 export default notificationRouter;

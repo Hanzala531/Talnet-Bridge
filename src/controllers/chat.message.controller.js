@@ -8,6 +8,7 @@ import {
   markRead, 
   getConversationWithAccess 
 } from "../services/chat.service.js";
+import { createChatMessageNotification } from "../services/notification.service.js";
 
 /**
  * @swagger
@@ -74,7 +75,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
   const senderId = req.user._id;
   
   // Verify access to conversation
-  await getConversationWithAccess(conversationId, senderId);
+  const conversation = await getConversationWithAccess(conversationId, senderId);
   
   // Validate that text is provided
   if (!text || !text.trim()) {
@@ -93,6 +94,18 @@ export const sendMessage = asyncHandler(async (req, res) => {
     io, // Pass Socket.IO instance for notifications
   });
   
+  // Create notification for the recipient (exclude sender)
+  const recipient = conversation.participants.find(p => p.user._id.toString() !== senderId.toString());
+  if (recipient) {
+    await createChatMessageNotification({
+      senderId,
+      recipientId: recipient.user._id,
+      conversationId,
+      messageText: text.trim(),
+      senderName: req.user.fullName,
+    });
+  }
+  
   // Emit socket events if socket.io is available
   if (io) {
     // Emit to conversation room
@@ -102,7 +115,6 @@ export const sendMessage = asyncHandler(async (req, res) => {
     });
     
     // Emit conversation update to participants' personal rooms
-    const conversation = await getConversationWithAccess(conversationId, senderId);
     conversation.participants.forEach((participant) => {
       if (participant.user._id.toString() !== senderId.toString()) {
         io.to(`user:${participant.user._id}`).emit("conversation:update", {

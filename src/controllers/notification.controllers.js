@@ -671,6 +671,80 @@ const updateNotificationPreferences = asyncHandler(async (req, res) => {
     }
 });
 
+/**
+ * Get user notifications excluding message-related ones
+ * 
+ * @function getNonMessageNotifications
+ * @param {Object} req - Express request object
+ * @param {Object} req.query - Query parameters
+ * @param {number} req.query.page - Page number (default: 1)
+ * @param {number} req.query.limit - Items per page (default: 10, max: 50)
+ * @param {boolean} req.query.unread - Filter unread notifications only
+ * @param {string} req.query.type - Filter by notification type (optional)
+ * @param {string} req.query.sort - Sort order (default: '-createdAt')
+ * @param {Object} req.user - Authenticated user
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} Paginated notifications excluding 'message_received'
+ */
+const getNonMessageNotifications = asyncHandler(async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { page = 1, limit = 10, unread, type, sort = '-createdAt' } = req.query;
+
+        // Create cache key
+        const cacheKey = `notifications:nonmsg:${userId}:${page}:${limit}:${unread || 'all'}:${type || 'all'}:${sort}`;
+        
+        // Try to get from cache first
+        const cached = await redisClient.get(cacheKey);
+        if (cached) {
+            return res.status(200).json(JSON.parse(cached));
+        }
+
+        const filter = { recipient: userId, type: { $ne: 'message_received' } }; // Exclude message_received
+        if (unread === 'true') {
+            filter.status = 'unread';
+        }
+        if (type) {
+            filter.type = type; // Additional type filter if provided
+        }
+
+        const skip = (page - 1) * Math.min(limit, 50);
+        const limitNum = Math.min(Number(limit), 50);
+
+        const [notifications, total, unreadCount] = await Promise.all([
+            Notification.find(filter)
+                .sort(sort)
+                .skip(skip)
+                .limit(limitNum)
+                .populate('relatedEntity.entityId', 'title name')
+                .lean(),
+            Notification.countDocuments(filter),
+            Notification.countDocuments({ recipient: userId, status: 'unread', type: { $ne: 'message_received' } })
+        ]);
+
+        const response = successResponse(200, {
+            notifications,
+            pagination: {
+                page: Number(page),
+                limit: limitNum,
+                total,
+                pages: Math.ceil(total / limitNum)
+            },
+            summary: {
+                unreadCount,
+                totalCount: total
+            }
+        }, "Non-message notifications retrieved successfully");
+
+        // Cache for 2 minutes
+        await redisClient.setEx(cacheKey, 120, JSON.stringify(response));
+
+        res.status(200).json(response);
+    } catch (error) {
+        throw new ApiError(500, "Failed to retrieve non-message notifications");
+    }
+});
+
 export {
     getUserNotifications,
     markNotificationAsRead,
@@ -683,5 +757,6 @@ export {
     bulkCreateNotifications,
     bulkDeleteNotifications,
     getNotificationPreferences,
-    updateNotificationPreferences
+    updateNotificationPreferences,
+    getNonMessageNotifications
 };
