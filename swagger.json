@@ -1496,6 +1496,167 @@
           }
         }
       }
+    },
+    "EnrollmentRequest": {
+      "type": "object",
+      "required": ["courseId"],
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "ID of the course to enroll in",
+          "example": "64f456def789abc123456789"
+        }
+      }
+    },
+    "Enrollment": {
+      "type": "object",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "description": "Enrollment unique identifier",
+          "example": "64f789abc123def456789012"
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Student user ID",
+          "example": "64f123abc456def789012345"
+        },
+        "courseId": {
+          "type": "string",
+          "description": "Course ID",
+          "example": "64f456def789abc123456789"
+        },
+        "enrollmentDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date when student enrolled",
+          "example": "2025-08-19T10:30:00.000Z"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["enrolled", "completed", "withdrawn", "suspended"],
+          "description": "Enrollment status",
+          "example": "enrolled"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Enrollment creation timestamp",
+          "example": "2025-08-19T10:30:00.000Z"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Enrollment last update timestamp",
+          "example": "2025-08-19T14:20:00.000Z"
+        }
+      }
+    },
+    "TrainingProvider": {
+      "type": "object",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "description": "Training provider unique identifier",
+          "example": "64f789abc123def456789013"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Associated user ID",
+          "example": "64f123abc456def789012345"
+        },
+        "name": {
+          "type": "string",
+          "description": "Training institute name",
+          "example": "Tech Academy"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Contact email",
+          "example": "info@techacademy.com"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number",
+          "example": "+92-300-1234567"
+        },
+        "picture": {
+          "type": "string",
+          "description": "Profile picture URL",
+          "example": "https://example.com/picture.jpg"
+        },
+        "about": {
+          "type": "string",
+          "description": "About the training institute",
+          "example": "Leading technology training institute"
+        },
+        "established": {
+          "type": "string",
+          "format": "date",
+          "description": "Establishment date",
+          "example": "2015-01-01"
+        },
+        "focusAreas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Areas of specialization",
+          "example": ["Web Development", "Data Science"]
+        },
+        "location": {
+          "type": "string",
+          "description": "Location address",
+          "example": "123 Training Street, Karachi"
+        },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "totalStudents": {
+              "type": "number",
+              "description": "Total number of students",
+              "example": 150
+            },
+            "totalCourses": {
+              "type": "number",
+              "description": "Total number of courses",
+              "example": 25
+            },
+            "completionRate": {
+              "type": "number",
+              "description": "Course completion rate percentage",
+              "example": 85
+            }
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive", "suspended"],
+          "description": "Account status",
+          "example": "active"
+        },
+        "courses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of course IDs",
+          "example": ["64f456def789abc123456789"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Profile creation timestamp",
+          "example": "2025-08-19T10:30:00.000Z"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Profile last update timestamp",
+          "example": "2025-08-19T14:20:00.000Z"
+        }
+      }
     }
   },
   "security": [
