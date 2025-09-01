@@ -20,9 +20,11 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/contents/User.models.js";
 import { badRequest, notFound, internalServer, ApiError, unauthorized } from "../utils/ApiError.js";
+import { Subscription } from "../models/index.js";
 import { successResponse, createdResponse, badRequestResponse, notFoundResponse, serverErrorResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from '../utils/cloudinary.js'
 import jwt from "jsonwebtoken";
+import { sendWelcomeEmail } from "../services/welcomeEmail.service.js";
 
 
 /**
@@ -108,29 +110,29 @@ const generateAccessAndRefreshTokens = async (userid) => {
 // register user  
 const registerUser = asyncHandler(async (req, res) => {
   try {
-    const { fullName, email, phone, role , password } = req.body;
+    const { fullName, email, phone, role, password } = req.body;
 
     // Check for required fields
     if (!fullName || !email || !phone || !password) {
-      return res.json( badRequestResponse("All fields are required"));
+      return res.json(badRequestResponse("All fields are required"));
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.json( badRequestResponse("Invalid email format"));
+      return res.json(badRequestResponse("Invalid email format"));
     }
 
     // Validate phone number 
     const phoneRegex = /^\d{10,15}$/;
     if (!phoneRegex.test(phone)) {
-            return res.json( badRequestResponse("Invalid phone number"));
+      return res.json(badRequestResponse("Invalid phone number"));
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-            return res.json( badRequestResponse("User with this email already exists"));
+      return res.json(badRequestResponse("User with this email already exists"));
     }
 
     // Create new user
@@ -150,11 +152,24 @@ const registerUser = asyncHandler(async (req, res) => {
     delete createdUser.password;
     delete createdUser.refreshToken;
 
+    // Send welcome email (non-blocking)
+    try {
+      await sendWelcomeEmail({ 
+        email: createdUser.email, 
+        name: createdUser.fullName 
+      });
+      console.log("Welcome email sent successfully to:", createdUser.email);
+    } catch (emailError) {
+      console.error("Error sending welcome email to", createdUser.email, ":", emailError.message);
+      // Don't fail registration if email fails - just log the error
+    }
+
     return res
       .json(createdResponse({ user: createdUser, accessToken }, "User registered successfully"));
 
   } catch (error) {
-    throw  internalServer("Failed to register user");
+    console.error("Registration error:", error);
+    throw internalServer("Failed to register user");
   }
 });
 
@@ -470,7 +485,139 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 })
 
+// Get all students for admin pannel
+const getAllStudents = asyncHandler(async (req, res) => {
+  try {
+    const students = await User.find({ role: "student" }).select("-password -refreshToken");
+    return res.json(successResponse(students, "Students fetched successfully"));
+  } catch (error) {
+    throw internalServer("Failed to fetch students");
+  }
+});
 
-export { registerUser, loginUser, logoutUser, getAllUsers , addPicture , refreshAccessToken };
+// get all employers for admin pannel 
+const getAllEmployers = asyncHandler(async (req, res) => {
+  try {
+    const employers = await User.find({ role: "employer" }).select("-password -refreshToken");
+    return res.json(successResponse(employers, "Employers fetched successfully"));
+  } catch (error) {
+    throw internalServer("Failed to fetch employers");
+  }
+});
+
+// get all schools for admin pannel 
+const getAllSchools = asyncHandler(async (req, res) => {
+  try {
+    const schools = await User.find({ role: "school" }).select("-password -refreshToken");
+    return res.json(successResponse(schools, "Schools fetched successfully"));
+  } catch (error) {
+    throw internalServer("Failed to fetch schools");
+  }
+});
+
+// Get analytics for admin pannel  in which we will have total number of students employers schools and revenue which will be calculated through subscriptions
+const adminAnalytics = asyncHandler(async (req, res) => {
+  try {
+    // Count users by role
+    const totalStudents = await User.countDocuments({ role: "student" });
+    const totalEmployers = await User.countDocuments({ role: "employer" });
+    const totalSchools = await User.countDocuments({ role: "school" });
+    const totalUsers = totalStudents + totalEmployers + totalSchools;
+
+    // Calculate total revenue from subscriptions
+    let totalRevenue = 0;
+    try {
+        const revenueResult = await Subscription.aggregate([
+          // Filter for active or completed subscriptions only
+          { $match: { status: { $in: ["active", "completed"] } } },
+          // Join with SubscriptionPlan to get the price
+          {
+            $lookup: {
+              from: "subscriptionplans", // Collection name for SubscriptionPlan (adjust if different)
+              localField: "planId",
+              foreignField: "_id",
+              as: "plan"
+            }
+          },
+          // Unwind the plan array (assuming one plan per subscription)
+          { $unwind: "$plan" },
+          // Group and sum the price from the plan
+          {
+            $group: {
+              _id: null,
+              total: { $sum: "$plan.price" } // Sum the price field from SubscriptionPlan
+            }
+          }
+        ]);
+        totalRevenue = revenueResult[0]?.total || 0;
+      
+    } catch (aggError) {
+      console.warn("Subscription aggregation failed, defaulting revenue to 0:", aggError.message);
+      // If Subscription model is missing or aggregation fails, revenue defaults to 0
+    }
+
+    // Optional: Add more metrics, e.g., revenue this month
+    const currentMonth = new Date();
+    currentMonth.setDate(1); // Start of current month
+   
+    return res.json(successResponse({
+      totalUsers,
+      totalStudents,
+      totalEmployers,
+      totalSchools,
+      totalRevenue,
+    }, "Admin analytics fetched successfully"));
+  } catch (error) {
+    throw internalServer("Failed to fetch admin analytics");
+  }
+});
+
+// Controller to show pending actions to admin it will be calculated by this way that admin have to approve users or not like in user status field will be approved by admin
+const getPendingActions = asyncHandler(async (req, res) => {
+  try {
+    const pendingUsers = await User.find({ status: "pending" }).select("-password -refreshToken");
+    return res.json(successResponse(pendingUsers, "Pending approvals fetched successfully"));
+  } catch (error) {
+    throw internalServer("Failed to fetch pending approvals");
+  }
+});
+
+// Controller to update user status for admin
+const updateUserStatus = asyncHandler(async (req, res) => {
+  const userId = req.params.userId;
+  const { status } = req.body;
+
+  if (!userId || !status) {
+    return res.status(400).json({ message: "User ID and status are required" });
+  }
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.status = status;
+    await user.save();
+
+    return res.json(successResponse(user, "User status updated successfully"));
+  } catch (error) {
+    throw internalServer("Failed to update user status");
+  }
+});
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  getAllUsers,
+  addPicture,
+  getPendingActions,
+  updateUserStatus,
+  getAllStudents,
+  getAllEmployers,
+  getAllSchools, 
+  adminAnalytics,
+  refreshAccessToken };
 
 

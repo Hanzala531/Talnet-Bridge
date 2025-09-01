@@ -47,11 +47,6 @@ const employerSchema = new mongoose.Schema({
         min: 1800,
         max: new Date().getFullYear()
     },
-    // Future fields for enhanced functionality
-    verified: {
-        type: Boolean,
-        default: false
-    },
     totalEmployees: {
         type: Number,
         min: 0
