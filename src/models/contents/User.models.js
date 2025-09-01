@@ -35,18 +35,6 @@ const userSchema = new mongoose.Schema(
       enum: ["user","student", "school", "employer", "admin"],
       default : "user"
     },
-
-    // onboardingStage: {
-    //   type: String,
-    //   enum: [
-    //     "basic_info",
-    //     "payment_pending",
-    //     "kyc_pending",
-    //     "awaiting_approval",
-    //     "active",
-    //   ],
-    //   default: "basic_info",
-    // },
     
     // Payment Tracking
     subscription: {
@@ -61,18 +49,6 @@ const userSchema = new mongoose.Schema(
       default: "pending",
     },
 
-    isBlocked:{
-      type : Boolean,
-      default : false
-    },
-    isFake :{
-      type : Boolean,
-      default : false
-    },
-    hasMultipleAccounts : {
-      type : Boolean, 
-      default : false
-    },
     refreshToken:{
       type:String
     }

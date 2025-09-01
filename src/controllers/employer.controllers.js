@@ -400,12 +400,12 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
             if (job.skillsRequired && Array.isArray(job.skillsRequired) && job.skillsRequired.length > 0) {
                 console.log(`Calculating matches for job: ${job.jobTitle}`);
                 
-                // Get all active students
+                // Get all active students (updated to respect privacy)
                 const students = await Student.find({
                     skills: { $exists: true, $ne: [] },
-                    isPublic: true,
-                    isOpenToWork: true
-                }).select('skills firstName lastName email location');
+                    isPublic: true,  // Only public profiles
+                    isOpenToWork: true  // Only students open to work
+                }).select('skills firstName lastName email location');  // Include privacy flags for conditional response
                 
                 // Find matching students with ≥90% match
                 const skillNameMatchingOptions = {
@@ -511,22 +511,42 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
         // Populate student details
         const studentIds = paginatedCandidates.map(candidate => candidate.student);
         const students = await Student.find({ 
-            _id: { $in: studentIds } 
-        }).select('firstName lastName email location skills bio isOpenToWork')
+            _id: { $in: studentIds },
+            isPublic: true,  // Ensure privacy compliance
+            isOpenToWork: true
+        }).select('firstName lastName email location skills bio enrollments gsceResult isContactPublic isProgressPublic')
           .populate('userId', 'profilePicture');
         
-        // Merge student data with match data
+        // Merge student data with match data (updated to respect privacy)
         const candidatesWithDetails = paginatedCandidates.map(candidate => {
             const student = students.find(s => s._id.toString() === candidate.student.toString());
+            if (!student) return null;  // Skip if student not found or doesn't meet criteria
+            
+            // Build response conditionally based on privacy flags
+            const studentDetails = {
+                firstName: student.firstName,
+                lastName: student.lastName,
+                location: student.location,
+                skills: student.skills,
+                bio: student.bio,
+                // Include contact only if public
+                ...(student.isContactPublic && { email: student.email }),
+                // Include progress only if public
+                ...(student.isProgressPublic && { 
+                    enrollments: student.enrollments,
+                    gsceResult: student.gsceResult
+                })
+            };
+            
             return {
                 studentId: candidate.student,
-                studentDetails: student,
+                studentDetails,
                 matchPercentage: candidate.matchPercentage,
                 jobTitle: candidate.jobTitle,
                 jobId: candidate.jobId,
                 matchedAt: candidate.matchedAt
             };
-        });
+        }).filter(Boolean);  // Remove null entries
         
         const responseData = {
             candidates: candidatesWithDetails,
@@ -594,13 +614,13 @@ const getPotentialStudents = asyncHandler(async (req, res) => {
             ));
         }
         
-        // Get all active students with skills
+        // Get all active students with skills (updated to respect privacy)
         const students = await Student.find({
             skills: { $exists: true, $ne: [] },
-            isPublic: true,
-            isOpenToWork: true
-        }).select('firstName lastName email location skills bio')
-          .populate('userId', 'profilePicture');
+            isPublic: true,  // Only public profiles
+            isOpenToWork: true  // Only students open to work
+        }).select('firstName lastName email location skills bio enrollments gsceResult isContactPublic isProgressPublic')  // Include privacy flags
+      .populate('userId', 'profilePicture');
         
         if (!students || students.length === 0) {
             return res.json(successResponse(
@@ -680,24 +700,37 @@ const getPotentialStudents = asyncHandler(async (req, res) => {
         const endIndex = startIndex + Number(limit);
         const paginatedStudents = potentialStudents.slice(startIndex, endIndex);
         
-        // Format response data
-        const studentsWithDetails = paginatedStudents.map(match => ({
-            studentId: match.student._id,
-            studentDetails: {
-                firstName: match.student.firstName,
-                lastName: match.student.lastName,
-                email: match.student.email,
-                location: match.student.location,
-                skills: match.student.skills,
-                bio: match.student.bio,
-                profilePicture: match.student.userId?.profilePicture
-            },
-            matchPercentage: match.matchPercentage,
-            bestMatchJob: {
-                title: match.jobTitle,
-                id: match.jobId
-            }
-        }));
+        // Format response data (updated to respect privacy)
+        const studentsWithDetails = paginatedStudents.map(match => {
+            const student = match.student;
+            
+            // Build response conditionally based on privacy flags
+            const studentDetails = {
+                firstName: student.firstName,
+                lastName: student.lastName,
+                location: student.location,
+                skills: student.skills,
+                bio: student.bio,
+                profilePicture: student.userId?.profilePicture,
+                // Include contact only if public
+                ...(student.isContactPublic && { email: student.email }),
+                // Include progress only if public
+                ...(student.isProgressPublic && { 
+                    enrollments: student.enrollments,
+                    gsceResult: student.gsceResult
+                })
+            };
+            
+            return {
+                studentId: match.student._id,
+                studentDetails,
+                matchPercentage: match.matchPercentage,
+                bestMatchJob: {
+                    title: match.jobTitle,
+                    id: match.jobId
+                }
+            };
+        });
         
         const responseData = {
             students: studentsWithDetails,
@@ -824,25 +857,45 @@ const getEmployerMatchedCandidatesById = asyncHandler(async (req, res) => {
         const endIndex = startIndex + Number(limit);
         const paginatedCandidates = uniqueCandidates.slice(startIndex, endIndex);
         
-        // Populate student details
+        // Populate student details (updated to respect privacy)
         const studentIds = paginatedCandidates.map(candidate => candidate.student);
         const students = await Student.find({ 
-            _id: { $in: studentIds } 
-        }).select('firstName lastName email location skills bio isOpenToWork')
+            _id: { $in: studentIds },
+            isPublic: true,  // Ensure privacy compliance
+            isOpenToWork: true
+        }).select('firstName lastName email location skills bio enrollments gsceResult isContactPublic isProgressPublic')
           .populate('userId', 'profilePicture');
         
-        // Merge student data with match data
+        // Merge student data with match data (updated to respect privacy)
         const candidatesWithDetails = paginatedCandidates.map(candidate => {
             const student = students.find(s => s._id.toString() === candidate.student.toString());
+            if (!student) return null;  // Skip if student not found or doesn't meet criteria
+            
+            // Build response conditionally based on privacy flags
+            const studentDetails = {
+                firstName: student.firstName,
+                lastName: student.lastName,
+                location: student.location,
+                skills: student.skills,
+                bio: student.bio,
+                // Include contact only if public
+                ...(student.isContactPublic && { email: student.email }),
+                // Include progress only if public
+                ...(student.isProgressPublic && { 
+                    enrollments: student.enrollments,
+                    gsceResult: student.gsceResult
+                })
+            };
+            
             return {
                 studentId: candidate.student,
-                studentDetails: student,
+                studentDetails,
                 matchPercentage: candidate.matchPercentage,
                 jobTitle: candidate.jobTitle,
                 jobId: candidate.jobId,
                 matchedAt: candidate.matchedAt
             };
-        });
+        }).filter(Boolean);  // Remove null entries
         
         const responseData = {
             employer: {
@@ -912,12 +965,12 @@ const getEmployerPotentialStudentsById = asyncHandler(async (req, res) => {
             ));
         }
         
-        // Get all active students with skills
+        // Get all active students with skills (updated to respect privacy)
         const students = await Student.find({
             skills: { $exists: true, $ne: [] },
-            isPublic: true,
-            isOpenToWork: true
-        }).select('firstName lastName email location skills bio')
+            isPublic: true,  // Only public profiles
+            isOpenToWork: true  // Only students open to work
+        }).select('firstName lastName email location skills bio enrollments gsceResult isContactPublic isProgressPublic')
           .populate('userId', 'profilePicture');
         
         if (!students || students.length === 0) {
@@ -998,24 +1051,37 @@ const getEmployerPotentialStudentsById = asyncHandler(async (req, res) => {
         const endIndex = startIndex + Number(limit);
         const paginatedStudents = potentialStudents.slice(startIndex, endIndex);
         
-        // Format response data
-        const studentsWithDetails = paginatedStudents.map(match => ({
-            studentId: match.student._id,
-            studentDetails: {
-                firstName: match.student.firstName,
-                lastName: match.student.lastName,
-                email: match.student.email,
-                location: match.student.location,
-                skills: match.student.skills,
-                bio: match.student.bio,
-                profilePicture: match.student.userId?.profilePicture
-            },
-            matchPercentage: match.matchPercentage,
-            bestMatchJob: {
-                title: match.jobTitle,
-                id: match.jobId
-            }
-        }));
+        // Format response data (updated to respect privacy)
+        const studentsWithDetails = paginatedStudents.map(match => {
+            const student = match.student;
+            
+            // Build response conditionally based on privacy flags
+            const studentDetails = {
+                firstName: student.firstName,
+                lastName: student.lastName,
+                location: student.location,
+                skills: student.skills,
+                bio: student.bio,
+                profilePicture: student.userId?.profilePicture,
+                // Include contact only if public
+                ...(student.isContactPublic && { email: student.email }),
+                // Include progress only if public
+                ...(student.isProgressPublic && { 
+                    enrollments: student.enrollments,
+                    gsceResult: student.gsceResult
+                })
+            };
+            
+            return {
+                studentId: match.student._id,
+                studentDetails,
+                matchPercentage: match.matchPercentage,
+                bestMatchJob: {
+                    title: match.jobTitle,
+                    id: match.jobId
+                }
+            };
+        });
         
         const responseData = {
             employer: {

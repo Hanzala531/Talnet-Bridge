@@ -506,16 +506,46 @@ const getAllEmployers = asyncHandler(async (req, res) => {
   }
 });
 
-// get all schools for admin pannel 
+// get all schools for admin panel
 const getAllSchools = asyncHandler(async (req, res) => {
   try {
-    const schools = await User.find({ role: "school" }).select("-password -refreshToken");
-    return res.json(successResponse(schools, "Schools fetched successfully"));
+    // Use aggregation to fetch schools and their course counts
+    const schools = await User.aggregate([
+      // Match users with role "school"
+      { $match: { role: "school" } },
+      // Lookup TrainingInstitute to get course data
+      {
+        $lookup: {
+          from: "traininginstitutes", // Collection name for TrainingInstitute (adjust if different)
+          localField: "_id",
+          foreignField: "userId",
+          as: "institute"
+        }
+      },
+      // Unwind the institute array (optional, but ensures one document per school)
+      { $unwind: { path: "$institute", preserveNullAndEmptyArrays: true } },
+      // Add totalCourses field
+      {
+        $addFields: {
+          totalCourses: { $size: { $ifNull: ["$institute.courses", []] } } // Count courses, default to 0 if no institute
+        }
+      },
+      // Project fields to exclude sensitive data
+      {
+        $project: {
+          password: 0,
+          refreshToken: 0,
+          institute: 0 // Exclude the full institute object to keep response clean
+        }
+      }
+    ]);
+
+    return res.json(successResponse(schools, "Schools with course counts fetched successfully"));
   } catch (error) {
+    console.error("Error in getAllSchools:", error.message);
     throw internalServer("Failed to fetch schools");
   }
 });
-
 // Get analytics for admin pannel  in which we will have total number of students employers schools and revenue which will be calculated through subscriptions
 const adminAnalytics = asyncHandler(async (req, res) => {
   try {
