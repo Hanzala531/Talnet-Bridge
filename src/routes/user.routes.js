@@ -11,6 +11,7 @@ import {
     adminAnalytics,
     getPendingActions,
     updateUserStatus,
+    getStudentsByRegion,
     refreshAccessToken
 } from '../controllers/user.controllers.js';
 import { upload } from '../middlewares/Multer.middlewares.js';
@@ -1253,6 +1254,72 @@ userRouter.get('/pending-actions', requestLogger, verifyJWT, authorizeRoles('adm
  *         $ref: '#/components/responses/InternalServerError'
  */
 userRouter.patch('/:userId/status', requestLogger, verifyJWT, authorizeRoles('admin'), updateUserStatus);
+
+/**
+ * @swagger
+ * /api/v1/users/students-by-region:
+ *   get:
+ *     summary: Get students by region (Admin only)
+ *     description: Retrieve analytics on student distribution by region, extracted from student profile locations (Admin access required)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Students by region analytics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalStudents:
+ *                       type: integer
+ *                       example: 150
+ *                     regions:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           region:
+ *                             type: string
+ *                             example: "Punjab"
+ *                           count:
+ *                             type: integer
+ *                             example: 50
+ *                 message:
+ *                   type: string
+ *                   example: "Students by region analytics fetched successfully"
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Forbidden - Admin access required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 403
+ *                 message:
+ *                   type: string
+ *                   example: "Access denied. Admin role required."
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+userRouter.get('/students-by-region', requestLogger, verifyJWT, authorizeRoles('admin'), getStudentsByRegion);
 
 // Exporting the router
 export default userRouter

@@ -25,6 +25,7 @@ import { successResponse, createdResponse, badRequestResponse, notFoundResponse,
 import { uploadOnCloudinary } from '../utils/cloudinary.js'
 import jwt from "jsonwebtoken";
 import { sendWelcomeEmail } from "../services/welcomeEmail.service.js";
+import { Student } from "../models/student models/students.models.js"; // Add this import for Student model
 
 
 /**
@@ -606,6 +607,53 @@ const updateUserStatus = asyncHandler(async (req, res) => {
   }
 });
 
+// Get students by region  this api will work to calculate students by region in a way that we will check location from student profile and the second last part of location string will be region and that region will be check and a sort of analytics will be sent to frontend for admin panal like which regions have most students
+// Get students by region for admin analytics
+const getStudentsByRegion = asyncHandler(async (req, res) => {
+  try {
+    // Fetch all students with location data
+    const students = await Student.find({}).select("location").lean();
+
+    // Process locations to extract regions and count
+    const regionCounts = {};
+    let totalStudents = students.length;
+
+    students.forEach(student => {
+      let region = "Unknown"; // Default for invalid/null locations
+
+      if (student.location && typeof student.location === "string") {
+        const parts = student.location.split(",").map(part => part.trim());
+        if (parts.length >= 2) {
+          // Second last part is the region
+          region = parts[parts.length - 2].toLowerCase(); // Normalize to lowercase for grouping
+        } else if (parts.length === 1) {
+          // If only one part, use it as region
+          region = parts[0].toLowerCase();
+        }
+      }
+
+      // Capitalize first letter for display
+      region = region.charAt(0).toUpperCase() + region.slice(1);
+
+      // Count occurrences
+      regionCounts[region] = (regionCounts[region] || 0) + 1;
+    });
+
+    // Convert to sorted array for analytics
+    const regions = Object.entries(regionCounts)
+      .map(([region, count]) => ({ region, count }))
+      .sort((a, b) => b.count - a.count); // Sort by count descending
+
+    return res.json(successResponse({
+      totalStudents,
+      regions
+    }, "Students by region analytics fetched successfully"));
+  } catch (error) {
+    console.error("Error in getStudentsByRegion:", error.message);
+    throw internalServer("Failed to fetch students by region");
+  }
+});
+
 export {
   registerUser,
   loginUser,
@@ -618,6 +666,8 @@ export {
   getAllEmployers,
   getAllSchools, 
   adminAnalytics,
-  refreshAccessToken };
+  refreshAccessToken,
+  getStudentsByRegion
+};
 
 
