@@ -212,3 +212,102 @@ The Talent Bridge Team
     return { success: false, error: error.message };
   }
 };
+
+// 7-Day Email: Boost Your Profile – Don’t Miss Out!
+export const sendSevenDayEmail = async ({ email, name }) => {
+  const mailOptions = {
+    from: `"Apprenticeship Hub Team" <${process.env.GMAIL_USER}>`,
+    to: email,
+    subject: `Boost Your Profile – Don’t Miss Out!`,
+    text: `
+Hi ${name},
+
+We noticed you haven’t fully completed your profile yet. A complete profile means more visibility and faster connections with training opportunities and employers.
+
+Finish now and increase your chances of being matched!
+
+[Finish My Profile]
+
+Apprenticeship Hub – Connecting skills with opportunity.
+`,
+    html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>7-Day Reminder - Apprenticeship Hub</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 8px;">
+    <h2>Boost Your Profile – Don’t Miss Out!</h2>
+    <p>Hi ${name},</p>
+    <p>We noticed you haven’t fully completed your profile yet. A complete profile means more visibility and faster connections with training opportunities and employers.</p>
+    <p>Finish now and increase your chances of being matched!</p>
+    <p><a href="${process.env.PLATFORM_URL || 'https://yourplatform.com'}/profile" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Finish My Profile</a></p>
+    <p>Apprenticeship Hub – Connecting skills with opportunity.</p>
+  </div>
+</body>
+</html>
+`
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`7-Day email sent to ${email}`);
+    return { success: true };
+  } catch (error) {
+    console.error(`Failed to send 7-day email to ${email}:`, error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+// 30-Day Email: See How Others Are Succeeding on Apprenticeship Hub!
+export const sendThirtyDayEmail = async ({ email, name }) => {
+  const mailOptions = {
+    from: `"Apprenticeship Hub Team" <${process.env.GMAIL_USER}>`,
+    to: email,
+    subject: `See How Others Are Succeeding on Apprenticeship Hub!`,
+    text: `
+Hi ${name},
+
+Did you know? Sarah, a recent Apprenticeship Hub user, secured her apprenticeship within 3 weeks of signing up.
+
+Your next big opportunity could be waiting – let’s make it happen.
+
+[Explore New Opportunities]
+
+Keep moving forward,
+The Apprenticeship Hub Team
+`,
+    html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>30-Day Engagement - Apprenticeship Hub</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 8px;">
+    <h2>See How Others Are Succeeding on Apprenticeship Hub!</h2>
+    <p>Hi ${name},</p>
+    <p>Did you know? Sarah, a recent Apprenticeship Hub user, secured her apprenticeship within 3 weeks of signing up.</p>
+    <p>Your next big opportunity could be waiting – let’s make it happen.</p>
+    <p><a href="${process.env.PLATFORM_URL || 'https://yourplatform.com'}/opportunities" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Explore New Opportunities</a></p>
+    <p>Keep moving forward,<br>The Apprenticeship Hub Team</p>
+  </div>
+</body>
+</html>
+`
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`30-Day email sent to ${email}`);
+    return { success: true };
+  } catch (error) {
+    console.error(`Failed to send 30-day email to ${email}:`, error.message);
+    return { success: false, error: error.message };
+  }
+};

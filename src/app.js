@@ -107,6 +107,11 @@ app.get("/", (req, res) => {
   });
 });
 
+// ---------- Import and Activate Cron Jobs ---------- //
+import './cronJobs/emailCron.js'; // Import to activate the automated email cron job
+
+// ---------- Routes ---------- //
+
 // User routes
 app.use("/api/v1/users", userRouter);
 
@@ -147,7 +152,7 @@ app.use("/api/v1/webhooks", webhookRouter);
 app.use("/api/v1/notifications", notificationRouter);
 
 // email routes
-app.use('/api/v1/queiry' , emailRouter)
+app.use('/api/v1/email' , emailRouter)
 
 // CHAT FEATURE: mount chat routes
 import chatConversationRouter from "./routes/chat.conversation.routes.js";
@@ -163,3 +168,4 @@ app.use("*", (req, res) => {
 });
 
 export { app };
+

@@ -3,6 +3,7 @@ import {
     contactFormController
 } from  '../controllers/quiries.Controllers.js'
 import { requestLogger } from "../middlewares/ReqLog.middlewares.js";
+import { sendAutomatedEmails } from '../cronJobs/emailCron.js';
 
 
 const emailRouter = express.Router()
@@ -72,6 +73,48 @@ const emailRouter = express.Router()
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 emailRouter.post('/contact', requestLogger, contactFormController);
+
+/**
+ * @swagger
+ * /api/v1/email/test:
+ *   post:
+ *     summary: Send test automated emails
+ *     description: Manually triggers the sending of automated test emails.
+ *     tags: [Email]
+ *     responses:
+ *       200:
+ *         description: Test emails sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Test emails sent successfully."
+ *       500:
+ *         description: Failed to send test emails
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Failed to send test emails."
+ *                 error:
+ *                   type: string
+ *                   example: "Detailed error message"
+ */
+emailRouter.post('/test', async (req, res) => {
+  try {
+    await sendAutomatedEmails();
+    res.status(200).json({ message: 'Test emails sent successfully.' });
+  } catch (error) {
+    console.error('Error sending test emails:', error);
+    res.status(500).json({ message: 'Failed to send test emails.', error: error.message });
+  }
+});
 
 
 export default emailRouter
