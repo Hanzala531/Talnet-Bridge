@@ -607,8 +607,7 @@ const updateUserStatus = asyncHandler(async (req, res) => {
   }
 });
 
-// Get students by region  this api will work to calculate students by region in a way that we will check location from student profile and the second last part of location string will be region and that region will be check and a sort of analytics will be sent to frontend for admin panal like which regions have most students
-// Get students by region for admin analytics
+// Get students by region for admin analytics (Top 4 regions only)
 const getStudentsByRegion = asyncHandler(async (req, res) => {
   try {
     // Fetch all students with location data
@@ -644,10 +643,13 @@ const getStudentsByRegion = asyncHandler(async (req, res) => {
       .map(([region, count]) => ({ region, count }))
       .sort((a, b) => b.count - a.count); // Sort by count descending
 
+    // Limit to top 4 regions
+    const topRegions = regions.slice(0, 4);
+
     return res.json(successResponse({
       totalStudents,
-      regions
-    }, "Students by region analytics fetched successfully"));
+      topRegions
+    }, "Top 4 students by region analytics fetched successfully"));
   } catch (error) {
     console.error("Error in getStudentsByRegion:", error.message);
     throw internalServer("Failed to fetch students by region");
