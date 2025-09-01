@@ -244,6 +244,47 @@ const createJobPost = asyncHandler(async (req, res) => {
                 }
             });
         
+        // Notify schools about the new job posting
+        const schools = await User.find({ role: 'school' }).select('_id').lean();
+        const schoolIds = schools.map(school => school._id.toString());
+
+        if (schoolIds.length > 0) {
+            // Create notification data
+            const notificationData = {
+                title: "New Job Opportunity",
+                message: `A new job "${jobTitle}" has been posted by ${req.user.fullName || 'an employer'}. Check it out and encourage your students to apply!`,
+                type: "job_posted",
+                relatedEntity: {
+                    entityType: "job",
+                    entityId: job._id,
+                },
+                actionUrl: `/jobs/${job._id}`,
+                priority: "normal",
+                metadata: {
+                    jobId: job._id,
+                    jobTitle: jobTitle,
+                    employerId,
+                    company,
+                    location,
+                },
+            };
+
+            // Create bulk notifications for all schools
+            const notifications = await createBulkNotifications(schoolIds, notificationData);
+
+            // Send real-time notifications if Socket.IO is available
+            if (notifications.length > 0 && req.app.get('io')) {
+                const io = req.app.get('io');
+                notifications.forEach(notification => {
+                    sendRealTimeNotification(io, notification.recipient, notification);
+                });
+            }
+
+            console.log(`Sent job creation notifications to ${notifications.length} schools.`);
+        } else {
+            console.warn('No schools found to notify about the new job.');
+        }
+        
         return res.json(createdResponse(populatedJob, "Job created successfully with matched candidates."));
         
     } catch (error) {

@@ -5,54 +5,54 @@ import { ApiError } from "../utils/ApiError.js";
 import { successResponse } from "../utils/ApiResponse.js";
 
 // Main Stripe webhook handler
-const handleStripeWebhook = asyncHandler(async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const handleStripeWebhook = async (req, res) => {
+  try {
+    const event = req.body; // Parsed Stripe event
 
-    let event;
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object;
+        const subscriptionId = paymentIntent.metadata.subscriptionId; // Ensure metadata includes subscriptionId
+        const userId = paymentIntent.metadata.userId; // Ensure metadata includes userId
 
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    } catch (err) {return res.status(400).send(`Webhook Error: ${err.message}`);
+        if (subscriptionId && userId) {
+          // Update subscription status to 'active'
+          const subscription = await Subscription.findById(subscriptionId);
+          if (subscription) {
+            subscription.status = 'active';
+            await subscription.save();
+          }
+
+          // Update user status to 'success'
+          await User.findByIdAndUpdate(userId, { status: 'success' });
+
+          // Optional: Send notification to user
+          const user = await User.findById(userId).select('fullName').lean();
+          if (user) {
+            await createNotification({
+              recipient: userId,
+              title: "Payment Successful",
+              message: "Your payment has been confirmed, and your subscription is now active.",
+              type: "payment_success",
+              priority: "normal",
+            });
+          }
+
+          console.log(`Updated subscription ${subscriptionId} to active and user ${userId} to success.`);
+        }
+        break;
+
+      // Handle other events as needed
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
     }
 
-    // Handle the event
-    try {
-        switch (event.type) {
-            case 'payment_intent.succeeded':
-                await handlePaymentIntentSucceeded(event.data.object);
-                break;
-            
-            case 'payment_intent.payment_failed':
-                await handlePaymentIntentFailed(event.data.object);
-                break;
-            
-            case 'invoice.payment_succeeded':
-                await handleInvoicePaymentSucceededWebhook(event.data.object);
-                break;
-            
-            case 'invoice.payment_failed':
-                await handleInvoicePaymentFailedWebhook(event.data.object);
-                break;
-            
-            case 'customer.subscription.updated':
-                await handleCustomerSubscriptionUpdated(event.data.object);
-                break;
-            
-            case 'customer.subscription.deleted':
-                await handleCustomerSubscriptionDeleted(event.data.object);
-                break;
-            
-            case 'customer.subscription.trial_will_end':
-                await handleSubscriptionTrialWillEnd(event.data.object);
-                break;
-            
-            default:}
-
-        res.status(200).json({ received: true });
-    } catch (error) {res.status(500).json({ error: 'Failed to process webhook' });
-    }
-});
+    res.status(200).json({ received: true });
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(400).json({ error: 'Webhook handler failed' });
+  }
+};
 
 // Handle successful payment intent
 const handlePaymentIntentSucceeded = async (paymentIntent) => {

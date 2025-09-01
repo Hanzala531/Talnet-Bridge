@@ -644,9 +644,12 @@ const confirmPayment = asyncHandler(async (req, res) => {
                 subscription.status = 'active';
                 await subscription.save();
 
+                // Update user status to 'approved' after successful payment
+                await User.findByIdAndUpdate(userId, { status: 'approved' });
+
                 return res.json(
                     successResponse({
-                        message: "Payment successful and subscription activated",
+                        message: "Payment successful, subscription activated, and user status updated to approved",
                         paymentIntent
                     })
                 );

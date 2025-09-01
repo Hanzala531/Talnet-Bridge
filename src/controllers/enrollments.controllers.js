@@ -8,26 +8,26 @@ import {
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { badRequest, notFound, internalServer } from "../utils/ApiError.js";
 import { successResponse, createdResponse, badRequestResponse, notFoundResponse } from "../utils/ApiResponse.js";
+import { createNotification, sendRealTimeNotification } from '../services/notification.service.js';
 
 // ===============================
 // CREATE ENROLLMENT
 // ===============================
 const createEnrollment = asyncHandler(async (req, res) => {
     try {
-    const { courseId } = req.body;
+        const { courseId } = req.body;
         const studentId = req.user._id;
 
         // Validate course exists and is active
-        const course = await Course.findById(courseId).populate('trainingProvider', 'name email');
+        // Updated populate to include userId for notification
+        const course = await Course.findById(courseId).populate('trainingProvider', 'name email userId');
         if (!course) {
-            return res.json (notFoundResponse("Course not found"));
+            return res.json(notFoundResponse("Course not found"));
         }
 
         if (course.status !== 'approved') {
-            return res.json (badRequestResponse("Course is not available for enrollment"));
+            return res.json(badRequestResponse("Course is not available for enrollment"));
         }
-
-    // Optionally, check for course capacity if you want to keep this logic
 
         // Check if student already enrolled
         const existingEnrollment = await Enrollment.findOne({
@@ -37,7 +37,7 @@ const createEnrollment = asyncHandler(async (req, res) => {
         });
 
         if (existingEnrollment) {
-            return res.json (badRequestResponse("Already enrolled in this course"));
+            return res.json(badRequestResponse("Already enrolled in this course"));
         }
 
         // Create enrollment
@@ -55,8 +55,37 @@ const createEnrollment = asyncHandler(async (req, res) => {
                 { userId: studentId },
                 { $addToSet: { enrollments: enrollment._id } }
             );
-        }
 
+            // Get student details for notification
+            const student = await User.findById(studentId).select('fullName').lean();
+
+            if (student && course.trainingProvider?.userId) {
+                // Create notification for the school
+                const notification = await createNotification({
+                    recipient: course.trainingProvider.userId,
+                    title: "New Student Enrollment",
+                    message: `${student.fullName} has enrolled in your course: "${course.title}".`,
+                    type: "student_enrollment",
+                    relatedEntity: {
+                        entityType: "enrollment",
+                        entityId: enrollment._id,
+                    },
+                    actionUrl: `/school/enrollments/${enrollment._id}`, // Adjust URL as needed
+                    priority: "normal",
+                    metadata: {
+                        studentName: student.fullName,
+                        courseTitle: course.title,
+                        courseId,
+                        enrollmentId: enrollment._id,
+                    },
+                });
+
+                // Send real-time notification if Socket.IO is available
+                if (notification && req.app.get('io')) {
+                    sendRealTimeNotification(req.app.get('io'), course.trainingProvider.userId, notification);
+                }
+            }
+        }
 
         // Populate enrollment with course and student details
         const populatedEnrollment = await Enrollment.findById(enrollment._id)

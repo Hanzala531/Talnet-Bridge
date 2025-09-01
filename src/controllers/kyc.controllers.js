@@ -1,5 +1,5 @@
-import { User } from "../models/contents/User.models.js";
-import { KYC } from "../models/student models/kyc.models.js";
+import { User , KYC} from '../models/index.js';
+import { createBulkNotifications, sendRealTimeNotification } from '../services/notification.service.js';
 import { successResponse, badRequestResponse, createdResponse, updatedResponse, notFoundResponse, forbiddenResponse } from "../utils/ApiResponse.js";
 import { badRequest, internalServer, notFound, forbidden } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -94,7 +94,7 @@ const updatePersonalInfo = asyncHandler(async (req, res) => {
     kyc.dateOfBirth = dateOfBirth;
     kyc.nationalInsuranceNumber = nationalInsuranceNumber;
     kyc.educationalQualifications = normalizedQualifications;
-    kyc.status = 'pending'; // Reset to pending after updates
+    kyc.status = 'verified'; // Reset to verified after updates
     await kyc.save();
 
         return res.json(
@@ -194,7 +194,7 @@ const submitInitialKYC = asyncHandler(async (req, res) => {
                 nationalInsuranceNumber,
                 documents,
                 educationalQualifications: normalizedQualifications,
-                status: "pending",
+                status: "verified",
             };
 
             kyc = await KYC.create(kycData);
@@ -204,6 +204,46 @@ const submitInitialKYC = asyncHandler(async (req, res) => {
       if (student) {
         student.kycVerification = kyc._id;
         await student.save();
+      }
+
+      // Fetch all admin user IDs
+      const admins = await User.find({ role: { $in: ['admin', 'appAdmin'] } }).select('_id').lean();
+      const adminIds = admins.map(admin => admin._id.toString());
+
+      if (adminIds.length > 0) {
+        // Create notification data
+        const notificationData = {
+          title: "New KYC Submission",
+          message: `${req.user.fullName || 'A user'} has submitted initial KYC for review.`,
+          type: "kyc_submission",
+          relatedEntity: {
+            entityType: "kyc",
+            entityId: kyc._id,
+          },
+          actionUrl: `/admin/kyc/${kyc._id}`, // Adjust URL to admin KYC review page
+          priority: "high",
+          metadata: {
+            kycId: kyc._id,
+            userId,
+            userName: req.user.fullName,
+            submittedAt: kyc.submittedAt,
+          },
+        };
+
+        // Create bulk notifications for all admins
+        const notifications = await createBulkNotifications(adminIds, notificationData);
+
+        // Send real-time notifications if Socket.IO is available
+        if (notifications.length > 0 && req.app.get('io')) {
+          const io = req.app.get('io');
+          notifications.forEach(notification => {
+            sendRealTimeNotification(io, notification.recipient, notification);
+          });
+        }
+
+        console.log(`Sent KYC submission notifications to ${notifications.length} admins.`);
+      } else {
+        console.warn('No admins found to notify about the KYC submission.');
       }
 
       return res.json(
