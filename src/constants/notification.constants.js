@@ -4,32 +4,36 @@
  */
 
 // Notification Types
-export const NOTIFICATION_TYPES = {
+export const NOTIFICATION_TYPES = [
   // Course Related
-  COURSE_ENROLLMENT: 'course_enrollment',
-  COURSE_COMPLETION: 'course_completion',
-  COURSE_APPROVED: 'course_approved',
-  COURSE_REJECTED: 'course_rejected',
-  COURSE_CREATED: 'course_created',
-  CERTIFICATE_ISSUED: 'certificate_issued',
+  'course_enrollment',
+  'course_completion',
+  'course_approved',
+  'course_rejected',
+  'course_created',
+  'certificate_issued',
   
   // Job Related
-  JOB_APPLICATION: 'job_application',
-  INTERVIEW_SCHEDULED: 'interview_scheduled',
+  'job_application',
+  'interview_scheduled',
   
   // Payment Related
-  PAYMENT_RECEIVED: 'payment_received',
-  PAYMENT_FAILED: 'payment_failed',
+  'payment_received',
+  'payment_failed',
   
   // User Related
-  PROFILE_VERIFIED: 'profile_verified',
-  MESSAGE_RECEIVED: 'message_received',
+  'profile_verified',
+  'message_received',
   
   // System Related
-  SYSTEM_UPDATE: 'system_update',
-  SECURITY_ALERT: 'security_alert',
-  SUBSCRIPTION_EXPIRY: 'subscription_expiry'
-};
+  'system_update',
+  'security_alert',
+  'subscription_expiry',
+
+  // Additional Types
+  'kyc_update',
+  'job_posted'
+];
 
 // Notification Priorities
 export const NOTIFICATION_PRIORITIES = {

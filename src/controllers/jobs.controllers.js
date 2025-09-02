@@ -22,7 +22,9 @@ import { Job, Student, Employer } from "../models/index.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { badRequest, notFound, internalServer, forbidden } from "../utils/ApiError.js";
 import { successResponse, createdResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from "../utils/ApiResponse.js";
-
+import { User } from "../models/contents/User.models.js";
+import { createBulkNotifications } from "../services/notification.service.js";
+import { sendRealTimeNotification } from "../services/notification.service.js";
 
 
 
@@ -180,9 +182,7 @@ const createJobPost = asyncHandler(async (req, res) => {
                     isOpenToWork: true // Only consider students open to work
                 }).select('skills firstName lastName email location');
                 
-                console.log(`Found ${students.length} students for matching`);
-                console.log('Job skills required:', skillsRequired);
-                console.log('Sample student skills:', students[0]?.skills);
+            
                 
                 // Define matching options first
                 const skillNameMatchingOptions = {
@@ -202,14 +202,30 @@ const createJobPost = asyncHandler(async (req, res) => {
                 
                 // Find matching students with ≥20% match (store all potential matches)
                 const matchedStudents = findMatchingStudents(students, skillsRequired, 20, skillNameMatchingOptions);
-                
-                console.log(`Found ${matchedStudents.length} matching students with ≥20% skill match`);
-                console.log('Matched students details:', matchedStudents.map(m => ({ 
-                    student: m.student, 
-                    percentage: m.matchPercentage,
-                    name: m.studentData?.firstName + ' ' + m.studentData?.lastName
-                })));
-                
+
+                // Send real-time notifications to matched students
+                matchedStudents.forEach(match => {
+                    const notificationData = {
+                        title: "New Job Match",
+                        message: `You have a new job match for "${jobTitle}" with a ${match.matchPercentage}% skill match.`,
+                        type: "job_matched",
+                        relatedEntity: {
+                            entityType: "job",
+                            entityId: job._id,
+                        },
+                        actionUrl: `/jobs/${job._id}`,
+                        priority: "normal",
+                        metadata: {
+                            jobId: job._id,
+                            jobTitle: jobTitle,
+                            employerId: employer._id,
+                            company: employer.name,
+                            location,
+                        },
+                    };
+                    sendRealTimeNotification(match.student, notificationData);
+                });
+
                 // Format matched candidates for storage
                 const formattedMatches = matchedStudents.map(match => ({
                     student: match.student,
@@ -222,7 +238,7 @@ const createJobPost = asyncHandler(async (req, res) => {
                     matchedCandidates: formattedMatches
                 });
                 
-                console.log(`Job created with ${formattedMatches.length} matched candidates`);
+            
                 
             } catch (matchingError) {
                 console.error('Error finding matched candidates:', matchingError);
@@ -263,16 +279,20 @@ const createJobPost = asyncHandler(async (req, res) => {
                 metadata: {
                     jobId: job._id,
                     jobTitle: jobTitle,
-                    employerId,
-                    company,
+                    employerId: employer._id,
+                    company: employer.name,
                     location,
                 },
             };
 
-            // Create bulk notifications for all schools
-            const notifications = await createBulkNotifications(schoolIds, notificationData);
+            // Get all school user IDs
+            const schoolUsers = await User.find({ role: "school" }).select("_id").lean();
+            const schoolUserIds = schoolUsers.map(user => user._id.toString());
 
-            // Send real-time notifications if Socket.IO is available
+            // Send notifications to all school users
+            const notifications = await createBulkNotifications(schoolUserIds, notificationData);
+
+            // Optionally, send real-time notifications
             if (notifications.length > 0 && req.app.get('io')) {
                 const io = req.app.get('io');
                 notifications.forEach(notification => {

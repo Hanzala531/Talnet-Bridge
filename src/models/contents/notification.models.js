@@ -39,7 +39,9 @@ const notificationSchema = new mongoose.Schema({
             "subscription_expiry",
             "course_approved",
             "course_rejected",
-            "course_created"
+            "course_created",
+            "kyc_update",
+            "job_posted"
         ],
         required: true
     },
