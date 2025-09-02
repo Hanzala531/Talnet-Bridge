@@ -19,7 +19,6 @@ import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
 import { authorizeRoles } from '../middlewares/Role.middlewares.js';
 import { upload } from "../middlewares/Multer.middlewares.js";
-import { verify } from "jsonwebtoken";
 
 const schoolRouter = express.Router();
 
