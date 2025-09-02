@@ -8,7 +8,7 @@ import {
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { badRequest, notFound, internalServer } from "../utils/ApiError.js";
 import { successResponse, createdResponse, badRequestResponse, notFoundResponse } from "../utils/ApiResponse.js";
-import { createNotification, sendRealTimeNotification } from '../services/notification.service.js';
+import { createCourseEnrollmentNotification, createNotification, sendRealTimeNotification, createSchoolEnrollmentNotification } from '../services/notification.service.js';
 
 // ===============================
 // CREATE ENROLLMENT
@@ -25,9 +25,9 @@ const createEnrollment = asyncHandler(async (req, res) => {
             return res.json(notFoundResponse("Course not found"));
         }
 
-        if (course.status !== 'approved') {
-            return res.json(badRequestResponse("Course is not available for enrollment"));
-        }
+        // if (course.status !== 'approved') {
+        //     return res.json(badRequestResponse("Course is not available for enrollment"));
+        // }
 
         // Check if student already enrolled
         const existingEnrollment = await Enrollment.findOne({
@@ -46,6 +46,8 @@ const createEnrollment = asyncHandler(async (req, res) => {
             courseId
         });
 
+        let notification = null;
+        
         if (enrollment) {
             // Update course enrollment count
             await Course.findByIdAndUpdate(courseId, { $inc: { currentEnrollments: 1 } });
@@ -56,34 +58,69 @@ const createEnrollment = asyncHandler(async (req, res) => {
                 { $addToSet: { enrollments: enrollment._id } }
             );
 
-            // Get student details for notification
-            const student = await User.findById(studentId).select('fullName').lean();
+            // Get student name for school notification
+            const student = await User.findById(studentId).select('fullName');
+            const studentName = student?.fullName || 'A student';
 
-            if (student && course.trainingProvider?.userId) {
-                // Create notification for the school
-                const notification = await createNotification({
-                    recipient: course.trainingProvider.userId,
-                    title: "New Student Enrollment",
-                    message: `${student.fullName} has enrolled in your course: "${course.title}".`,
-                    type: "student_enrollment",
-                    relatedEntity: {
-                        entityType: "enrollment",
-                        entityId: enrollment._id,
-                    },
-                    actionUrl: `/school/enrollments/${enrollment._id}`, // Adjust URL as needed
-                    priority: "normal",
-                    metadata: {
-                        studentName: student.fullName,
-                        courseTitle: course.title,
-                        courseId,
-                        enrollmentId: enrollment._id,
-                    },
-                });
-
-                // Send real-time notification if Socket.IO is available
-                if (notification && req.app.get('io')) {
-                    sendRealTimeNotification(req.app.get('io'), course.trainingProvider.userId, notification);
+            // Sending notification to SCHOOL (training provider)
+            try {
+                console.log("=== SENDING NOTIFICATION TO SCHOOL ===");
+                console.log("Training provider user ID:", course.trainingProvider?.userId);
+                
+                if (course.trainingProvider?.userId) {
+                    const schoolNotification = await createSchoolEnrollmentNotification(
+                        course.trainingProvider.userId, 
+                        studentName, 
+                        course.title, 
+                        courseId
+                    );
+                    
+                    console.log("School notification created successfully:", schoolNotification ? "YES" : "NO");
+                    if (schoolNotification) {
+                        console.log("School notification ID:", schoolNotification._id);
+                        console.log("School notification recipient:", schoolNotification.recipient);
+                        
+                        // Send real-time notification to the school
+                        if (req.app.get('io')) {
+                            try {
+                                sendRealTimeNotification(req.app.get('io'), course.trainingProvider.userId, schoolNotification);
+                                console.log("Real-time notification sent to school");
+                            } catch (socketError) {
+                                console.error("Failed to send real-time notification to school:", socketError);
+                            }
+                        }
+                    }
+                } else {
+                    console.warn("⚠️ No training provider user ID found for course:", courseId);
                 }
+            } catch (schoolNotificationError) {
+                console.error("Failed to create school enrollment notification:", schoolNotificationError);
+                console.error("Error stack:", schoolNotificationError.stack);
+                // Don't throw error - enrollment was successful, notification failure shouldn't break it
+            }
+
+            // Optional: Also send confirmation to student (you can remove this if not needed)
+            try {
+                console.log("=== SENDING NOTIFICATION TO STUDENT ===");
+                const studentNotification = await createCourseEnrollmentNotification(studentId, course.title, courseId);
+                
+                console.log("Student notification created successfully:", studentNotification ? "YES" : "NO");
+                if (studentNotification) {
+                    console.log("Student notification ID:", studentNotification._id);
+                    
+                    // Send real-time notification to the student
+                    if (req.app.get('io')) {
+                        try {
+                            sendRealTimeNotification(req.app.get('io'), studentId, studentNotification);
+                            console.log("Real-time notification sent to student");
+                        } catch (socketError) {
+                            console.error("Failed to send real-time notification to student:", socketError);
+                        }
+                    }
+                }
+            } catch (studentNotificationError) {
+                console.error("Failed to create student enrollment notification:", studentNotificationError);
+                // Don't throw error - enrollment was successful, notification failure shouldn't break it
             }
         }
 

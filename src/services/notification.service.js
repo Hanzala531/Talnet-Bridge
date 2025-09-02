@@ -22,14 +22,43 @@ import { ApiError } from "../utils/ApiError.js";
  */
 export async function createNotification(data) {
   try {
+    console.log("=== CREATE NOTIFICATION DEBUG ===");
+    console.log("Input data:", JSON.stringify(data, null, 2));
+    
+    // Validate input data
+    if (!data.recipient) {
+      throw new ApiError(400, "Recipient is required");
+    }
+    if (!data.title) {
+      throw new ApiError(400, "Title is required");
+    }
+    if (!data.message) {
+      throw new ApiError(400, "Message is required");
+    }
+    if (!data.type) {
+      throw new ApiError(400, "Type is required");
+    }
+    
     // Validate recipient exists
+    console.log("Looking for user with ID:", data.recipient);
     const recipient = await User.findById(data.recipient).select("_id fullName email role");
+    console.log("Recipient found:", recipient ? "YES" : "NO");
+    if (recipient) {
+      console.log("Recipient details:", {
+        id: recipient._id,
+        name: recipient.fullName,
+        email: recipient.email,
+        role: recipient.role
+      });
+    }
+    
     if (!recipient) {
+      console.error("❌ Recipient user not found for ID:", data.recipient);
       throw new ApiError(404, "Recipient user not found");
     }
 
     // Create notification (Web App Only)
-    const notification = new Notification({
+    const notificationData = {
       recipient: data.recipient,
       title: data.title,
       message: data.message,
@@ -45,25 +74,44 @@ export async function createNotification(data) {
           deliveredAt: new Date()
         }
       }
-    });
-
-    await notification.save();
-
-    // Clear cache for user notifications
-    const cacheKeys = [
-      `notifications:${data.recipient}:*`,
-      `notification:count:${data.recipient}`,
-    ];
+    };
     
-    for (const pattern of cacheKeys) {
-      const keys = await redisClient.keys(pattern);
-      if (keys.length > 0) {
-        await redisClient.del(...keys);
+    console.log("Creating notification with data:", JSON.stringify(notificationData, null, 2));
+    
+    const notification = new Notification(notificationData);
+    await notification.save();
+    
+    console.log("✅ Notification saved successfully:", notification._id);
+
+    // Clear cache for user notifications (optional - don't fail if Redis is down)
+    try {
+      if (redisClient && redisClient.status === 'ready') {
+        const cacheKeys = [
+          `notifications:${data.recipient}:*`,
+          `notification:count:${data.recipient}`,
+        ];
+        
+        for (const pattern of cacheKeys) {
+          const keys = await redisClient.keys(pattern);
+          if (keys.length > 0) {
+            await redisClient.del(...keys);
+          }
+        }
+        console.log("✅ Cache cleared successfully");
+      } else {
+        console.log("ℹ️ Redis not available, skipping cache clear");
       }
+    } catch (cacheError) {
+      console.warn("⚠️ Failed to clear Redis cache (notification still created):", cacheError.message);
+      // Don't throw - notification was created successfully
     }
 
     return notification;
   } catch (error) {
+    console.error("❌ NOTIFICATION CREATION FAILED:");
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    console.error("Input data was:", JSON.stringify(data, null, 2));
     throw new ApiError(500, `Failed to create notification: ${error.message}`);
   }
 }
@@ -285,7 +333,9 @@ export function sendRealTimeNotification(io, userId, notification) {
  * @returns {Promise<Object>} Created notification
  */
 export async function createCourseEnrollmentNotification(studentId, courseTitle, courseId) {
-  return await createNotification({
+
+  
+  const notificationData = {
     recipient: studentId,
     title: "Course Enrollment Confirmed",
     message: `You have successfully enrolled in ${courseTitle}. You can now access all course materials and start learning immediately.`,
@@ -296,7 +346,44 @@ export async function createCourseEnrollmentNotification(studentId, courseTitle,
     },
     actionUrl: `/courses/${courseId}`,
     priority: "normal",
-  });
+  };
+  
+  console.log("Calling createNotification with:", JSON.stringify(notificationData, null, 2));
+  
+  return await createNotification(notificationData);
+}
+
+/**
+ * Create notification for course enrollment (to school/training provider)
+ * @param {string} schoolUserId - School/training provider user ID
+ * @param {string} studentName - Name of the student who enrolled
+ * @param {string} courseTitle - Course title
+ * @param {string} courseId - Course ID
+ * @returns {Promise<Object>} Created notification
+ */
+export async function createSchoolEnrollmentNotification(schoolUserId, studentName, courseTitle, courseId) {
+  console.log("=== CREATE SCHOOL ENROLLMENT NOTIFICATION ===");
+  console.log("School User ID:", schoolUserId);
+  console.log("Student Name:", studentName);
+  console.log("Course Title:", courseTitle);
+  console.log("Course ID:", courseId);
+
+  const notificationData = {
+    recipient: schoolUserId,
+    title: "New Student Enrollment",
+    message: `${studentName} has enrolled in your course "${courseTitle}". Check your dashboard for enrollment details.`,
+    type: "course_enrollment",
+    relatedEntity: {
+      entityType: "course",
+      entityId: courseId,
+    },
+    actionUrl: `/school/courses/${courseId}/enrollments`,
+    priority: "normal",
+  };
+
+  console.log("Calling createNotification with:", JSON.stringify(notificationData, null, 2));
+
+  return await createNotification(notificationData);
 }
 
 /**

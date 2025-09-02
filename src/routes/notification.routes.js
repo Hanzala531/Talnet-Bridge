@@ -12,7 +12,8 @@ import {
     bulkDeleteNotifications,
     getNotificationPreferences,
     updateNotificationPreferences,
-    getNonMessageNotifications
+    getNonMessageNotifications,
+    createTestNotification
 } from '../controllers/notification.controllers.js';
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
@@ -855,5 +856,8 @@ notificationRouter.patch('/preferences', requestLogger, verifyJWT, updateNotific
  *               $ref: '#/components/schemas/NotificationResponse'
  */
 notificationRouter.get('/other', requestLogger, verifyJWT, getNonMessageNotifications);
+
+// TEST ENDPOINT - Remove in production
+notificationRouter.post('/test', requestLogger, verifyJWT, createTestNotification);
 
 export default notificationRouter;
