@@ -173,12 +173,12 @@ const createCourse = asyncHandler(async (req, res) => {
     const coverImageUpload = await uploadOnCloudinary(coverImagePath);
     const instructorImageUpload = await uploadOnCloudinary(instructorImagePath);
 
-    if (!coverImageUpload || !instructorImageUpload){
-      if(coverImagePath) fs.unlinkSync(coverImagePath);
-      if(instructorImagePath) fs.unlinkSync(instructorImagePath);
-      return res.json(
-        serverErrorResponse("Failed to upload images due to some issue")
-      )};
+    // if (!coverImageUpload || !instructorImageUpload){
+    //   if(coverImagePath) fs.unlinkSync(coverImagePath);
+    //   if(instructorImagePath) fs.unlinkSync(instructorImagePath);
+    //   return res.json(
+    //     serverErrorResponse("Failed to upload images due to some issue")
+    //   )};
 
     const course = await Course.create({
       coverImage: coverImageUpload.url,
