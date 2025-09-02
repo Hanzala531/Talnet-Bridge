@@ -90,10 +90,6 @@ const getUserNotifications = asyncHandler(async (req, res) => {
         const userId = req.user._id;
         const { page = 1, limit = 10, unread, type, sort = '-createdAt' } = req.query;
 
-        console.log("=== GET USER NOTIFICATIONS DEBUG ===");
-        console.log("User ID:", userId);
-        console.log("Query params:", { page, limit, unread, type, sort });
-
         // Create cache key
         const cacheKey = `notifications:${userId}:${page}:${limit}:${unread || 'all'}:${type || 'all'}:${sort}`;
         
@@ -102,13 +98,6 @@ const getUserNotifications = asyncHandler(async (req, res) => {
         try {
             if (redisClient && redisClient.status === 'ready') {
                 cached = await redisClient.get(cacheKey);
-                if (cached) {
-                    console.log("✅ Found cached notifications");
-                    return res.status(200).json(JSON.parse(cached));
-                }
-                console.log("ℹ️ No cached notifications found");
-            } else {
-                console.log("ℹ️ Redis not available, skipping cache");
             }
         } catch (cacheError) {
             console.warn("⚠️ Redis cache failed, continuing without cache:", cacheError.message);
@@ -122,12 +111,10 @@ const getUserNotifications = asyncHandler(async (req, res) => {
             filter.type = type;
         }
 
-        console.log("Database filter:", JSON.stringify(filter, null, 2));
 
         const skip = (page - 1) * Math.min(limit, 50);
         const limitNum = Math.min(Number(limit), 50);
 
-        console.log("Pagination: skip =", skip, "limit =", limitNum);
 
         const [notifications, total, unreadCount] = await Promise.all([
             Notification.find(filter)
@@ -140,20 +127,6 @@ const getUserNotifications = asyncHandler(async (req, res) => {
             Notification.countDocuments({ recipient: userId, status: 'unread' })
         ]);
 
-        console.log("Database results:");
-        console.log("- Found notifications:", notifications.length);
-        console.log("- Total count:", total);
-        console.log("- Unread count:", unreadCount);
-        
-        if (notifications.length > 0) {
-            console.log("Sample notification:", {
-                id: notifications[0]._id,
-                title: notifications[0].title,
-                type: notifications[0].type,
-                status: notifications[0].status,
-                recipient: notifications[0].recipient
-            });
-        }
 
         const response = successResponse(200, {
             notifications,
@@ -173,10 +146,7 @@ const getUserNotifications = asyncHandler(async (req, res) => {
         try {
             if (redisClient && redisClient.status === 'ready') {
                 await redisClient.setEx(cacheKey, 120, JSON.stringify(response));
-                console.log("✅ Response cached successfully");
-            } else {
-                console.log("ℹ️ Redis not available, skipping cache");
-            }
+            } 
         } catch (cacheError) {
             console.warn("⚠️ Failed to cache response:", cacheError.message);
         }

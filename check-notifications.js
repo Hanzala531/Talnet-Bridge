@@ -21,18 +21,10 @@ async function checkNotifications() {
       .select('recipient title type status createdAt')
       .populate('recipient', 'fullName email');
 
-    console.log("\n📋 Sample notifications:");
-    notifications.forEach((notif, index) => {
-      console.log(`${index + 1}. ${notif.title} (${notif.type})`);
-      console.log(`   Recipient: ${notif.recipient?.fullName} (${notif.recipient?._id})`);
-      console.log(`   Status: ${notif.status}`);
-      console.log(`   Created: ${notif.createdAt}`);
-      console.log("---");
-    });
+   
 
     // Check users
     const totalUsers = await User.countDocuments();
-    console.log(`\n👥 Total users in database: ${totalUsers}`);
 
     const sampleUser = await User.findOne().select('_id fullName email role');
     if (sampleUser) {
@@ -45,7 +37,6 @@ async function checkNotifications() {
 
       // Check notifications for this user
       const userNotifications = await Notification.find({ recipient: sampleUser._id });
-      console.log(`\n🔔 Notifications for ${sampleUser.fullName}: ${userNotifications.length}`);
     }
 
   } catch (error) {

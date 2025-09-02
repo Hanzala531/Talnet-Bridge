@@ -381,7 +381,6 @@ export async function createSchoolEnrollmentNotification(schoolUserId, studentNa
     priority: "normal",
   };
 
-  console.log("Calling createNotification with:", JSON.stringify(notificationData, null, 2));
 
   return await createNotification(notificationData);
 }
