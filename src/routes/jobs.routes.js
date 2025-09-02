@@ -105,35 +105,7 @@ const jobsRouter = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-jobsRouter.get('/', requestLogger, jobsCache, getAllJobs);
-
-/**
- * @swagger
- * /api/v1/jobs/{id}:
- *   get:
- *     summary: Get a job by ID
- *     description: Retrieve detailed information about a specific job posting including company details and requirements
- *     tags: [Jobs]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Job unique identifier
- *         example: "64f789abc123def456789012"
- *     responses:
- *       200:
- *         description: Job retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Job'
- *       404:
- *         $ref: '#/components/responses/NotFoundError'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
+jobsRouter.get('/', requestLogger, jobsCache, authorizeRoles('school'), getAllJobs);
 
 /**
  * @swagger
@@ -645,7 +617,7 @@ jobsRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('employer'), 
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-jobsRouter.get('/search/advanced', requestLogger, jobsCache, searchJobs);
+jobsRouter.get('/search/advanced', requestLogger, jobsCache, authorizeRoles('school', 'employer'), searchJobs);
 
 /**
  * @swagger
@@ -721,7 +693,7 @@ jobsRouter.get('/my/posts', requestLogger, verifyJWT, authorizeRoles('employer')
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
+jobsRouter.get('/:id', requestLogger, jobsCache,authorizeRoles('school', 'employer'), getJobById);
 
 /**
  * @swagger
@@ -763,6 +735,6 @@ jobsRouter.get('/:id', requestLogger, jobsCache, getJobById);
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-jobsRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('employer', 'admin'), updateJobStatus);
+jobsRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('employer'), updateJobStatus);
 
 export default jobsRouter;

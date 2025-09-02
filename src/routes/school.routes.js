@@ -72,7 +72,7 @@ const schoolRouter = express.Router();
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-schoolRouter.get('/', requestLogger, getAllTrainingProviders);
+schoolRouter.get('/', requestLogger, authorizeRoles('student'), getAllTrainingProviders);
 
 /**
  * @swagger
@@ -116,7 +116,7 @@ schoolRouter.get('/', requestLogger, getAllTrainingProviders);
  *       400:
  *         $ref: '#/components/responses/ValidationError'
  */
-schoolRouter.get('/search', requestLogger, searchTrainingProviders);
+schoolRouter.get('/search', requestLogger,authorizeRoles('student' , 'school'), searchTrainingProviders);
 
 /**
  * @swagger
@@ -553,7 +553,7 @@ schoolRouter.get(
   '/match-students',
   requestLogger,
   verifyJWT,
-  authorizeRoles('school',"employer" , 'admin'),
+  authorizeRoles('school'),
   matchStudents
 );
 
@@ -644,32 +644,6 @@ schoolRouter.get(
   studentsDirectory
 );
 
-
-/**
- * @swagger
- * /api/v1/schools/{id}:
- *   get:
- *     summary: Get training provider by ID
- *     tags: [Training Providers]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Training provider ID
- *     responses:
- *       200:
- *         description: Training provider retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/School'
- *       404:
- *         $ref: '#/components/responses/NotFoundError'
- */
-
-// Route for employer directory
 /**
  * @swagger
  * /api/v1/schools/employers-directory:
@@ -831,7 +805,7 @@ schoolRouter.get('/:id', requestLogger, getTrainingProviderById);
  *       404:
  *         description: Training provider not found
  */
-schoolRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('admin'), updateTrainingProviderStatus);
+schoolRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('school'), updateTrainingProviderStatus);
 
 /**
  * @swagger
@@ -858,7 +832,7 @@ schoolRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles('admi
  *       404:
  *         description: Training provider not found
  */
-schoolRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('admin'), deleteTrainingProvider);
+schoolRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('school'), deleteTrainingProvider);
 
 // Export the router
 export default schoolRouter;

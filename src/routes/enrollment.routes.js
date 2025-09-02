@@ -243,124 +243,7 @@ enrollmentRouter.post('/', requestLogger, verifyJWT, authorizeRoles('student'), 
  *       401:
  *         description: Unauthorized
  */
-enrollmentRouter.get('/', requestLogger, verifyJWT, authorizeRoles('student'), getUserEnrollments);
-
-/**
- * @swagger
- * /api/v1/enrollments/{id}:
- *   get:
- *     summary: Get enrollment by ID
- *     tags: [Enrollments]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Enrollment ID
- *         example: "64f123abc456def789012345"
- *     responses:
- *       200:
- *         description: Enrollment retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Enrollment fetched successfully"
- *                 data:
- *                   type: object
- *                   properties:
- *                     enrollment:
- *                       $ref: '#/components/schemas/Enrollment'
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Access denied
- *       404:
- *         description: Enrollment not found
- */
-
-/**
- * @swagger
- * /api/v1/enrollments/{id}/status:
- *   patch:
- *     summary: Update enrollment status
- *     tags: [Enrollments]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Enrollment ID
- *         example: "64f123abc456def789012345"
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               status:
- *                 type: string
- *                 enum: [enrolled, in-progress, completed, withdrawn, suspended]
- *                 example: "in-progress"
- *               progressPercentage:
- *                 type: number
- *                 minimum: 0
- *                 maximum: 100
- *                 example: 75
- *               completionDate:
- *                 type: string
- *                 format: date-time
- *                 example: "2025-09-20T15:30:00.000Z"
- *     responses:
- *       200:
- *         description: Enrollment status updated successfully
- *       400:
- *         description: Invalid status value or access denied
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Enrollment not found
- */
-
-/**
- * @swagger
- * /api/v1/enrollments/{id}/withdraw:
- *   patch:
- *     summary: Withdraw from course
- *     tags: [Enrollments]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Enrollment ID
- *         example: "64f123abc456def789012345"
- *     responses:
- *       200:
- *         description: Successfully withdrawn from course
- *       400:
- *         description: Already withdrawn or course completed
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Enrollment not found
- */
+enrollmentRouter.get('/', requestLogger, verifyJWT, authorizeRoles('student' , 'school' ), getUserEnrollments);
 
 /**
  * @swagger
@@ -596,7 +479,7 @@ enrollmentRouter.get('/:id', requestLogger, verifyJWT, getEnrollmentById);
  *       404:
  *         description: Enrollment not found
  */
-enrollmentRouter.patch('/:id/status', requestLogger, verifyJWT, updateEnrollmentStatus);
+enrollmentRouter.patch('/:id/status', requestLogger, verifyJWT, authorizeRoles( 'school'), updateEnrollmentStatus);
 
 /**
  * @swagger

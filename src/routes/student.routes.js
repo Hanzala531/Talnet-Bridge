@@ -270,7 +270,7 @@ studentRouter.post('/', requestLogger, verifyJWT, authorizeRoles('student'), cre
  *       403:
  *         $ref: '#/components/responses/ForbiddenError'
  */
-studentRouter.get('/', requestLogger, verifyJWT, authorizeRoles('admin'), getAllStudents);
+studentRouter.get('/', requestLogger, verifyJWT, authorizeRoles('school'), getAllStudents);
 
 /**
  * @swagger
@@ -942,7 +942,7 @@ studentRouter.get('/certifications/:id', requestLogger,verifyJWT , authorizeRole
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-studentRouter.put('/certifications/:id', requestLogger, verifyJWT, authorizeRoles('admin'), updateCertification);
+studentRouter.put('/certifications/:id', requestLogger, verifyJWT, authorizeRoles('school'), updateCertification);
 
 /**
  * @swagger
@@ -973,7 +973,7 @@ studentRouter.put('/certifications/:id', requestLogger, verifyJWT, authorizeRole
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-studentRouter.delete('/certifications/:id', requestLogger, verifyJWT, authorizeRoles('admin'), deleteCertification);
+studentRouter.delete('/certifications/:id', requestLogger, verifyJWT, authorizeRoles('school'), deleteCertification);
 
 // =============================================
 // ADDITIONAL ROUTES
@@ -1015,7 +1015,7 @@ studentRouter.delete('/certifications/:id', requestLogger, verifyJWT, authorizeR
  *       409:
  *         $ref: '#/components/responses/ConflictError'
  */
-studentRouter.post('/skills', requestLogger, verifyJWT, addSkills);
+studentRouter.post('/skills', requestLogger, verifyJWT, authorizeRoles('student'), addSkills);
 
 /**
  * @swagger
@@ -1047,7 +1047,7 @@ studentRouter.post('/skills', requestLogger, verifyJWT, addSkills);
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-studentRouter.delete('/skills/:skill', requestLogger, verifyJWT, removeSkill);
+studentRouter.delete('/skills/:skill', requestLogger, verifyJWT, authorizeRoles('student'), removeSkill);
 
 // =============================================
 // PRIVACY SETTINGS ROUTES
@@ -1495,7 +1495,7 @@ studentRouter.get('/dashboard', requestLogger, verifyJWT, authorizeRoles('studen
  */
 studentRouter.get('/currently-enrolled', requestLogger, verifyJWT, authorizeRoles('student'), getCurrentlyEnrolledCourses);
 
-// =============================================
+// =============================================admin
 // PARAMETRIC ID ROUTES (MUST BE AT END)
 // =============================================
 
@@ -1602,7 +1602,7 @@ studentRouter.delete('/:id', requestLogger, verifyJWT, authorizeRoles('admin'), 
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-studentRouter.post('/:id/certifications', requestLogger, verifyJWT, addCertification);
+studentRouter.post('/:id/certifications', requestLogger, verifyJWT, authorizeRoles('student'), addCertification);
 
 // =============================================
 // EXPORT ROUTER
