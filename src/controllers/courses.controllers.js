@@ -202,13 +202,13 @@ const createCourse = asyncHandler(async (req, res) => {
     await school.save();
 
     // // Send notifications to students who have enrolled in courses from this school
-    // try {
-    //   const io = req.app.get("io"); // Get socket.io instance
-    //   await createCourseCreationNotifications(course, school.name, io);
-    // } catch (notificationError) {
-    //   // Log the error but don't fail the course creation
-    //   console.error("Failed to send course creation notifications:", notificationError);
-    // }
+    try {
+      const io = req.app.get("io"); // Get socket.io instance
+      await createCourseCreationNotifications(course, school.name, io);
+    } catch (notificationError) {
+      // Log the error but don't fail the course creation
+      console.error("Failed to send course creation notifications:", notificationError);
+    }
 
     return res.json(
       createdResponse({ course }, "Course created successfully")
