@@ -167,6 +167,7 @@ const createJobPost = asyncHandler(async (req, res) => {
             postedBy: employer._id, // Use employer ID, not user ID
             category,
             applicationDeadline,
+            status : "active",
             matchedCandidates: [] // Initialize empty array
         });
         
