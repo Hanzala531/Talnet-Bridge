@@ -826,74 +826,38 @@ const employerDirectory = asyncHandler(async (req, res) => {
   }
 });
 
-// controller for dashboard (school-specific, filtered by current user)
+// controller for dashboard (aggregation-based, no helper functions)
 const dashboardController = asyncHandler(async (req, res) => {
  try {
-    const userId = req.user._id;
+    // Calculate total enrollments
+    const totalEnrollments = await Enrollment.countDocuments();
 
-    // First, find the school profile for this user
-    const school = await TrainingInstitute.findOne({ userId });
-    if (!school) {
-      return res.json(notFoundResponse("School profile not found"));
-    }
-
-    // Get all courses created by this school
-    const schoolCourses = await Course.find({ trainingProvider: userId });
-    const schoolCourseIds = schoolCourses.map(course => course._id);
-
-    // Calculate total enrollments for THIS SCHOOL'S courses only
-    const totalEnrollments = await Enrollment.countDocuments({
-      courseId: { $in: schoolCourseIds }
-    });
-
-    // Calculate completion rate for THIS SCHOOL'S courses only
-    const completedEnrollments = await Enrollment.countDocuments({
-      courseId: { $in: schoolCourseIds },
-      status: "completed"
-    });
+    // Calculate completion rate
+    const completedEnrollments = await Enrollment.countDocuments({ status: "completed" });
     const completionRate = totalEnrollments > 0 
       ? ((completedEnrollments / totalEnrollments) * 100).toFixed(2) 
       : 0;
 
-    // Calculate revenue from THIS SCHOOL'S courses only
-    const enrollments = await Enrollment.find({
-      courseId: { $in: schoolCourseIds }
-    })
+    // Calculate monthly revenue
+    const enrollments = await Enrollment.find()
       .populate("courseId", "price")
       .lean();
-    
     const totalRevenue = enrollments.reduce((sum, enrollment) => {
       return sum + (enrollment.courseId?.price || 0);
     }, 0);
 
-    // Calculate active courses for THIS SCHOOL only
-    const activeCourses = await Course.countDocuments({
-      trainingProvider: userId,
-      status: "approved"
-    });
-
-    // Additional school-specific metrics
-    const pendingCourses = await Course.countDocuments({
-      trainingProvider: userId,
-      status: "pending_approval"
-    });
-
-    const totalCourses = await Course.countDocuments({
-      trainingProvider: userId
-    });
+    // Calculate active courses
+    const activeCourses = await Course.countDocuments({ status: "approved" });
 
     return res.json(
       successResponse(
         {
-
-          dashboard : {
-            totalEnrollments,
-            completionRate: `${completionRate}%`,
-            totalRevenue,
-            activeCourses 
-          }
+          totalEnrollments,
+          completionRate,
+          totalRevenue,
+          activeCourses,
         },
-        "School dashboard statistics calculated successfully"
+        "Dashboard statistics calculated successfully",
       )
     );
   } catch (error) {
