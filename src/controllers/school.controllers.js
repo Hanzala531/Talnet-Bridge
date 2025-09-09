@@ -885,23 +885,12 @@ const dashboardController = asyncHandler(async (req, res) => {
     return res.json(
       successResponse(
         {
-          school: {
-            name: school.name,
-            id: school._id
-          },
-          enrollments: {
-            total: totalEnrollments,
-            completed: completedEnrollments,
-            completionRate: parseFloat(completionRate)
-          },
-          revenue: {
-            total: totalRevenue,
-            currency: "PKR" // or whatever currency you use
-          },
-          courses: {
-            total: totalCourses,
-            active: activeCourses,
-            pending: pendingCourses
+
+          dashboard : {
+            totalEnrollments,
+            completionRate: `${completionRate}%`,
+            totalRevenue,
+            activeCourses 
           }
         },
         "School dashboard statistics calculated successfully"
