@@ -16,6 +16,12 @@ import jobsRouter from "./routes/jobs.routes.js";
 import studentRouter from "./routes/student.routes.js";
 import kycRouter from "./routes/kyc.routes.js";
 import enrollmentRouter from "./routes/enrollment.routes.js";
+// CHAT FEATURE: mount chat routes
+import chatConversationRouter from "./routes/chat.conversation.routes.js";
+import chatMessageRouter from "./routes/chat.message.routes.js";
+import adminRouter from "./routes/admin.routes.js";
+import emailRouter from "./routes/email.routes.js";
+
 // Swagger imports
 import { setupSwagger } from "../swagger.js";
 
@@ -116,7 +122,7 @@ import './cronJobs/emailCron.js'; // Import to activate the automated email cron
 app.use("/api/v1/users", userRouter);
 
 // admin register
-app.use("/api/v1/appAdmin" , adminRouter)
+app.use("/api/v1/admin" , adminRouter)
 
 // Course routes
 app.use("/api/v1/courses", courseRouter);
@@ -154,11 +160,8 @@ app.use("/api/v1/notifications", notificationRouter);
 // email routes
 app.use('/api/v1/email' , emailRouter)
 
-// CHAT FEATURE: mount chat routes
-import chatConversationRouter from "./routes/chat.conversation.routes.js";
-import chatMessageRouter from "./routes/chat.message.routes.js";
-import adminRouter from "./routes/admin.routes.js";
-import emailRouter from "./routes/email.routes.js";
+
+
 app.use("/api/v1/chat", chatConversationRouter);
 app.use("/api/v1/chat/messages", chatMessageRouter);
 
