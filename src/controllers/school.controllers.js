@@ -826,38 +826,85 @@ const employerDirectory = asyncHandler(async (req, res) => {
   }
 });
 
-// controller for dashboard (aggregation-based, no helper functions)
+// controller for dashboard (school-specific, filtered by current user)
 const dashboardController = asyncHandler(async (req, res) => {
  try {
-    // Calculate total enrollments
-    const totalEnrollments = await Enrollment.countDocuments();
+    const userId = req.user._id;
 
-    // Calculate completion rate
-    const completedEnrollments = await Enrollment.countDocuments({ status: "completed" });
+    // First, find the school profile for this user
+    const school = await TrainingInstitute.findOne({ userId });
+    if (!school) {
+      return res.json(notFoundResponse("School profile not found"));
+    }
+
+    // Get all courses created by this school
+    const schoolCourses = await Course.find({ trainingProvider: userId });
+    const schoolCourseIds = schoolCourses.map(course => course._id);
+
+    // Calculate total enrollments for THIS SCHOOL'S courses only
+    const totalEnrollments = await Enrollment.countDocuments({
+      courseId: { $in: schoolCourseIds }
+    });
+
+    // Calculate completion rate for THIS SCHOOL'S courses only
+    const completedEnrollments = await Enrollment.countDocuments({
+      courseId: { $in: schoolCourseIds },
+      status: "completed"
+    });
     const completionRate = totalEnrollments > 0 
       ? ((completedEnrollments / totalEnrollments) * 100).toFixed(2) 
       : 0;
 
-    // Calculate monthly revenue
-    const enrollments = await Enrollment.find()
+    // Calculate revenue from THIS SCHOOL'S courses only
+    const enrollments = await Enrollment.find({
+      courseId: { $in: schoolCourseIds }
+    })
       .populate("courseId", "price")
       .lean();
+    
     const totalRevenue = enrollments.reduce((sum, enrollment) => {
       return sum + (enrollment.courseId?.price || 0);
     }, 0);
 
-    // Calculate active courses
-    const activeCourses = await Course.countDocuments({ status: "approved" });
+    // Calculate active courses for THIS SCHOOL only
+    const activeCourses = await Course.countDocuments({
+      trainingProvider: userId,
+      status: "approved"
+    });
+
+    // Additional school-specific metrics
+    const pendingCourses = await Course.countDocuments({
+      trainingProvider: userId,
+      status: "pending_approval"
+    });
+
+    const totalCourses = await Course.countDocuments({
+      trainingProvider: userId
+    });
 
     return res.json(
       successResponse(
         {
-          totalEnrollments,
-          completionRate,
-          totalRevenue,
-          activeCourses,
+          school: {
+            name: school.name,
+            id: school._id
+          },
+          enrollments: {
+            total: totalEnrollments,
+            completed: completedEnrollments,
+            completionRate: parseFloat(completionRate)
+          },
+          revenue: {
+            total: totalRevenue,
+            currency: "PKR" // or whatever currency you use
+          },
+          courses: {
+            total: totalCourses,
+            active: activeCourses,
+            pending: pendingCourses
+          }
         },
-        "Dashboard statistics calculated successfully",
+        "School dashboard statistics calculated successfully"
       )
     );
   } catch (error) {
