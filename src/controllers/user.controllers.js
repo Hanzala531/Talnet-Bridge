@@ -19,6 +19,7 @@
 
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/contents/User.models.js";
+import { Employer } from "../models/index.js";
 import { badRequest, notFound, internalServer, ApiError, unauthorized } from "../utils/ApiError.js";
 import { Subscription } from "../models/index.js";
 import { successResponse, createdResponse, badRequestResponse, notFoundResponse, serverErrorResponse } from "../utils/ApiResponse.js";
@@ -26,7 +27,7 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js'
 import jwt from "jsonwebtoken";
 import { sendWelcomeEmail } from "../services/welcomeEmail.service.js";
 import { Student } from "../models/student models/students.models.js"; // Add this import for Student model
-
+import { TrainingInstitute } from "../models/index.js";
 
 /**
  * Generate access and refresh tokens for a user
@@ -486,12 +487,21 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 })
 
-// Get all students for admin pannel
+// Get all students for admin panel (fixed: only populate if kyc exists, and handle errors gracefully)
 const getAllStudents = asyncHandler(async (req, res) => {
   try {
-    const students = await User.find({ role: "student" }).select("-password -refreshToken");
+    // Fetch students with role "student"
+    const students = await User.find({ role: "student" })
+      .select("-password -refreshToken")
+
+    // If no students found, return empty array
+    if (!students || students.length === 0) {
+      return res.json(successResponse([], "No students found"));
+    }
+
     return res.json(successResponse(students, "Students fetched successfully"));
   } catch (error) {
+    console.error("Error in getAllStudents:", error.message);
     throw internalServer("Failed to fetch students");
   }
 });
@@ -686,6 +696,138 @@ const getStudentsByRegion = asyncHandler(async (req, res) => {
   }
 });
 
+// Get student details for admin
+const getStudentProfile = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    // Load student profile with related data
+    let studentProfile = await Student.findOne({ userId: userId })
+      .populate({ path: "kycVerification" }) // Remove select to get all fields
+      .lean();
+
+    if (!studentProfile) {
+      return res.json(notFoundResponse("Student profile not found"));
+    }
+
+    // Get user details (profile picture + status if available)
+    const userDetails = await User.findById(userId)
+      .select("profilePicture status")
+      .lean();
+
+    // Final profile object, including all kycVerification data
+    const completeProfile = {
+      studentId: studentProfile._id,
+      userId: studentProfile.userId,
+      firstName: studentProfile.firstName,
+      lastName: studentProfile.lastName,
+      email: studentProfile.email,
+      phone: studentProfile.phone,
+      profilePicture: userDetails?.profilePicture || null,
+      status: userDetails?.status || null,
+      role: "student",
+      location: studentProfile.location,
+      website: studentProfile.website,
+      createdAt: studentProfile.createdAt,
+      updatedAt: studentProfile.updatedAt,
+      kycVerification: studentProfile.kycVerification || null // All KYC fields
+    };
+
+    return res.json(
+      successResponse(completeProfile, "Student profile retrieved successfully")
+    );
+  } catch (error) {
+    console.error("Error in getStudentProfile:", error);
+    throw internalServer(error.message || "Failed to retrieve student profile");
+  }
+});
+
+// Controller for platform usage
+const platformUsage = asyncHandler(async (req, res) => {
+  try {
+    // Count users by role
+    const totalStudents = await User.countDocuments({ role: "student" });
+    const totalSchools = await User.countDocuments({ role: "school" });
+    const totalEmployers = await User.countDocuments({ role: "employer" });
+    
+    
+    return res.json(successResponse({
+      totalStudents,
+      totalSchools,
+      totalEmployers,
+    
+    }, "Platform usage statistics fetched successfully"));
+  } catch (error) {
+    console.error("Error in platformUsage:", error.message);
+    throw internalServer("Failed to fetch platform usage statistics");
+  }
+});
+
+//  company details
+const companyDetails = asyncHandler(async (req, res) => {
+    try {
+        const userId  = req.params.userId;
+
+        if (!userId) {
+            return res.json(badRequestResponse("User ID is required."));
+        }
+
+        // Find company profile by userId
+        const company = await Employer.findOne({ userId : userId })
+           
+
+        if (!company) {
+            return res.json(notFoundResponse("Company not found for this user."));
+        }
+
+        // Structure the response data properly
+        const companyData = {
+            _id: company._id,
+            name: company.name,
+            description: company.description,
+            companySize: company.companySize,
+            industry: company.industry,
+            websiteLink: company.websiteLink,
+            location: company.location,
+            establishedYear: company.establishedYear,
+            verified: company.verified,
+            createdAt: company.createdAt,
+            updatedAt: company.updatedAt
+        };
+
+        return res.json(successResponse(companyData, "Company profile fetched successfully by user ID."));
+    } catch (error) {
+        console.error("Error in companyDetails:", error);
+        throw internalServer("Failed to fetch company profile.");
+    }
+});
+
+// Get school profile
+const getSchoolProfile = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    if (!userId) {
+      return res.json(badRequestResponse("User ID is required"));
+    }
+
+    const profile = await TrainingInstitute.findOne({ userId: userId })
+    .select('_id userId name about location website ');
+
+    if (!profile) { 
+      return res.json(notFoundResponse("Profile of training provider not found"));
+    }
+    return res.status(200).json(successResponse({profile},"Training provider profile found successfully"));
+  } catch (error) {
+    throw internalServer("Failed to fetch profile");
+  }
+});
+
+
+
+
+
+
 export {
   registerUser,
   loginUser,
@@ -699,7 +841,11 @@ export {
   getAllSchools, 
   adminAnalytics,
   refreshAccessToken,
-  getStudentsByRegion
+  getStudentsByRegion,
+  getStudentProfile,
+  platformUsage,
+  companyDetails,
+  getSchoolProfile
 };
 
 

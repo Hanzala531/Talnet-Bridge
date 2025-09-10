@@ -12,7 +12,11 @@ import {
     getPendingActions,
     updateUserStatus,
     getStudentsByRegion,
-    refreshAccessToken
+    refreshAccessToken,
+    getStudentProfile,
+    platformUsage,
+    companyDetails,
+    getSchoolProfile
 } from '../controllers/user.controllers.js';
 import { upload } from '../middlewares/Multer.middlewares.js';
 import {requestLogger} from '../middlewares/ReqLog.middlewares.js';
@@ -1320,6 +1324,174 @@ userRouter.patch('/:userId/status', requestLogger, verifyJWT, authorizeRoles('ad
  *         $ref: '#/components/responses/InternalServerError'
  */
 userRouter.get('/students-by-region', requestLogger, verifyJWT, authorizeRoles('admin'), getStudentsByRegion);
+
+/**
+ * @swagger
+ * /api/v1/users/platform-usage:
+ *   get:
+ *     summary: Get platform usage statistics (Admin only)
+ *     description: Retrieve statistics about platform usage, including user counts by role and activity (Admin access required)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Platform usage statistics fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 statusCode:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                 message:
+ *                   type: string
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+userRouter.get('/platform-usage', requestLogger, verifyJWT, authorizeRoles('admin'), platformUsage);
+
+
+/**
+ * @swagger
+ * /api/v1/users/students/{userId}/profile:
+ *   get:
+ *     summary: Get student profile by user ID (Admin only)
+ *     description: Retrieve a student's profile using their user ID (Admin access required)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID of the student
+ *         example: "64f456def789abc123456789"
+ *     responses:
+ *       200:
+ *         description: Student profile fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 statusCode:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                 message:
+ *                   type: string
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+userRouter.get('/students/:userId/profile', requestLogger, verifyJWT, authorizeRoles('admin'), getStudentProfile);
+
+
+/**
+ * @swagger
+ * /api/v1/users/company/{userId}:
+ *   get:
+ *     summary: Get company profile by user ID (Admin only)
+ *     description: Retrieve a company profile using the user ID (Admin access required)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID of the company owner
+ *         example: "64f456def789abc123456789"
+ *     responses:
+ *       200:
+ *         description: Company profile fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 statusCode:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                 message:
+ *                   type: string
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+userRouter.get('/company/:userId', requestLogger, verifyJWT, authorizeRoles('admin'), companyDetails);
+
+/**
+ * @swagger
+ * /api/v1/users/schools/{userId}/profile:
+ *   get:
+ *     summary: Get school profile by user ID (Admin only)
+ *     description: Retrieve a school's profile using their user ID (Admin access required)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID of the school
+ *         example: "64f456def789abc123456789"
+ *     responses:
+ *       200:
+ *         description: School profile fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 statusCode:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                 message:
+ *                   type: string
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+userRouter.get('/schools/:userId/profile', requestLogger, verifyJWT, authorizeRoles('admin'), getSchoolProfile);
 
 // Exporting the router
 export default userRouter

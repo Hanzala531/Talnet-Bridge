@@ -1,5 +1,6 @@
-import { TrainingInstitute , Employer , User, Job, Student } from "../models/index.js";
-import { successResponse ,createdResponse, badRequestResponse ,notFoundResponse, serverErrorResponse, forbiddenResponse ,conflictResponse } from "../utils/ApiResponse.js";
+import mongoose from 'mongoose';
+import { TrainingInstitute, Employer, User, Job, Student, Enrollment } from "../models/index.js";
+import { successResponse, createdResponse, badRequestResponse, notFoundResponse, serverErrorResponse, forbiddenResponse, conflictResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { 
     calculateMatchPercentage, 
@@ -9,6 +10,363 @@ import {
     fuzzyFilter 
 } from "./jobs.controllers.js";
 
+// ==============================
+// HELPER FUNCTIONS
+// ==============================
+
+/**
+ * Helper function to get unique school userIds from student enrollments
+ * @param {Array<string|ObjectId>} studentIds - Array of student IDs
+ * @returns {Promise<Array<string>>} - Array of unique school userIds
+ */
+const getSchoolUserIdsFromStudentEnrollments = async (studentIds) => {
+    try {
+        console.log('Helper called with studentIds:', studentIds);  // Debug: Check input
+        if (!studentIds || studentIds.length === 0) {
+            console.log('No studentIds provided');  // Debug: Early exit
+            return [];
+        }
+
+        // Handle both string and ObjectId types for studentIds
+        const objectIds = studentIds.map(id => {
+            if (typeof id === 'string') {
+                return mongoose.Types.ObjectId(id);
+            }
+            return id;
+        });
+
+        // Aggregation pipeline to find school userIds from student enrollments
+        const pipeline = [
+            {
+                $match: {
+                    studentId: { $in: objectIds }  // Fixed: was 'student', should be 'studentId'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'courses',
+                    localField: 'courseId',  // Fixed: was 'course', should be 'courseId'
+                    foreignField: '_id',
+                    as: 'course'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$course',
+                    preserveNullAndEmptyArrays: false
+                }
+            },
+            {
+                $lookup: {
+                    from: 'traininginstitutes',
+                    localField: 'course.trainingProvider',
+                    foreignField: '_id',
+                    as: 'trainingProvider'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$trainingProvider',
+                    preserveNullAndEmptyArrays: false
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'trainingProvider.userId',
+                    foreignField: '_id',
+                    as: 'schoolUser'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$schoolUser',
+                    preserveNullAndEmptyArrays: false
+                }
+            },
+            {
+                $group: {
+                    _id: '$schoolUser._id'
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    userId: '$_id'
+                }
+            }
+        ];
+
+        // Execute the aggregation pipeline
+        const results = await Enrollment.aggregate(pipeline);
+        
+        if (results.length === 0) {
+            console.log('No school userIds found for these students');
+            return
+        }
+        
+        const schoolUserIds = results.map(result => result.userId.toString());
+        console.log('Final schoolUserIds:', schoolUserIds);  // Debug: Output
+        return schoolUserIds;
+    } catch (error) {
+        console.error('Error in getSchoolUserIdsFromStudentEnrollments:', error);
+        console.error('Error details:', error.message);
+        return 
+    }
+};
+
+/**
+ * Helper function to get school userId for a specific student based on their enrollments
+ * @param {String|ObjectId} studentId - Single student ObjectId
+ * @returns {Promise<String|null>} School userId or null if not found
+ */
+const getSchoolUserIdForStudent = async (studentId) => {
+    try {
+        console.log('Getting school userId for student:', studentId);
+        
+        if (!studentId) {
+            console.log('No student ID provided');
+            return null;
+        }
+
+        // Convert to ObjectId if string
+        const objectId = typeof studentId === 'string' ? mongoose.Types.ObjectId(studentId) : studentId;
+
+        // Aggregation pipeline to get school userId from student's enrollments
+        const pipeline = [
+            {
+                $match: {
+                    studentId: objectId  // Fixed: was 'student', should be 'studentId'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'courses',
+                    localField: 'courseId',  // Fixed: was 'course', should be 'courseId'
+                    foreignField: '_id',
+                    as: 'course'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$course',
+                    preserveNullAndEmptyArrays: false
+                }
+            },
+            {
+                $lookup: {
+                    from: 'traininginstitutes',
+                    localField: 'course.trainingProvider',
+                    foreignField: '_id',
+                    as: 'trainingProvider'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$trainingProvider',
+                    preserveNullAndEmptyArrays: false
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'trainingProvider.userId',
+                    foreignField: '_id',
+                    as: 'schoolUser'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$schoolUser',
+                    preserveNullAndEmptyArrays: false
+                }
+            },
+            {
+                $group: {
+                    _id: '$schoolUser._id'
+                }
+            },
+            {
+                $limit: 1  // Get first school userId found
+            },
+            {
+                $project: {
+                    _id: 0,
+                    userId: '$_id'
+                }
+            }
+        ];
+
+        // Execute the aggregation pipeline
+        const results = await Enrollment.aggregate(pipeline);
+        
+        if (results.length === 0) {
+            console.log(`No school userId found for student ${studentId}`);
+            return null;
+        }
+        
+        const schoolUserId = results[0].userId.toString();
+        console.log(`School userId for student ${studentId}:`, schoolUserId);
+        return schoolUserId;
+    } catch (error) {
+        console.error(`Error getting school userId for student ${studentId}:`, error);
+        return null;
+    }
+};
+
+/**
+ * Helper function to get all school userIds for a student based on their enrollment IDs
+ * @param {Array} enrollmentIds - Array of enrollment IDs from student document
+ * @returns {Promise<Array>} Array of school userIds
+ */
+const getSchoolUserIdsFromEnrollmentIds = async (enrollmentIds) => {
+    try {
+        console.log('Getting school userIds for enrollment IDs:', enrollmentIds);
+        
+        if (!enrollmentIds || enrollmentIds.length === 0) {
+            console.log('No enrollment IDs provided');
+            return [];
+        }
+
+        // Convert enrollment IDs to ObjectIds
+        const enrollmentObjectIds = enrollmentIds.map(id => 
+            typeof id === 'string' ? mongoose.Types.ObjectId(id) : id
+        );
+        
+        console.log('Converted to ObjectIds:', enrollmentObjectIds);
+
+        // First, let's check if the enrollment documents exist
+        const enrollmentCheck = await Enrollment.find({ _id: { $in: enrollmentObjectIds } });
+        console.log(`Found ${enrollmentCheck.length} enrollment documents`);
+        console.log('Enrollment documents:', enrollmentCheck.map(e => ({
+            id: e._id,
+            course: e.course,
+            student: e.student,
+            availableFields: Object.keys(e.toObject())
+        })));
+
+        // Aggregation pipeline to get school userIds from enrollment IDs
+        const pipeline = [
+            {
+                $match: {
+                    _id: { $in: enrollmentObjectIds }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'courses',
+                    localField: 'courseId',  // Fixed: was 'course', should be 'courseId'
+                    foreignField: '_id',
+                    as: 'course'
+                }
+            },
+            {
+                $addFields: {
+                    debug_afterCourseLookup: '$course'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$course',
+                    preserveNullAndEmptyArrays: false
+                }
+            },
+            {
+                $lookup: {
+                    from: 'traininginstitutes',
+                    localField: 'course.trainingProvider',
+                    foreignField: '_id',
+                    as: 'trainingProvider'
+                }
+            },
+            {
+                $addFields: {
+                    debug_afterProviderLookup: '$trainingProvider'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$trainingProvider',
+                    preserveNullAndEmptyArrays: false
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'trainingProvider.userId',
+                    foreignField: '_id',
+                    as: 'schoolUser'
+                }
+            },
+            {
+                $addFields: {
+                    debug_afterUserLookup: '$schoolUser'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$schoolUser',
+                    preserveNullAndEmptyArrays: false
+                }
+            },
+            {
+                $group: {
+                    _id: '$schoolUser._id',
+                    schoolUser: { $first: '$schoolUser' }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    userId: '$_id',
+                    userName: '$schoolUser.fullName',
+                    userEmail: '$schoolUser.email'
+                }
+            }
+        ];
+
+        // Execute the aggregation pipeline
+        const results = await Enrollment.aggregate(pipeline);
+        console.log('Aggregation results:', results);
+        
+        if (results.length === 0) {
+            console.log('No school userIds found for these enrollment IDs');
+            
+            // Let's run a simpler aggregation to debug each step
+            console.log('Running debug aggregation...');
+            
+            const debugPipeline = [
+                { $match: { _id: { $in: enrollmentObjectIds } } },
+                { $lookup: { from: 'courses', localField: 'courseId', foreignField: '_id', as: 'course' } },  // Fixed: courseId
+                { $project: { _id: 1, courseId: 1, course: 1, originalCourseField: '$course' } }
+            ];
+            
+            const debugResults = await Enrollment.aggregate(debugPipeline);
+            console.log('Debug results (enrollment + course lookup):', JSON.stringify(debugResults, null, 2));
+            
+            return [];
+        }
+        
+        const schoolUserIds = results.map(result => ({
+            userId: result.userId.toString(),
+            userName: result.userName,
+            userEmail: result.userEmail
+        }));
+        
+        console.log(`Found ${schoolUserIds.length} school userIds:`, schoolUserIds);
+        return schoolUserIds;
+    } catch (error) {
+        console.error('Error getting school userIds from enrollment IDs:', error);
+        return [];
+    }
+};
+
+// ==============================
+// CONTROLLERS
+// ==============================
+// ==============================
+// CONTROLLERS
+// ==============================
 
 // Create company profile
 const creatCompanyProfile = asyncHandler(async (req, res) => {
@@ -517,10 +875,15 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
         }).select('firstName lastName email location skills bio enrollments gsceResult isContactPublic isProgressPublic')
           .populate('userId', 'profilePicture');
         
-        // Merge student data with match data (updated to respect privacy)
-        const candidatesWithDetails = paginatedCandidates.map(candidate => {
+        // Merge student data with match data and add individual school userIds
+        const candidatesWithDetails = await Promise.all(paginatedCandidates.map(async (candidate) => {
             const student = students.find(s => s._id.toString() === candidate.student.toString());
             if (!student) return null;  // Skip if student not found or doesn't meet criteria
+            
+            // Get all school userIds for this specific student based on their enrollments
+            const schoolUserIds = student.enrollments && student.enrollments.length > 0 
+                ? await getSchoolUserIdsFromEnrollmentIds(student.enrollments)
+                : [];
             
             // Build response conditionally based on privacy flags
             const studentDetails = {
@@ -529,6 +892,7 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
                 location: student.location,
                 skills: student.skills,
                 bio: student.bio,
+                schoolUserIds,  // Add all school userIds to student details
                 // Include contact only if public
                 ...(student.isContactPublic && { email: student.email }),
                 // Include progress only if public
@@ -546,10 +910,13 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
                 jobId: candidate.jobId,
                 matchedAt: candidate.matchedAt
             };
-        }).filter(Boolean);  // Remove null entries
+        }));
         
+        // Filter out null entries
+        const validCandidates = candidatesWithDetails.filter(Boolean);
+
         const responseData = {
-            candidates: candidatesWithDetails,
+            candidates: validCandidates,
             pagination: {
                 currentPage: Number(page),
                 totalPages,
@@ -580,7 +947,7 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
  */
 const getPotentialStudents = asyncHandler(async (req, res) => {
     try {
-        const { page = 1, limit = 10, minMatch = 20, maxMatch = 100, sortBy = 'matchPercentage', sortOrder = 'desc' } = req.query;
+        const { page = 1, limit = 10, minMatch = 0, maxMatch = 100, sortBy = 'matchPercentage', sortOrder = 'desc' } = req.query;
         const userId = req.user._id;
         
         // Find employer profile for the logged-in user
@@ -619,7 +986,7 @@ const getPotentialStudents = asyncHandler(async (req, res) => {
             skills: { $exists: true, $ne: [] },
             isPublic: true,  // Only public profiles
             isOpenToWork: true  // Only students open to work
-        }).select('firstName lastName email location skills bio enrollments gsceResult isContactPublic isProgressPublic')  // Include privacy flags
+        }).select('userId firstName lastName email location skills bio enrollments gsceResult isContactPublic isProgressPublic')  // Include privacy flags
       .populate('userId', 'profilePicture');
         
         if (!students || students.length === 0) {
@@ -700,9 +1067,14 @@ const getPotentialStudents = asyncHandler(async (req, res) => {
         const endIndex = startIndex + Number(limit);
         const paginatedStudents = potentialStudents.slice(startIndex, endIndex);
         
-        // Format response data (updated to respect privacy)
-        const studentsWithDetails = paginatedStudents.map(match => {
+        // Format response data with individual school userIds
+        const studentsWithDetails = await Promise.all(paginatedStudents.map(async (match) => {
             const student = match.student;
+            
+            // Get all school userIds for this specific student based on their enrollments
+            const schoolUserIds = student.enrollments && student.enrollments.length > 0 
+                ? await getSchoolUserIdsFromEnrollmentIds(student.enrollments)
+                : [];
             
             // Build response conditionally based on privacy flags
             const studentDetails = {
@@ -712,6 +1084,7 @@ const getPotentialStudents = asyncHandler(async (req, res) => {
                 skills: student.skills,
                 bio: student.bio,
                 profilePicture: student.userId?.profilePicture,
+                schoolUserIds : schoolUserIds[0],  // Add all school userIds to student details
                 // Include contact only if public
                 ...(student.isContactPublic && { email: student.email }),
                 // Include progress only if public
@@ -730,8 +1103,8 @@ const getPotentialStudents = asyncHandler(async (req, res) => {
                     id: match.jobId
                 }
             };
-        });
-        
+        }));
+
         const responseData = {
             students: studentsWithDetails,
             pagination: {
