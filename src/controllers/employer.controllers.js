@@ -874,17 +874,25 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
             isOpenToWork: true
         }).select('firstName lastName email location skills bio enrollments gsceResult isContactPublic isProgressPublic')
           .populate('userId', 'profilePicture');
-        
+        // Exclude students with no enrollments (we don't want to send them to frontend)
+        const enrolledStudentIdsSet = new Set(
+            students
+                .filter(s => s.enrollments && s.enrollments.length > 0)
+                .map(s => s._id.toString())
+        );
+
+        const effectivePaginatedCandidates = paginatedCandidates.filter(c => enrolledStudentIdsSet.has(c.student.toString()));
+
         // Merge student data with match data and add individual school userIds
-        const candidatesWithDetails = await Promise.all(paginatedCandidates.map(async (candidate) => {
+        const candidatesWithDetails = await Promise.all(effectivePaginatedCandidates.map(async (candidate) => {
             const student = students.find(s => s._id.toString() === candidate.student.toString());
             if (!student) return null;  // Skip if student not found or doesn't meet criteria
-            
+
             // Get all school userIds for this specific student based on their enrollments
-            const schoolUserIds = student.enrollments && student.enrollments.length > 0 
+            const schoolUserIds = student.enrollments && student.enrollments.length > 0
                 ? await getSchoolUserIdsFromEnrollmentIds(student.enrollments)
                 : [];
-            
+
             // Build response conditionally based on privacy flags
             const studentDetails = {
                 firstName: student.firstName,
@@ -892,16 +900,16 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
                 location: student.location,
                 skills: student.skills,
                 bio: student.bio,
-                schoolUserIds,  // Add all school userIds to student details
+                schoolUserIds,  // Add all school userIds to student details (array)
                 // Include contact only if public
                 ...(student.isContactPublic && { email: student.email }),
                 // Include progress only if public
-                ...(student.isProgressPublic && { 
+                ...(student.isProgressPublic && {
                     enrollments: student.enrollments,
                     gsceResult: student.gsceResult
                 })
             };
-            
+
             return {
                 studentId: candidate.student,
                 studentDetails,
@@ -947,7 +955,7 @@ const getMatchedCandidates = asyncHandler(async (req, res) => {
  */
 const getPotentialStudents = asyncHandler(async (req, res) => {
     try {
-        const { page = 1, limit = 10, minMatch = 0, maxMatch = 100, sortBy = 'matchPercentage', sortOrder = 'desc' } = req.query;
+        const { page = 1, limit = 10, minMatch = 10, maxMatch = 100, sortBy = 'matchPercentage', sortOrder = 'desc' } = req.query;
         const userId = req.user._id;
         
         // Find employer profile for the logged-in user
@@ -1067,15 +1075,17 @@ const getPotentialStudents = asyncHandler(async (req, res) => {
         const endIndex = startIndex + Number(limit);
         const paginatedStudents = potentialStudents.slice(startIndex, endIndex);
         
-        // Format response data with individual school userIds
-        const studentsWithDetails = await Promise.all(paginatedStudents.map(async (match) => {
+        // Exclude students with no enrollments and format response data with individual school userIds
+        const enrolledMatches = paginatedStudents.filter(m => m.student.enrollments && m.student.enrollments.length > 0);
+
+        const studentsWithDetails = await Promise.all(enrolledMatches.map(async (match) => {
             const student = match.student;
-            
+
             // Get all school userIds for this specific student based on their enrollments
-            const schoolUserIds = student.enrollments && student.enrollments.length > 0 
+            const schoolUserIds = student.enrollments && student.enrollments.length > 0
                 ? await getSchoolUserIdsFromEnrollmentIds(student.enrollments)
                 : [];
-            
+
             // Build response conditionally based on privacy flags
             const studentDetails = {
                 firstName: student.firstName,
@@ -1084,16 +1094,16 @@ const getPotentialStudents = asyncHandler(async (req, res) => {
                 skills: student.skills,
                 bio: student.bio,
                 profilePicture: student.userId?.profilePicture,
-                schoolUserIds : schoolUserIds[0],  // Add all school userIds to student details
+                schoolUserIds, // Return full array of school userIds
                 // Include contact only if public
                 ...(student.isContactPublic && { email: student.email }),
                 // Include progress only if public
-                ...(student.isProgressPublic && { 
+                ...(student.isProgressPublic && {
                     enrollments: student.enrollments,
                     gsceResult: student.gsceResult
                 })
             };
-            
+
             return {
                 studentId: match.student._id,
                 studentDetails,

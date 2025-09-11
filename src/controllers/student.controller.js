@@ -231,7 +231,6 @@ const getStudentById = asyncHandler(async (req, res) => {
           )
         );
     }
-    
     // return res
     //   .json(successResponse({ student }, "Student retrieved successfully"));
     } catch (error) {
