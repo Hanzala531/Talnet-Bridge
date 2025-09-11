@@ -1526,7 +1526,7 @@ studentRouter.get('/currently-enrolled', requestLogger, verifyJWT, authorizeRole
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
-studentRouter.get('/:id', requestLogger, verifyJWT, authorizeRoles('school'), getStudentById);
+studentRouter.get('/:id', requestLogger, verifyJWT, authorizeRoles('school' , 'employer'), getStudentById);
 
 /**
  * @swagger
