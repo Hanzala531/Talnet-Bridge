@@ -823,11 +823,24 @@ const getSchoolProfile = asyncHandler(async (req, res) => {
   }
 });
 
+// Get all admin user accounts for chat
+const getAllAdminUsers = asyncHandler(async (req, res) => {
+  try {
+    const admins = await User.find({ role: "admin" }).select("_id fullName email role");
+
+    if (!admins || admins.length === 0) {
+      return res.json(notFoundResponse("No admin users found"));
+    }
+
+    return res.json(successResponse(admins, "Admin users retrieved successfully"));
+  } catch (error) {
+    console.error("Error in getAllAdminUsers:", error);
+    throw internalServer("Failed to fetch admin users");
+  }
+});
 
 
-
-
-
+// Export all controllers
 export {
   registerUser,
   loginUser,
@@ -845,7 +858,8 @@ export {
   getStudentProfile,
   platformUsage,
   companyDetails,
-  getSchoolProfile
+  getSchoolProfile,
+  getAllAdminUsers
 };
 
 

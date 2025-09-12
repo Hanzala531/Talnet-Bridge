@@ -16,7 +16,8 @@ import {
     getStudentProfile,
     platformUsage,
     companyDetails,
-    getSchoolProfile
+    getSchoolProfile,
+    getAllAdminUsers
 } from '../controllers/user.controllers.js';
 import { upload } from '../middlewares/Multer.middlewares.js';
 import {requestLogger} from '../middlewares/ReqLog.middlewares.js';
@@ -1492,6 +1493,60 @@ userRouter.get('/company/:userId', requestLogger, verifyJWT, authorizeRoles('adm
  *         $ref: '#/components/responses/InternalServerError'
  */
 userRouter.get('/schools/:userId/profile', requestLogger, verifyJWT, authorizeRoles('admin'), getSchoolProfile);
+
+/**
+ * @swagger
+ * /api/v1/users/admins:
+ *   get:
+ *     summary: Get all admin users
+ *     description: Retrieve a list of all users with admin role (Admin access required)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Admin users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                         example: "64f123abc456def789012345"
+ *                       fullName:
+ *                         type: string
+ *                         example: "Admin User"
+ *                       email:
+ *                         type: string
+ *                         example: "admin@example.com"
+ *                       role:
+ *                         type: string
+ *                         example: "admin"
+ *                 message:
+ *                   type: string
+ *                   example: "Admin users retrieved successfully"
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         description: No admin users found
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+userRouter.get('/admins', requestLogger, verifyJWT,getAllAdminUsers);
 
 // Exporting the router
 export default userRouter
