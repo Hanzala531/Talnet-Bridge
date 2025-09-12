@@ -14,10 +14,16 @@ import { createChatMessageNotification, sendRealTimeNotification } from "./notif
  * @returns {Promise<Object>} Conversation object
  */
 export async function findOrCreateDm({ userA, roleA, userB, roleB }) {
+  const startTime = Date.now();
+  const logTime = new Date().toISOString();
+
+  console.log(`[${logTime}] 💭 findOrCreateDm - Checking conversation between ${roleA}:${userA} and ${roleB}:${userB}`);
+
   // Enforce role rules
   assertCanStartConversation(roleA, roleB);
-  
+
   // Check if conversation already exists between these two users
+  console.log(`[${logTime}] 🔍 Searching for existing conversation between users ${userA} and ${userB}`);
   const existingConversation = await ChatConversation.findOne({
     isGroup: false,
     "participants.user": { $all: [userA, userB] },
@@ -25,11 +31,15 @@ export async function findOrCreateDm({ userA, roleA, userB, roleB }) {
   })
     .populate("participants.user", "fullName email role")
     .populate("lastMessage");
-  
+
   if (existingConversation) {
+    const findTime = Date.now() - startTime;
+    console.log(`[${logTime}] ✅ Found existing conversation: ${existingConversation._id} - Time: ${findTime}ms`);
     return existingConversation;
   }
-  
+
+  console.log(`[${logTime}] 🆕 Creating new conversation between ${userA} and ${userB}`);
+
   // Create new conversation
   const newConversation = new ChatConversation({
     participants: [
@@ -42,13 +52,19 @@ export async function findOrCreateDm({ userA, roleA, userB, roleB }) {
       [userB.toString(), 0],
     ]),
   });
-  
+
   await newConversation.save();
-  
+  console.log(`[${logTime}] 💾 Saved new conversation: ${newConversation._id}`);
+
   // Populate and return
-  return await ChatConversation.findById(newConversation._id)
+  const populatedConversation = await ChatConversation.findById(newConversation._id)
     .populate("participants.user", "fullName email role")
     .populate("lastMessage");
+
+  const totalTime = Date.now() - startTime;
+  console.log(`[${logTime}] 🎉 Created and populated new conversation: ${populatedConversation._id} - Total Time: ${totalTime}ms`);
+
+  return populatedConversation;
 }
 
 /**
@@ -62,19 +78,26 @@ export async function findOrCreateDm({ userA, roleA, userB, roleB }) {
  * @returns {Promise<Object>} Created message
  */
 export async function appendMessage({ conversationId, senderId, text, replyTo, io }) {
+  const startTime = Date.now();
+  const logTime = new Date().toISOString();
+
+  console.log(`[${logTime}] 💬 appendMessage - Conversation: ${conversationId} - Sender: ${senderId} - Text Length: ${text?.length || 0} - Reply To: ${replyTo || 'none'}`);
+
   const session = await mongoose.startSession();
-  
+
   try {
     session.startTransaction();
-    
+
     // Sanitize text
     const sanitizedText = text ? ChatMessage.sanitizeText(text) : "";
-    
+    console.log(`[${logTime}] 🧹 Text sanitized - Original: ${text?.length || 0} chars, Sanitized: ${sanitizedText.length} chars`);
+
     // Validate that text is provided
     if (!sanitizedText.trim()) {
       throw new ApiError(400, "Message text is required");
     }
-    
+
+    console.log(`[${logTime}] 📝 Creating message in database`);
     // Create message
     const message = new ChatMessage({
       conversationId,
@@ -82,42 +105,49 @@ export async function appendMessage({ conversationId, senderId, text, replyTo, i
       text: sanitizedText,
       replyTo,
     });
-    
+
     await message.save({ session });
-    
+    console.log(`[${logTime}] 💾 Message saved: ${message._id}`);
+
+    console.log(`[${logTime}] 🔄 Updating conversation: ${conversationId}`);
     // Update conversation atomically
     const conversation = await ChatConversation.findById(conversationId).session(session);
-    
+
     if (!conversation) {
       throw new ApiError(404, "Conversation not found");
     }
-    
+
     // Update last message
     conversation.lastMessage = message._id;
-    
+
     // Increment unread count for all participants except sender
     conversation.incrementUnreadForOthers(senderId);
-    
+
     // Mark as read by sender
     conversation.setUnreadCount(senderId, 0);
-    
+
     await conversation.save({ session });
-    
+    console.log(`[${logTime}] ✅ Conversation updated with new message and unread counts`);
+
     await session.commitTransaction();
-    
+    console.log(`[${logTime}] 🔒 Database transaction committed`);
+
     // Populate and get the final message
+    console.log(`[${logTime}] 🔍 Populating message with sender and reply data`);
     const populatedMessage = await ChatMessage.findById(message._id)
       .populate("sender", "fullName email role")
       .populate("replyTo")
       .lean();
-    
+
     // Create notifications for other participants
     if (io) {
+      console.log(`[${logTime}] 🔔 Creating notifications for ${conversation.participants.length - 1} participants`);
       const sender = await User.findById(senderId).select("fullName").lean();
-      
+
       for (const participant of conversation.participants) {
         if (participant.user.toString() !== senderId.toString()) {
           try {
+            console.log(`[${logTime}] 📤 Creating notification for participant: ${participant.user}`);
             // Create notification
             const notification = await createChatMessageNotification({
               senderId: senderId.toString(),
@@ -126,22 +156,28 @@ export async function appendMessage({ conversationId, senderId, text, replyTo, i
               messageText: sanitizedText,
               senderName: sender?.fullName || "Someone",
             });
-            
+
             // Send real-time notification
             if (notification) {
               sendRealTimeNotification(io, participant.user.toString(), notification);
+              console.log(`[${logTime}] ✅ Real-time notification sent to: ${participant.user}`);
             }
           } catch (error) {
-            console.error("Failed to create chat notification:", error);
+            console.error(`[${logTime}] ❌ Failed to create notification for ${participant.user}:`, error);
             // Don't fail message sending if notification fails
           }
         }
       }
     }
-      
+
+    const totalTime = Date.now() - startTime;
+    console.log(`[${logTime}] 🎉 Message appended successfully - ID: ${populatedMessage._id} - Total Time: ${totalTime}ms`);
+
     return populatedMessage;
-      
+
   } catch (error) {
+    const errorTime = Date.now() - startTime;
+    console.error(`[${logTime}] ❌ appendMessage failed - Conversation: ${conversationId} - Sender: ${senderId} - Error: ${error.message} - Time: ${errorTime}ms`);
     await session.abortTransaction();
     throw error;
   } finally {

@@ -19,6 +19,7 @@ if (!process.env.MONGODB_URI) {process.exit(1);
 connectDB()
 .then(() => {
     // CHAT FEATURE: socket.io bootstrap
+    console.log(`[${new Date().toISOString()}] 🚀 Initializing HTTP Server with Socket.IO support`);
     const httpServer = createServer(app);
     const io = new Server(httpServer, { 
         cors: { 
@@ -27,19 +28,25 @@ connectDB()
         } 
     });
     
+    console.log(`[${new Date().toISOString()}] 🔌 Registering chat socket handlers`);
     // Register chat socket handlers
     registerChatSockets(io);
     
+    console.log(`[${new Date().toISOString()}] 🔔 Initializing notification socket handlers`);
     // Register notification socket handlers
     initNotificationSocket(io);
     
     // Make io accessible to routes
     app.set("io", io);
     
-    app.on('error', (error) => {});
-    const port = process.env.PORT || 8000
+    app.on('error', (error) => {
+        console.error(`[${new Date().toISOString()}] ❌ Server error:`, error);
+    });
+    const port = process.env.PORT || 4000
     httpServer.listen(port, () => {
-    console.log(`Server is running on : http://localhost:${port}`)
+    console.log(`[${new Date().toISOString()}] 🎉 Server is running on : http://localhost:${port}`)
+    console.log(`[${new Date().toISOString()}] 🌐 Socket.IO server ready for connections`);
+    console.log(`[${new Date().toISOString()}] 📡 WebSocket endpoint: ws://localhost:${port}/socket.io/`);
 });
 })
 .catch((error) => {process.exit(1);
