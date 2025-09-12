@@ -94,7 +94,7 @@ router.post(
 
 /**
  * @swagger
- * /api/v1/chat/messages/{conversationId}:
+ * /api/v1/chat/all/{conversationId}:
  *   get:
  *     summary: Get messages from a conversation
  *     description: Retrieve paginated messages from a specific conversation
@@ -206,7 +206,7 @@ router.post(
  */
 // Get messages from a conversation
 router.get(
-  "/messages/:conversationId", 
+  "/all/:conversationId", 
   getMessagesSchema, 
   handleValidationErrors,
   getMessages

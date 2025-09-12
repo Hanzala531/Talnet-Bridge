@@ -236,14 +236,15 @@ export async function listConversationsForUser({ userId, limit = 20, cursor, sea
   const pipeline = [
     { $match: matchStage },
     
-    // Lookup last message
+    // Lookup last N messages for each conversation (includes sender data)
     {
       $lookup: {
         from: "chatmessages",
-        localField: "lastMessage",
-        foreignField: "_id",
-        as: "lastMessageData",
+        let: { convId: "$_id" },
         pipeline: [
+          { $match: { $expr: { $eq: ["$conversationId", "$$convId"] } } },
+          { $sort: { createdAt: -1, _id: -1 } },
+          { $limit: 3 }, // return last 3 messages; adjust as needed
           {
             $lookup: {
               from: "users",
@@ -256,7 +257,8 @@ export async function listConversationsForUser({ userId, limit = 20, cursor, sea
             }
           },
           { $unwind: { path: "$senderData", preserveNullAndEmptyArrays: true } },
-        ]
+        ],
+        as: "lastMessagesData",
       }
     },
     
@@ -301,7 +303,10 @@ export async function listConversationsForUser({ userId, limit = 20, cursor, sea
         isGroup: 1,
         participants: 1,
         participantUsers: 1,
-        lastMessage: { $arrayElemAt: ["$lastMessageData", 0] },
+  // lastMessage is the most recent message (first element of lastMessagesData)
+  lastMessage: { $arrayElemAt: ["$lastMessagesData", 0] },
+  // lastMessages contains up to N most recent messages for quick preview
+  lastMessages: "$lastMessagesData",
         unreadCount: { $ifNull: [`$unread.${userId}`, 0] },
         updatedAt: 1,
         createdAt: 1,
