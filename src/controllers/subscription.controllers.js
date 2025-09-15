@@ -340,6 +340,30 @@ const createSubscription = asyncHandler(async (req, res) => {
             endDate = new Date(startDate);
         }
 
+        // Check if user clicked on free plan
+        if (plan.price === 0) {
+            // For free plans, ensure billingCycle is 'onetime'
+            if (plan.billingCycle !== 'onetime') {
+                return res.json(badRequestResponse("Free plans must have a one-time billing cycle", "INVALID_FREE_PLAN_BILLING_CYCLE"));
+            }
+
+            const subscription = await Subscription.create({
+                userId,
+                planId: plan._id,
+                billing: {
+                    startDate,
+                    endDate,
+                    nextBillingDate,
+                    autoRenew: true
+                },
+                status: 'active'
+            });
+
+            return res.json(
+                successResponse({subscription}, "Subscription created successfully")
+            );
+        }
+
         // Create subscription (features removed, not in schema)
         const subscription = await Subscription.create({
             userId,
