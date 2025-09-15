@@ -137,13 +137,52 @@ const registerUser = asyncHandler(async (req, res) => {
       return res.json(badRequestResponse("User with this email already exists"));
     }
 
+    if (role === 'employer'){
+
+       // Create new user
+    const user = await User.create({
+      fullName,
+      email,
+      phone,
+      role,
+      password,
+      status : 'approved'
+    });
+
+    // Generate tokens
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+
+    // Remove sensitive data from response
+    const createdUser = user.toObject();
+    delete createdUser.password;
+    delete createdUser.refreshToken;
+
+    // Send welcome email (non-blocking)
+    try {
+      await sendWelcomeEmail({ 
+        email: createdUser.email, 
+        name: createdUser.fullName 
+      });
+      console.log("Welcome email sent successfully to:", createdUser.email);
+    } catch (emailError) {
+      console.error("Error sending welcome email to", createdUser.email, ":", emailError.message);
+      // Don't fail registration if email fails - just log the error
+    }
+
+    return res
+      .json(createdResponse({ user: createdUser, accessToken }, "User registered successfully"));
+
+  }
+
+    
+
     // Create new user
     const user = await User.create({
       fullName,
       email,
       phone,
       role,
-      password
+      password,
     });
 
     // Generate tokens

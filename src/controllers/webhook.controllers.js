@@ -23,8 +23,8 @@ const handleStripeWebhook = async (req, res) => {
             await subscription.save();
           }
 
-          // Update user status to 'success'
-          await User.findByIdAndUpdate(userId, { status: 'success' });
+          // Update user status to 'Approved'
+          await User.findByIdAndUpdate(userId, { status: 'approved' });
 
           // Optional: Send notification to user
           const user = await User.findById(userId).select('fullName').lean();
