@@ -63,12 +63,12 @@ const jobSchema = new mongoose.Schema(
       max: { type: Number }
     },
     
-    // Education Requirements
-    educationRequired: {
-      type: String,
-      enum: ["Matric", "Intermediate", "Bachelors", "Masters", "PhD", "Diploma", "Certificate", "Any"],
-      default: "Any"
-    },
+    // // Education Requirements
+    // educationRequired: {
+    //   type: String,
+    //   enum: ["Matric", "Intermediate", "Bachelors", "Masters", "PhD", "Diploma", "Certificate", "Any"],
+    //   default: "Any"
+    // },
     
     postedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -80,13 +80,13 @@ const jobSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["draft", "active", "paused", "closed", "filled"],
-      default: "draft"
+      default: "active"
     },
     
     // Job Category
     category: {
       type: String,
-      enum: ["Technology", "Healthcare", "Business", "Arts", "Science", "Engineering", "Other"],
+      // enum: ["Technology", "Healthcare", "Business", "Arts", "Science", "Engineering", "Other"],
       required: true
     },
     isActive: {
