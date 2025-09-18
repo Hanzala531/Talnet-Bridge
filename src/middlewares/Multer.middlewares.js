@@ -12,30 +12,29 @@ if (!process.env.VERCEL && !fs.existsSync(uploadDir)) {
 }
 
 // Set up Multer storage
-// const storage = multer.diskStorage({
-//   destination: (req, file, cb) => {
-//     cb(null, uploadDir); // Use the appropriate directory
-//   },
-//   filename: (req, file, cb) => {
-//     // Replace spaces with underscores to avoid URL issues
-//     const safeFilename = file.originalname.replace(/\s+/g, '_');
-//     cb(null, `${Date.now()}-${safeFilename}`);
-//   },
-// });
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir); // Use the appropriate directory
+  },
+  filename: (req, file, cb) => {
+    // Replace spaces with underscores to avoid URL issues
+    const safeFilename = file.originalname.replace(/\s+/g, '_');
+    cb(null, `${Date.now()}-${safeFilename}`);
+  },
+});
 
-
-// Use memory storage (best for Vercel)
-const storage = multer.memoryStorage();
-
- const upload = multer({
+// Initialize Multer
+const upload = multer({
   storage,
-  limits: { fileSize: 1024 * 1024 * 5 }, // 5MB
+  limits: { fileSize: 1024 * 1024 * 5 }, // 5MB file size limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    // Validate file types
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.mimetype)) {
-      return cb(new Error("Only JPG, PNG, GIF, and WEBP images are allowed!"), false);
+      return cb(new Error('Only JPG, PNG, GIF, and WEBP images are allowed!'), false);
     }
     cb(null, true);
   },
 });
+
 export { upload };

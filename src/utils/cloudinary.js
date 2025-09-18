@@ -1,46 +1,53 @@
 import { v2 as cloudinary } from "cloudinary";
+import fs from "fs";
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-/**
- * Upload file buffer directly to Cloudinary
- * @param {Buffer} fileBuffer - The file buffer from multer.memoryStorage
- * @param {string} folder - Optional Cloudinary folder name (default: "corsure-courses")
- * @returns {Promise<Object|null>} Cloudinary response or null if failed
- */
-const uploadOnCloudinary = async (fileBuffer, folder = "corsure-courses") => {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: "auto",
-        folder,
-        quality: "auto:good",
-        fetch_format: "auto",
-      },
-      (error, result) => {
-        if (error) return reject(error);
-        resolve(result);
-      }
-    );
-    stream.end(fileBuffer);
+const uploadOnCloudinary = async (localFilePath) => {
+  // Configure Cloudinary inside the function to ensure env vars are loaded
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
   });
-};
 
-/**
- * Delete a file from Cloudinary using its public_id
- * @param {string} publicId
- */
-const deleteFromCloudinary = async (publicId) => {
+  const timerLabel = `uploadTime-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+  console.time(timerLabel);
+  
   try {
-    return await cloudinary.uploader.destroy(publicId);
-  } catch (err) {
-    console.error("Cloudinary delete error:", err);
+    if (!localFilePath) {return null;
+    }
+
+    // Debug: Log environment variables (only in development)
+    if (process.env.NODE_ENV === 'development') {}
+
+    // Check if Cloudinary credentials are available
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {throw new Error("Cloudinary credentials are missing. Check your environment variables");
+    }
+
+    // Check if the file exists before uploading
+    if (!fs.existsSync(localFilePath)) {return null;
+    }const response = await cloudinary.uploader.upload(localFilePath, { 
+      resource_type: "auto",
+      folder: "loopwin-products", // Optional: organize uploads in a folder
+      quality: "auto:good", // Optimize image quality
+      fetch_format: "auto" // Optimize format (webp, etc.)
+    });// Delete the file from the server
+    deleteLocalFile(localFilePath);
+
+    return response;
+  } catch (error) {// Delete the file even if upload fails
+    deleteLocalFile(localFilePath);
+
     return null;
+  } finally {
+    console.timeEnd(timerLabel);
   }
 };
 
-export { uploadOnCloudinary, deleteFromCloudinary };
+const deleteLocalFile = (filePath) => {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);} else {}
+  } catch (err) {}
+};
+
+export { uploadOnCloudinary };
