@@ -27,7 +27,7 @@ if (!process.env.VERCEL && !fs.existsSync(uploadDir)) {
 // Use memory storage (best for Vercel)
 const storage = multer.memoryStorage();
 
-export const upload = multer({
+ const upload = multer({
   storage,
   limits: { fileSize: 1024 * 1024 * 5 }, // 5MB
   fileFilter: (req, file, cb) => {
