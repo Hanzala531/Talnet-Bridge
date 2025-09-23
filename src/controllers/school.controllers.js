@@ -556,13 +556,8 @@ const studentsDirectory = asyncHandler(async (req, res) => {
     const skip = (Number(page) - 1) * Number(limit);
     const paginatedStudentIds = studentIds.slice(skip, skip + Number(limit));
 
-    // Fetch Student and User info for paginated students
-    const students = await Student.find({ userId: { $in: paginatedStudentIds } })
-      .select("_id userId ")
-      .lean();
-    
-    const userIds = students.map((s) => s.userId);
-    const users = await User.find({ _id: { $in: userIds } })
+    // Fetch User info directly since studentId in enrollment refers to User model
+    const users = await User.find({ _id: { $in: paginatedStudentIds } })
       .select("fullName email phone location status")
       .lean();
     
@@ -571,10 +566,21 @@ const studentsDirectory = asyncHandler(async (req, res) => {
       return acc;
     }, {});
 
+    // Also fetch Student profiles for additional student-specific data
+    const students = await Student.find({ userId: { $in: paginatedStudentIds } })
+      .select("_id userId skills education")
+      .lean();
+    
+    const studentsMap = students.reduce((acc, student) => {
+      acc[student.userId?.toString()] = student;
+      return acc;
+    }, {});
+
     // Format response with enrolled courses (only for courses belonging to this school)
-    const formatted = students.map((s) => {
-      const user = usersMap[s.userId?.toString()] || {};
-      const studentEnrollments = enrollmentsByStudent[s.userId?.toString()] || [];
+    const formatted = paginatedStudentIds.map((studentId) => {
+      const user = usersMap[studentId] || {};
+      const student = studentsMap[studentId] || {};
+      const studentEnrollments = enrollmentsByStudent[studentId] || [];
       
       // Format courses with details - only courses that belong to this school
       const enrolledCourses = studentEnrollments
@@ -592,11 +598,15 @@ const studentsDirectory = asyncHandler(async (req, res) => {
         }));
 
       return {
-        studentId: s._id,
+        studentId: student._id || studentId,
+        userId: studentId,
         name: user.fullName || "",
         email: user.email || "",
         phone: user.phone || "",
+        location: user.location || "",
         status: user.status || "",
+        skills: student.skills || [],
+        education: student.education || [],
         enrolledCourses: enrolledCourses,
         totalEnrollments: enrolledCourses.length
       };
