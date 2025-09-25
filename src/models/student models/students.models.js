@@ -98,4 +98,5 @@ studentSchema.index({ location: 1 });
 studentSchema.index({ skills: 1 });
 studentSchema.index({ createdAt: -1 });
 studentSchema.index({ location: 1, createdAt: -1 });
+
 export const Student = mongoose.model('Student' , studentSchema)

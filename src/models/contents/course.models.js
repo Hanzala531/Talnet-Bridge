@@ -97,7 +97,7 @@ const courseSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: ["draft", "pending_approval", "approved", "rejected"],
-        default: "draft"
+        default: "active"
     },
     
     // Enrollment Limits

@@ -838,26 +838,110 @@ const employerDirectory = asyncHandler(async (req, res) => {
 
 // controller for dashboard (aggregation-based, no helper functions)
 const dashboardController = asyncHandler(async (req, res) => {
- try {
-    // Calculate total enrollments
-    const totalEnrollments = await Enrollment.countDocuments();
+  try {
+    const userId = req.user._id;
 
-    // Calculate completion rate
-    const completedEnrollments = await Enrollment.countDocuments({ status: "completed" });
-    const completionRate = totalEnrollments > 0 
-      ? ((completedEnrollments / totalEnrollments) * 100).toFixed(2) 
-      : 0;
+    // Get the school's training institute profile
+    const school = await TrainingInstitute.findOne({ userId });
+     if (!school) {
+      return res.json(
+        successResponse(
+          {
+            totalEnrollments: 0,
+            completionRate: 0,
+            totalRevenue: 0,
+            activeCourses: 0,
+          },
+          "Training institute profile not found - showing default values"
+        )
+      );
+    }
 
-    // Calculate monthly revenue
-    const enrollments = await Enrollment.find()
-      .populate("courseId", "price")
+    // Get all courses for this school
+    const schoolCourses = await Course.find({ trainingProvider: school._id })
+      .select('_id price status')
       .lean();
-    const totalRevenue = enrollments.reduce((sum, enrollment) => {
-      return sum + (enrollment.courseId?.price || 0);
-    }, 0);
+    
+    const courseIds = schoolCourses.map(course => course._id);
 
-    // Calculate active courses
-    const activeCourses = await Course.countDocuments({ status: "approved" });
+    // Calculate school-specific metrics using aggregation
+    const [enrollmentStats, revenueData] = await Promise.all([
+      // Enrollment statistics for this school's courses
+      Enrollment.aggregate([
+        { $match: { courseId: { $in: courseIds } } },
+        {
+          $group: {
+            _id: null,
+            totalEnrollments: { $sum: 1 },
+            completedEnrollments: {
+              $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] }
+            },
+            uniqueStudents: { $addToSet: "$studentId" }
+          }
+        },
+        {
+          $project: {
+            totalEnrollments: 1,
+            completedEnrollments: 1,
+            completionRate: {
+              $cond: [
+                { $gt: ["$totalEnrollments", 0] },
+                {
+                  $round: [
+                    {
+                      $multiply: [
+                        { $divide: ["$completedEnrollments", "$totalEnrollments"] },
+                        100
+                      ]
+                    },
+                    2
+                  ]
+                },
+                0
+              ]
+            }
+          }
+        }
+      ]),
+      
+      // Revenue calculation for this school's courses
+      Enrollment.aggregate([
+        { $match: { courseId: { $in: courseIds } } },
+        {
+          $lookup: {
+            from: "courses",
+            localField: "courseId",
+            foreignField: "_id",
+            as: "courseDetails"
+          }
+        },
+        { $unwind: "$courseDetails" },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: "$courseDetails.price" }
+          }
+        }
+      ])
+    ]);
+
+    // Extract results with defaults
+    const enrollmentResult = enrollmentStats[0] || {
+      totalEnrollments: 0,
+      completionRate: 0
+    };
+
+    const revenueResult = revenueData[0] || {
+      totalRevenue: 0
+    };
+
+    // Count active courses (approved status)
+    const activeCourses = schoolCourses.filter(course => course.status === 'approved').length;
+
+    // Extract values for response
+    const totalEnrollments = enrollmentResult.totalEnrollments;
+    const completionRate = enrollmentResult.completionRate;
+    const totalRevenue = revenueResult.totalRevenue;
 
     return res.json(
       successResponse(
@@ -867,7 +951,7 @@ const dashboardController = asyncHandler(async (req, res) => {
           totalRevenue,
           activeCourses,
         },
-        "Dashboard statistics calculated successfully",
+        "Dashboard statistics calculated successfully"
       )
     );
   } catch (error) {

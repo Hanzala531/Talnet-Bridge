@@ -105,7 +105,7 @@ const jobsRouter = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-jobsRouter.get('/', requestLogger, jobsCache, verifyJWT, authorizeRoles('school'), getAllJobs);
+jobsRouter.get('/', requestLogger, jobsCache, verifyJWT, authorizeRoles('school','admin'), getAllJobs);
 
 /**
  * @swagger

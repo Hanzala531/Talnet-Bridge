@@ -368,8 +368,15 @@ const searchCourses = asyncHandler(async (req, res) => {
 // ===============================
 const getCoursesByProvider = asyncHandler(async (req, res) => {
   try {
-    const { providerId } = req.params;
     const { page = 1, limit = 10 } = req.query;
+    const userId = req.user._id; // Fixed: was 'request.user._id'
+    
+    const provider = await TrainingInstitute.findOne({ userId: userId });
+    if (!provider) {
+      return res.json(notFoundResponse("You don't have your school profile created")); // Fixed: added res.json()
+    }
+
+    const providerId = provider._id;
 
     const skip = (page - 1) * limit;
     const courses = await Course.find({ trainingProvider: providerId })
@@ -378,7 +385,7 @@ const getCoursesByProvider = asyncHandler(async (req, res) => {
       .sort({ createdAt: -1 });
 
     if (!courses.length) {
-       return res.json (notFoundResponse("No courses found for this provider"));
+      return res.json(notFoundResponse("No courses found for this provider"));
     }
 
     const total = await Course.countDocuments({ trainingProvider: providerId });
@@ -398,6 +405,7 @@ const getCoursesByProvider = asyncHandler(async (req, res) => {
       )
     );
   } catch (error) {
+    console.error("Get courses by provider error:", error); // Add logging for debugging
     throw internalServer("Failed to fetch courses by provider");
   }
 });

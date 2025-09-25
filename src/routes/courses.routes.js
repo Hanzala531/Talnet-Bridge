@@ -101,7 +101,7 @@ const courseRouter = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-courseRouter.get('/', requestLogger,verifyJWT , authorizeRoles('school' , 'student'), coursesCache, getCourses);
+courseRouter.get('/', requestLogger,verifyJWT , authorizeRoles('school' , 'student' , 'admin'), coursesCache, getCourses);
 
 /**
  * @swagger
@@ -274,7 +274,7 @@ courseRouter.get('/search', requestLogger,authorizeRoles('school' , 'student'), 
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-courseRouter.get('/provider/:providerId', requestLogger, verifyJWT , authorizeRoles('school','student'), getCoursesByProvider);
+courseRouter.get('/provider', requestLogger, verifyJWT , authorizeRoles('school','student'), getCoursesByProvider);
 
 /**
  * @swagger
