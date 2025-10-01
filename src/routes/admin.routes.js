@@ -96,13 +96,13 @@ adminRouter.get('/check-renewals', verifyJWT , async (req, res) => {
     try {
         const now = new Date();
         const tomorrow = new Date(now);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setDate(tomorrow.getDate() + 31); // ✅ Check next 31 days for testing
         
         // Get all subscriptions
         const allSubs = await Subscription.find({}).populate('planId');
         
         // Check which ones would be eligible for renewal
-        const eligibleSubs = await Subscription.find({
+        const subscriptions = await Subscription.find({
             'billing.autoRenew': true,
             'billing.nextBillingDate': { $lte: tomorrow },
             status: 'active',
@@ -115,7 +115,7 @@ adminRouter.get('/check-renewals', verifyJWT , async (req, res) => {
             data: {
                 currentTime: now.toISOString(),
                 totalSubscriptions: allSubs.length,
-                eligibleForRenewal: eligibleSubs.length,
+                eligibleForRenewal: subscriptions.length,
                 subscriptions: allSubs.map(sub => ({
                     id: sub._id,
                     userId: sub.userId,
