@@ -92,7 +92,7 @@ adminRouter.post('/registerAdmin' , requestLogger ,  registerAdmin)
 adminRouter.post("/cleanup-subscriptions", triggerSubscriptionCleanup);
 
 // Check current subscription status for renewal testing
-adminRouter.get('/check-renewals', verifyJWT, authorizeRoles(['admin']), async (req, res) => {
+adminRouter.get('/check-renewals', verifyJWT , async (req, res) => {
     try {
         const now = new Date();
         const tomorrow = new Date(now);
@@ -203,7 +203,7 @@ adminRouter.patch('/fix-subscription/:id', verifyJWT, authorizeRoles(['admin']),
 });
 
 // Test auto-renewal logic manually
-adminRouter.post('/test-auto-renewal', verifyJWT, authorizeRoles(['admin']), async (req, res) => {
+adminRouter.post('/test-auto-renewal', verifyJWT, async (req, res) => {
     try {
         console.log('🧪 Manual auto-renewal test triggered by admin');
         
