@@ -285,7 +285,7 @@ const deletePlan = asyncHandler(async (req, res) => {
 const createSubscription = asyncHandler(async (req, res) => {
     try {
         const userId = req.user._id;
-        const { planId } = req.body; // ❌ Remove paymentMethodId
+        const { planId } = req.body; // ✅ Only planId needed
 
         // Check if plan exists and is active
         const plan = await SubscriptionPlan.findById(planId);
@@ -322,48 +322,8 @@ const createSubscription = asyncHandler(async (req, res) => {
             endDate.setFullYear(endDate.getFullYear() + 10);
         }
 
-        // For monthly plans, create Stripe customer and attach payment method
-        let stripeCustomerId = null;
-        let stripePaymentMethodId = null;
-
-        if (plan.billingCycle === 'monthly' && plan.price > 0) {
-            if (!paymentMethodId) {
-                return res.json(badRequestResponse("Payment method is required for monthly subscriptions", "PAYMENT_METHOD_REQUIRED"));
-            }
-
-            try {
-                // Create Stripe customer
-                const customer = await stripe.customers.create({
-                    email: req.user.email,
-                    name: req.user.fullName,
-                    metadata: { 
-                        userId: userId.toString(),
-                        planId: planId.toString()
-                    }
-                });
-
-                // Attach payment method to customer
-                await stripe.paymentMethods.attach(paymentMethodId, {
-                    customer: customer.id,
-                });
-
-                // Set as default payment method
-                await stripe.customers.update(customer.id, {
-                    invoice_settings: {
-                        default_payment_method: paymentMethodId,
-                    },
-                });
-
-                stripeCustomerId = customer.id;
-                stripePaymentMethodId = paymentMethodId;
-
-                console.log(`✅ Stripe customer created: ${customer.id} for user: ${userId}`);
-
-            } catch (stripeError) {
-                console.error('❌ Stripe customer creation error:', stripeError);
-                return res.json(badRequestResponse(`Error setting up payment method: ${stripeError.message}`, "STRIPE_CUSTOMER_ERROR"));
-            }
-        }
+        // ✅ REMOVED: All Stripe customer creation logic from here
+        // It now happens in createPaymentIntent
 
         // Check if user clicked on free plan
         if (plan.price === 0) {
@@ -398,7 +358,7 @@ const createSubscription = asyncHandler(async (req, res) => {
             );
         }
 
-        // Create subscription
+        // Create subscription (simplified - no Stripe logic)
         const subscription = await Subscription.create({
             userId,
             planId: plan._id,
@@ -407,7 +367,7 @@ const createSubscription = asyncHandler(async (req, res) => {
                 endDate,
                 nextBillingDate,
                 autoRenew: plan.billingCycle === 'monthly'
-                // ❌ Remove stripeCustomerId, stripePaymentMethodId
+                // ✅ No stripeCustomerId or stripePaymentMethodId
             },
             status: 'pending'
         });
