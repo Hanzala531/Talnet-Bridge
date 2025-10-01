@@ -700,6 +700,9 @@ const confirmPayment = asyncHandler(async (req, res) => {
 
             if (paymentIntent.status === 'succeeded') {
                 // ✅ Payment already succeeded - activate subscription
+                console.log('🔍 Before update - Subscription ID:', subscription._id);
+                console.log('🔍 PaymentIntent payment_method:', paymentIntent.payment_method);  // Check if this is null
+
                 subscription.status = 'active';
                 
                 // Add payment record
@@ -714,6 +717,17 @@ const confirmPayment = asyncHandler(async (req, res) => {
 
                 // ✅ ADD: Store the Stripe PaymentMethod ID for renewals
                 subscription.billing.stripePaymentMethodId = paymentIntent.payment_method;
+
+                console.log('🔍 After update - Subscription:', JSON.stringify(subscription, null, 2));  // Full object
+
+                try {
+                    await subscription.save();
+                    console.log('✅ Subscription saved successfully:', subscription._id);
+                    console.log('✅ Saved payments:', subscription.payments);  // Confirm array
+                } catch (saveError) {
+                    console.error('❌ Save error:', saveError);
+                    return res.json(badRequestResponse(`Save failed: ${saveError.message}`, "SUBSCRIPTION_SAVE_ERROR"));
+                }
 
                 // Update user role based on plan
                 if (plan.name === "learner") {
