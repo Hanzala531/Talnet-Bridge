@@ -21,6 +21,7 @@ const createPlan = asyncHandler(async (req, res) => {
             stripePriceId,
             stripeProductId  // ✅ Fixed: removed 'internalServer'
         } = req.body;
+        
 
         // Validate required fields
         if (!name) {
@@ -710,6 +711,9 @@ const confirmPayment = asyncHandler(async (req, res) => {
                     transactionId: paymentIntent.id,
                     status: 'completed'
                 });
+
+                // ✅ ADD: Store the Stripe PaymentMethod ID for renewals
+                subscription.billing.stripePaymentMethodId = paymentIntent.payment_method;
 
                 // Update user role based on plan
                 if (plan.name === "learner") {
