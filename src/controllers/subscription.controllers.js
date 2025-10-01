@@ -490,7 +490,7 @@ const updateSubscriptionStatus = asyncHandler(async (req, res) => {
 
         // Validate status transition
         if (existingSubscription.status === status) {
-            return res.json(conflictResponse(`Subscription is already ${status}`, "STATUS_UNCHANGED"));
+            return res.json(badRequestResponse(`Subscription is already ${status}`, "STATUS_UNCHANGED"));
         }
 
         const subscription = await Subscription.findByIdAndUpdate(
@@ -669,35 +669,115 @@ const confirmPayment = asyncHandler(async (req, res) => {
             return res.json(noContentResponse("Subscription not found or not pending", "SUBSCRIPTION_NOT_FOUND_OR_NOT_PENDING"));
         }
 
+        // Get the plan details
+        const plan = await SubscriptionPlan.findById(subscription.planId);
+        if (!plan) {
+            return res.json(badRequestResponse("Subscription plan not found", "PLAN_NOT_FOUND"));
+        }
+
         try {
-            // Confirm payment with Stripe test card (Postman-friendly)
-            const paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId, {
-                payment_method: 'pm_card_visa'
-            });
+            // Retrieve the payment intent from Stripe (don't confirm it - frontend does that)
+            const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
             if (paymentIntent.status === 'succeeded') {
-                // Update subscription to active
+                // ✅ Payment already succeeded - activate subscription
                 subscription.status = 'active';
+                
+                // Add payment record
+                subscription.payments.push({
+                    amount: paymentIntent.amount / 100,
+                    currency: paymentIntent.currency,
+                    paymentDate: new Date(),
+                    paymentMethod: 'card',
+                    transactionId: paymentIntent.id,
+                    status: 'completed'
+                });
+
+                // Update user role based on plan
+                if (plan.name === "learner") {
+                    await User.findByIdAndUpdate(userId, { role: "student", status: 'approved' });
+                } else if (plan.name === "employer") {
+                    await User.findByIdAndUpdate(userId, { role: "employer", status: 'approved' });
+                } else if (plan.name === "trainingInstitue") {
+                    await User.findByIdAndUpdate(userId, { role: "school", status: 'approved' });
+                }
+
                 await subscription.save();
 
-                // Update user status to 'approved' after successful payment
-                await User.findByIdAndUpdate(userId, { status: 'approved' });
+                // Send success notification
+                await Notification.createNotification({
+                    recipient: userId,
+                    title: 'Subscription Activated',
+                    message: `Your ${plan.displayName} subscription has been activated successfully.`,
+                    type: 'subscription_activated',
+                    relatedEntity: {
+                        entityType: 'subscription',
+                        entityId: subscription._id
+                    }
+                });
 
                 return res.json(
                     successResponse({
-                        message: "Payment successful, subscription activated, and user status updated to approved",
-                        paymentIntent
-                    })
+                        subscription,
+                        paymentIntent: {
+                            id: paymentIntent.id,
+                            status: paymentIntent.status,
+                            amount: paymentIntent.amount / 100,
+                            currency: paymentIntent.currency
+                        }
+                    }, "Payment confirmed and subscription activated successfully")
                 );
+
+            } else if (paymentIntent.status === 'requires_payment_method' || 
+                      paymentIntent.status === 'requires_confirmation') {
+                // ❌ Payment needs more action from user
+                return res.json(badRequestResponse("Payment requires additional action", "PAYMENT_REQUIRES_ACTION"));
+                
+            } else {
+                // ❌ Payment failed
+                subscription.status = 'cancelled';
+                subscription.cancellation = {
+                    cancelledAt: new Date(),
+                    reason: 'Payment failed'
+                };
+                
+                // Add failed payment record
+                subscription.payments.push({
+                    amount: paymentIntent.amount / 100,
+                    currency: paymentIntent.currency,
+                    paymentDate: new Date(),
+                    paymentMethod: 'card',
+                    transactionId: paymentIntent.id,
+                    status: 'failed'
+                });
+                
+                await subscription.save();
+
+                return res.json(badRequestResponse("Payment failed", "PAYMENT_FAILED"));
             }
 
+        } catch (stripeError) {
+            console.error('Stripe error during payment confirmation:', stripeError);
             
+            // Update subscription status on Stripe error
+            subscription.status = 'cancelled';
+            subscription.cancellation = {
+                cancelledAt: new Date(),
+                reason: `Stripe error: ${stripeError.message}`
+            };
+            await subscription.save();
 
-        } catch (stripeError) {return res.json(badRequestResponse(`Stripe error: ${stripeError.message}`, "STRIPE_PAYMENT_CONFIRMATION_ERROR"));
+            return res.json(badRequestResponse(`Payment confirmation failed: ${stripeError.message}`, "STRIPE_CONFIRMATION_ERROR"));
         }
 
     } catch (error) {
-        if (error instanceof ApiError) throw error;throw internalServer("Failed to confirm payment", "PAYMENT_INTENT_CONFIRMATION_ERROR");
+        console.error('Payment confirmation error:', error);
+        
+        if (error instanceof ApiError) {
+            throw error;
+        }
+
+        throw internalServer("Failed to confirm payment", "PAYMENT_CONFIRMATION_ERROR");
     }
 });
 
