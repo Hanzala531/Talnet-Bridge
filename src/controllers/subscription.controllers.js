@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiError , internalServer } from "../utils/ApiError.js";
+import { ApiError, internalServer } from "../utils/ApiError.js";
 import { Subscription, SubscriptionPlan, User } from "../models/index.js";
-import { successResponse, badRequestResponse } from "../utils/ApiResponse.js";
+import { successResponse, badRequestResponse, conflictResponse, noContentResponse, validationError } from "../utils/ApiResponse.js";
 import stripe from "../config/stripe.config.js";
 
 // ===========================================
@@ -577,7 +577,6 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
 
         const plan = await SubscriptionPlan.findById(subscription.planId);
         
-        // ✅ ADD MISSING VALIDATION:
         if (!plan) {
             return res.json(badRequestResponse("Subscription plan not found", "PLAN_NOT_FOUND"));
         }
@@ -599,6 +598,12 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
 
         // ✅ NEW: Create Stripe customer and payment intent together
         try {
+            // Check if Stripe is properly configured
+            if (!stripe) {
+                console.error('Stripe not configured');
+                return res.json(badRequestResponse("Payment service not available", "STRIPE_NOT_CONFIGURED"));
+            }
+
             // Create or get existing Stripe customer
             let customer;
             const existingSubscription = await Subscription.findOne({
@@ -608,27 +613,33 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
 
             if (existingSubscription?.billing?.stripeCustomerId) {
                 customer = { id: existingSubscription.billing.stripeCustomerId };
+                console.log('Using existing Stripe customer:', customer.id);
             } else {
+                console.log('Creating new Stripe customer for user:', userId);
                 customer = await stripe.customers.create({
                     email: req.user.email,
                     name: req.user.fullName,
                     metadata: { userId: userId.toString() }
                 });
+                console.log('Created Stripe customer:', customer.id);
             }
 
             // Create payment intent (customer will provide payment method on frontend)
+            console.log('Creating payment intent for plan:', plan.name, 'amount:', plan.price);
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: Math.round(plan.price * 100),
                 currency: (plan.currency || 'usd').toLowerCase(),
-                customer: customer.id, // ✅ Attach to customer
+                customer: customer.id,
                 payment_method_types: ['card'],
                 setup_future_usage: plan.billingCycle === 'monthly' ? 'off_session' : undefined,
                 metadata: {
                     subscriptionId: subscription._id.toString(),
                     userId: userId.toString(),
-                    planType: plan.billingCycle // For auto-renewal logic
+                    planType: plan.billingCycle
                 }
             });
+
+            console.log('Payment intent created:', paymentIntent.id);
 
             // ✅ Update subscription with Stripe customer ID
             subscription.billing.stripeCustomerId = customer.id;
@@ -642,9 +653,11 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
                 }, "Payment intent created successfully")
             );
         } catch (stripeError) {
+            console.error('Stripe error in createPaymentIntent:', stripeError);
             return res.json(badRequestResponse(`Stripe error: ${stripeError.message}`, "STRIPE_PAYMENT_INTENT_ERROR"));
         }
     } catch (error) {
+        console.error('General error in createPaymentIntent:', error);
         if (error instanceof ApiError) throw error;
         throw internalServer("Failed to create payment intent", "PAYMENT_INTENT_CREATION_ERROR");
     }
