@@ -19,7 +19,7 @@ const createPlan = asyncHandler(async (req, res) => {
             billingCycle, 
             features,
             stripePriceId,
-            stripeProductId 
+            stripeProductId  // ✅ Fixed: removed 'internalServer'
         } = req.body;
 
         // Validate required fields
@@ -79,11 +79,11 @@ const createPlan = asyncHandler(async (req, res) => {
             billingCycle,
             features,
             stripePriceId,
-            stripeProductIdinternalServer
+            stripeProductId  // ✅ Fixed: removed 'internalServer'
         });
 
         res.json(
-    successResponse({plan}, "Subscription plan created successfully")
+            successResponse({plan}, "Subscription plan created successfully")
         );
     } catch (error) {
         if (error instanceof ApiError) throw error;
@@ -321,9 +321,6 @@ const createSubscription = asyncHandler(async (req, res) => {
             endDate = new Date(startDate);
             endDate.setFullYear(endDate.getFullYear() + 10);
         }
-
-        // ✅ REMOVED: All Stripe customer creation logic from here
-        // It now happens in createPaymentIntent
 
         // Check if user clicked on free plan
         if (plan.price === 0) {
@@ -580,7 +577,14 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
 
         const plan = await SubscriptionPlan.findById(subscription.planId);
         
-        // ...existing plan validation...
+        // ✅ ADD MISSING VALIDATION:
+        if (!plan) {
+            return res.json(badRequestResponse("Subscription plan not found", "PLAN_NOT_FOUND"));
+        }
+
+        if (!plan.isActive) {
+            return res.json(badRequestResponse("Subscription plan is not active", "PLAN_INACTIVE"));
+        }
 
         // Handle free plans (unchanged)
         if (plan.price === 0) {
@@ -641,7 +645,8 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
             return res.json(badRequestResponse(`Stripe error: ${stripeError.message}`, "STRIPE_PAYMENT_INTENT_ERROR"));
         }
     } catch (error) {
-        if (error instanceof ApiError) throw error;throw internalServer("Failed to create payment intent", "PAYMENT_INTENT_CREATION_ERROR");
+        if (error instanceof ApiError) throw error;
+        throw internalServer("Failed to create payment intent", "PAYMENT_INTENT_CREATION_ERROR");
     }
 });
 
