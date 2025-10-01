@@ -2,7 +2,7 @@
   "name": "talent-bridge",
   "version": "1.0.0",
   "description": "This is basically a plattform designed that provides authentic learning material to student and solves the problem of talent hunting for industries ",
-  "main": "server.js",
+  "main": "src/server.js",
   "type": "module",
   "scripts": {
     "dev": "nodemon -r dotenv/config --experimental-json-modules ./src/server.js",

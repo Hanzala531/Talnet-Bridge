@@ -6,22 +6,16 @@ const subscriptionSchema = new mongoose.Schema({
         ref: "User",
         required: true
     },
-    
-    // Subscription Plan
     planId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "SubscriptionPlan",
         required: true
     },
-    
-    // Subscription Status
     status: {
         type: String,
-        enum: ["active", "inactive", "cancelled", "expired", "pending"],
+        enum: ["pending", "active", "expired", "cancelled"],
         default: "pending"
     },
-    
-    // Billing Information
     billing: {
         startDate: {
             type: Date,
@@ -36,75 +30,31 @@ const subscriptionSchema = new mongoose.Schema({
         autoRenew: {
             type: Boolean,
             default: true
-        }
+        },
+        // Add these fields for Stripe integration
+        stripeCustomerId: String,
+        stripePaymentMethodId: String,
+        stripeSubscriptionId: String // Optional: for future Stripe Subscription API migration
     },
-    
-    // Payment Information
     payments: [{
-        amount: {
-            type: Number,
-            required: true
-        },
-        currency: {
-            type: String,
-            default: "PKR"
-        },
-        paymentDate: {
-            type: Date,
-            default: Date.now
-        },
-        paymentMethod: {
-            type: String,
-            enum: ["stripe", "paypal", "bank_transfer", "cash"]
-        },
+        amount: Number,
+        currency: String,
+        paymentDate: Date,
+        paymentMethod: String,
         transactionId: String,
         status: {
             type: String,
-            enum: ["pending", "completed", "failed", "refunded"],
-            default: "pending"
+            enum: ["pending", "completed", "failed", "refunded"]
         }
-    }],
-    
-    // Cancellation Information
-    cancellation: {
-        cancelledAt: Date,
-        cancelledBy: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User"
-        },
-        reason: String,
-        refundAmount: Number,
-        refundStatus: {
-            type: String,
-            enum: ["pending", "processed", "declined"]
-        }
-    }
+    }]
 }, {
-    timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true }
+    timestamps: true
 });
 
-// Indexes
+// Indexes for better query performance
 subscriptionSchema.index({ userId: 1 });
 subscriptionSchema.index({ status: 1 });
-subscriptionSchema.index({ 'billing.endDate': 1 });
-subscriptionSchema.index({ 'billing.nextBillingDate': 1 });
-
-// Virtual for days remaining
-subscriptionSchema.virtual('daysRemaining').get(function() {
-    if (this.billing.endDate) {
-        const now = new Date();
-        const endDate = new Date(this.billing.endDate);
-        const diffTime = endDate - now;
-        return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-    }
-    return 0;
-});
-
-// Method to check if subscription is active
-subscriptionSchema.methods.isActive = function() {
-    return this.status === 'active' && this.billing.endDate > new Date();
-};
+subscriptionSchema.index({ "billing.nextBillingDate": 1 });
+subscriptionSchema.index({ "billing.autoRenew": 1 });
 
 export const Subscription = mongoose.model("Subscription", subscriptionSchema);

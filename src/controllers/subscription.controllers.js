@@ -1,18 +1,8 @@
-import stripe from "../config/stripe.config.js";
-import mongoose from "mongoose";
-import { Subscription, SubscriptionPlan, User } from "../models/index.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { 
-    ApiError, 
-    badRequest, 
-    unauthorized, 
-    forbidden, 
-    notFound, 
-    conflict, 
-    validationError, 
-    internalServer 
-} from "../utils/ApiError.js";
-import { badRequestResponse, conflictResponse, noContentResponse, successResponse } from "../utils/ApiResponse.js";
+import { ApiError } from "../utils/ApiError.js";
+import { Subscription, SubscriptionPlan, User } from "../models/index.js";
+import { successResponse, badRequestResponse } from "../utils/ApiResponse.js";
+import stripe from "../config/stripe.config.js";
 
 // ===========================================
 // SUBSCRIPTION PLAN CONTROLLERS
@@ -89,7 +79,7 @@ const createPlan = asyncHandler(async (req, res) => {
             billingCycle,
             features,
             stripePriceId,
-            stripeProductId
+            stripeProductIdinternalServer
         });
 
         res.json(
@@ -295,16 +285,16 @@ const deletePlan = asyncHandler(async (req, res) => {
 const createSubscription = asyncHandler(async (req, res) => {
     try {
         const userId = req.user._id;
-        const { planId } = req.body;
+        const { planId, paymentMethodId } = req.body; // Add paymentMethodId for monthly plans
 
-        // Validate required fields
-        if (!planId) {
-            return res.json(badRequestResponse("Plan ID is required", "MISSING_PLAN_ID"));
+        // Check if plan exists and is active
+        const plan = await SubscriptionPlan.findById(planId);
+        if (!plan) {
+            return res.json(badRequestResponse("Subscription plan not found", "PLAN_NOT_FOUND"));
         }
 
-        // Validate plan ID format
-        if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
-            return res.json(badRequestResponse("Invalid plan ID format", "INVALID_PLAN_ID"));
+        if (!plan.isActive) {
+            return res.json(badRequestResponse("Subscription plan is not active", "PLAN_INACTIVE"));
         }
 
         // Check if user already has an active subscription
@@ -314,30 +304,65 @@ const createSubscription = asyncHandler(async (req, res) => {
         });
 
         if (existingSubscription) {
-            return res.json(conflictResponse("User already has an active or pending subscription", "SUBSCRIPTION_ALREADY_EXISTS"));
-        }
-
-        // Get the subscription plan
-        const plan = await SubscriptionPlan.findById(planId);
-        if (!plan) {
-            return res.json(noContentResponse("Subscription plan not found", "PLAN_NOT_FOUND"));
-        }
-
-        if (!plan.isActive) {
-            return res.json(badRequestResponse("Subscription plan is not active", "PLAN_NOT_ACTIVE"));
+            return res.json(badRequestResponse("User already has an active subscription", "ACTIVE_SUBSCRIPTION_EXISTS"));
         }
 
         // Calculate billing dates
         const startDate = new Date();
         let endDate = null;
         let nextBillingDate = null;
+
         if (plan.billingCycle === 'monthly') {
             endDate = new Date(startDate);
             endDate.setMonth(endDate.getMonth() + 1);
             nextBillingDate = endDate;
         } else {
-            // For 'onetime', set endDate = startDate
+            // For one-time plans, set end date far in the future
             endDate = new Date(startDate);
+            endDate.setFullYear(endDate.getFullYear() + 10);
+        }
+
+        // For monthly plans, create Stripe customer and attach payment method
+        let stripeCustomerId = null;
+        let stripePaymentMethodId = null;
+
+        if (plan.billingCycle === 'monthly' && plan.price > 0) {
+            if (!paymentMethodId) {
+                return res.json(badRequestResponse("Payment method is required for monthly subscriptions", "PAYMENT_METHOD_REQUIRED"));
+            }
+
+            try {
+                // Create Stripe customer
+                const customer = await stripe.customers.create({
+                    email: req.user.email,
+                    name: req.user.fullName,
+                    metadata: { 
+                        userId: userId.toString(),
+                        planId: planId.toString()
+                    }
+                });
+
+                // Attach payment method to customer
+                await stripe.paymentMethods.attach(paymentMethodId, {
+                    customer: customer.id,
+                });
+
+                // Set as default payment method
+                await stripe.customers.update(customer.id, {
+                    invoice_settings: {
+                        default_payment_method: paymentMethodId,
+                    },
+                });
+
+                stripeCustomerId = customer.id;
+                stripePaymentMethodId = paymentMethodId;
+
+                console.log(`✅ Stripe customer created: ${customer.id} for user: ${userId}`);
+
+            } catch (stripeError) {
+                console.error('❌ Stripe customer creation error:', stripeError);
+                return res.json(badRequestResponse(`Error setting up payment method: ${stripeError.message}`, "STRIPE_CUSTOMER_ERROR"));
+            }
         }
 
         // Check if user clicked on free plan
@@ -353,18 +378,27 @@ const createSubscription = asyncHandler(async (req, res) => {
                 billing: {
                     startDate,
                     endDate,
-                    nextBillingDate,
-                    autoRenew: true
+                    nextBillingDate: null, // Free plans don't renew
+                    autoRenew: false
                 },
                 status: 'active'
             });
 
+            // Update user role based on plan
+            if (plan.name === "learner") {
+                await User.findByIdAndUpdate(userId, { role: "student", status: 'approved' });
+            } else if (plan.name === "employer") {
+                await User.findByIdAndUpdate(userId, { role: "employer", status: 'approved' });
+            } else if (plan.name === "trainingInstitue") {
+                await User.findByIdAndUpdate(userId, { role: "school", status: 'approved' });
+            }
+
             return res.json(
-                successResponse({subscription}, "Subscription created successfully")
+                successResponse({subscription}, "Free subscription activated successfully")
             );
         }
 
-        // Create subscription (features removed, not in schema)
+        // Create subscription
         const subscription = await Subscription.create({
             userId,
             planId: plan._id,
@@ -372,7 +406,9 @@ const createSubscription = asyncHandler(async (req, res) => {
                 startDate,
                 endDate,
                 nextBillingDate,
-                autoRenew: true
+                autoRenew: plan.billingCycle === 'monthly',
+                stripeCustomerId,
+                stripePaymentMethodId
             },
             status: 'pending'
         });
@@ -380,17 +416,21 @@ const createSubscription = asyncHandler(async (req, res) => {
         res.json(
             successResponse({subscription}, "Subscription created successfully")
         );
+
     } catch (error) {
-        if (error instanceof ApiError) throw error;
+        console.error('Subscription creation error:', error);
+        
+        if (error instanceof ApiError) {
+            throw error;
+        }
 
         // Handle MongoDB validation errors
         if (error.name === 'ValidationError') {
-            const validationErrors = Object.values(error.errors).map(e => ({
-                field: e.path,
-                message: e.message
-            }));
-            throw validationError(validationErrors, "Subscription validation failed", "SUBSCRIPTION_VALIDATION_ERROR");
-        }throw internalServer("Failed to create subscription", "SUBSCRIPTION_CREATION_ERROR");
+            const errors = Object.values(error.errors).map(err => err.message);
+            return res.json(badRequestResponse(`Validation error: ${errors.join(', ')}`, "VALIDATION_ERROR"));
+        }
+
+        throw internalServer("Failed to create subscription", "SUBSCRIPTION_CREATION_ERROR");
     }
 });
 

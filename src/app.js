@@ -125,7 +125,13 @@ app.get("/", (req, res) => {
 });
 
 // ---------- Import and Activate Cron Jobs ---------- //
-import './cronJobs/emailCron.js'; // Import to activate the automated email cron job
+import './cronJobs/emailCron.js';
+import { startSubscriptionCleanup } from './cronJobs/subscriptionCleanup.js';
+import { startAutoRenewal } from './cronJobs/autoRenewal.js'; // Add this
+
+// Start cron jobs
+startSubscriptionCleanup();
+startAutoRenewal(); // Add this
 
 // ---------- Routes ---------- //
 
