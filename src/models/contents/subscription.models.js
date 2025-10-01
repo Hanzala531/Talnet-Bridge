@@ -31,7 +31,7 @@ const subscriptionSchema = new mongoose.Schema({
             type: Boolean,
             default: true
         },
-        // Add these fields for Stripe integrationz
+        // Add these fields for Stripe integration
         stripeCustomerId: String,
         stripePaymentMethodId: String,
         stripeSubscriptionId: String // Optional: for future Stripe Subscription API migration
