@@ -699,62 +699,93 @@ const confirmPayment = asyncHandler(async (req, res) => {
             const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
             if (paymentIntent.status === 'succeeded') {
-                // ✅ Payment already succeeded - activate subscription
                 console.log('🔍 Before update - Subscription ID:', subscription._id);
-                console.log('🔍 PaymentIntent payment_method:', paymentIntent.payment_method);  // Check if this is null
+                console.log('🔍 PaymentIntent payment_method:', paymentIntent.payment_method);
+                console.log('🔍 PaymentIntent amount:', paymentIntent.amount);
 
+                // ✅ Update subscription status
                 subscription.status = 'active';
                 
-                // Add payment record
-                subscription.payments.push({
+                // ✅ Add payment record
+                const paymentRecord = {
                     amount: paymentIntent.amount / 100,
                     currency: paymentIntent.currency,
                     paymentDate: new Date(),
                     paymentMethod: 'card',
                     transactionId: paymentIntent.id,
                     status: 'completed'
+                };
+                
+                subscription.payments.push(paymentRecord);
+                console.log('🔍 Added payment record:', paymentRecord);
+
+                // ✅ Store the Stripe PaymentMethod ID for renewals
+                if (paymentIntent.payment_method) {
+                    subscription.billing.stripePaymentMethodId = paymentIntent.payment_method;
+                    console.log('✅ Set payment method ID:', paymentIntent.payment_method);
+                } else {
+                    console.warn('⚠️ PaymentIntent has no payment_method attached');
+                }
+
+                console.log('🔍 Subscription before save:', {
+                    status: subscription.status,
+                    paymentsCount: subscription.payments.length,
+                    paymentMethodId: subscription.billing.stripePaymentMethodId
                 });
 
-                // ✅ ADD: Store the Stripe PaymentMethod ID for renewals
-                subscription.billing.stripePaymentMethodId = paymentIntent.payment_method;
-
-                console.log('🔍 After update - Subscription:', JSON.stringify(subscription, null, 2));  // Full object
-
+                // ✅ Save subscription first
                 try {
-                    await subscription.save();
-                    console.log('✅ Subscription saved successfully:', subscription._id);
-                    console.log('✅ Saved payments:', subscription.payments);  // Confirm array
+                    const savedSubscription = await subscription.save();
+                    console.log('✅ Subscription saved successfully:', savedSubscription._id);
+                    console.log('✅ Payments array length:', savedSubscription.payments.length);
+                    console.log('✅ Payment method ID:', savedSubscription.billing.stripePaymentMethodId);
                 } catch (saveError) {
-                    console.error('❌ Save error:', saveError);
-                    return res.json(badRequestResponse(`Save failed: ${saveError.message}`, "SUBSCRIPTION_SAVE_ERROR"));
+                    console.error('❌ Subscription save error:', saveError);
+                    return res.json(badRequestResponse(`Failed to save subscription: ${saveError.message}`, "SUBSCRIPTION_SAVE_ERROR"));
                 }
 
-                // Update user role based on plan
-                if (plan.name === "learner") {
-                    await User.findByIdAndUpdate(userId, { role: "student", status: 'approved' });
-                } else if (plan.name === "employer") {
-                    await User.findByIdAndUpdate(userId, { role: "employer", status: 'approved' });
-                } else if (plan.name === "trainingInstitue") {
-                    await User.findByIdAndUpdate(userId, { role: "school", status: 'approved' });
-                }
-
-                await subscription.save();
-
-                // Send success notification
-                await Notification.createNotification({
-                    recipient: userId,
-                    title: 'Subscription Activated',
-                    message: `Your ${plan.displayName} subscription has been activated successfully.`,
-                    type: 'subscription_activated',
-                    relatedEntity: {
-                        entityType: 'subscription',
-                        entityId: subscription._id
+                // ✅ Update user role based on plan
+                try {
+                    let userUpdate = { status: 'approved' };
+                    
+                    if (plan.name === "learner") {
+                        userUpdate.role = "student";
+                    } else if (plan.name === "employer") {
+                        userUpdate.role = "employer";
+                    } else if (plan.name === "trainingInstitue") {
+                        userUpdate.role = "school";
                     }
-                });
+
+                    await User.findByIdAndUpdate(userId, userUpdate);
+                    console.log('✅ User role updated:', userUpdate);
+                } catch (userError) {
+                    console.error('❌ User update error:', userError);
+                    // Don't fail the payment for user update errors
+                }
+
+                // ✅ Send success notification
+                try {
+                    await Notification.create({
+                        recipient: userId,
+                        title: 'Subscription Activated',
+                        message: `Your ${plan.displayName} subscription has been activated successfully.`,
+                        type: 'payment_received',
+                        priority: 'normal'
+                    });
+                } catch (notifError) {
+                    console.error('❌ Notification error:', notifError);
+                    // Don't fail the payment for notification errors
+                }
 
                 return res.json(
                     successResponse({
-                        subscription,
+                        subscription: {
+                            id: subscription._id,
+                            status: subscription.status,
+                            plan: plan.displayName,
+                            paymentsCount: subscription.payments.length,
+                            hasPaymentMethod: !!subscription.billing.stripePaymentMethodId
+                        },
                         paymentIntent: {
                             id: paymentIntent.id,
                             status: paymentIntent.status,

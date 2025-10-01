@@ -12,37 +12,104 @@ const handleStripeWebhook = async (req, res) => {
     switch (event.type) {
       case 'payment_intent.succeeded':
         const paymentIntent = event.data.object;
-        const subscriptionId = paymentIntent.metadata.subscriptionId; // Ensure metadata includes subscriptionId
-        const userId = paymentIntent.metadata.userId; // Ensure metadata includes userId
+        const subscriptionId = paymentIntent.metadata.subscriptionId;
+        const userId = paymentIntent.metadata.userId;
 
         if (subscriptionId && userId) {
-          // Update subscription status to 'active'
+          console.log('🔍 Webhook - Processing payment_intent.succeeded');
+          console.log('🔍 PaymentIntent ID:', paymentIntent.id);
+          console.log('🔍 Payment Method:', paymentIntent.payment_method);
+          console.log('🔍 Subscription ID:', subscriptionId);
+
           const subscription = await Subscription.findById(subscriptionId);
           if (subscription) {
+            // ✅ Update subscription status
             subscription.status = 'active';
-            await subscription.save();
+
+            // ✅ Add payment record (same as confirmPayment)
+            const paymentRecord = {
+              amount: paymentIntent.amount / 100,
+              currency: paymentIntent.currency,
+              paymentDate: new Date(),
+              paymentMethod: 'card',
+              transactionId: paymentIntent.id,
+              status: 'completed'
+            };
+            
+            subscription.payments.push(paymentRecord);
+            console.log('✅ Webhook - Added payment record:', paymentRecord);
+
+            // ✅ Store payment method ID for renewals
+            if (paymentIntent.payment_method) {
+              subscription.billing.stripePaymentMethodId = paymentIntent.payment_method;
+              console.log('✅ Webhook - Set payment method ID:', paymentIntent.payment_method);
+            } else {
+              console.warn('⚠️ Webhook - PaymentIntent has no payment_method');
+            }
+
+            try {
+              await subscription.save();
+              console.log('✅ Webhook - Subscription saved successfully');
+            } catch (saveError) {
+              console.error('❌ Webhook - Subscription save error:', saveError);
+              return res.status(400).json({ error: 'Failed to save subscription' });
+            }
+
+            // ✅ Update user role based on plan
+            try {
+              const plan = await SubscriptionPlan.findById(subscription.planId);
+              let userUpdate = { status: 'approved' };
+              
+              if (plan?.name === "learner") {
+                userUpdate.role = "student";
+              } else if (plan?.name === "employer") {
+                userUpdate.role = "employer";
+              } else if (plan?.name === "trainingInstitue") {
+                userUpdate.role = "school";
+              }
+
+              await User.findByIdAndUpdate(userId, userUpdate);
+              console.log('✅ Webhook - User role updated:', userUpdate);
+            } catch (userError) {
+              console.error('❌ Webhook - User update error:', userError);
+            }
+
+            // ✅ Send notification
+            try {
+              const user = await User.findById(userId).select('fullName').lean();
+              if (user) {
+                await createNotification({
+                  recipient: userId,
+                  title: "Payment Successful",
+                  message: "Your payment has been confirmed, and your subscription is now active.",
+                  type: "payment_success",
+                  priority: "normal",
+                });
+              }
+            } catch (notifError) {
+              console.error('❌ Webhook - Notification error:', notifError);
+            }
           }
 
-          // Update user status to 'Approved'
-          await User.findByIdAndUpdate(userId, { status: 'approved' });
-
-          // Optional: Send notification to user
-          const user = await User.findById(userId).select('fullName').lean();
-          if (user) {
-            await createNotification({
-              recipient: userId,
-              title: "Payment Successful",
-              message: "Your payment has been confirmed, and your subscription is now active.",
-              type: "payment_success",
-              priority: "normal",
-            });
-          }
-
-          console.log(`Updated subscription ${subscriptionId} to active and user ${userId} to success.`);
+          console.log(`✅ Webhook - Updated subscription ${subscriptionId} to active`);
         }
         break;
 
-      // Handle other events as needed
+      case 'payment_intent.payment_failed':
+        const failedPaymentIntent = event.data.object;
+        await handlePaymentIntentFailed(failedPaymentIntent);
+        break;
+
+      case 'invoice.payment_succeeded':
+        const invoice = event.data.object;
+        await handleInvoicePaymentSucceededWebhook(invoice);
+        break;
+
+      case 'invoice.payment_failed':
+        const failedInvoice = event.data.object;
+        await handleInvoicePaymentFailedWebhook(failedInvoice);
+        break;
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
