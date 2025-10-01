@@ -40,25 +40,18 @@ import { connectRedis } from "./config/redis.config.js"; // adjust path
 
 // ---------- Middlewares ---------- //
 
-// Read from env, fallback to frontend URL
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",").map(o => o.trim())
-  : ["https://course-backup.vercel.app"];
 
-console.log("🚀 Allowed Origins:", allowedOrigins);
 
+// Configure CORS for production & local dev
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // Postman / mobile apps
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      console.warn("❌ CORS blocked for:", origin);
-      return callback(new Error("Not allowed by CORS: " + origin));
-    },
+    origin:
+      process.env.CORS_ORIGIN === "*"
+        ? true
+        : process.env.CORS_ORIGIN
+        ? process.env.CORS_ORIGIN.split(",")
+        : ["http://localhost:3000", "http://localhost:5173"],
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   })
 );
 
