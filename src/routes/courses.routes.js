@@ -7,7 +7,8 @@ import {
     updateCourseStatus,
     deleteCourseById,
     searchCourses,
-    getCoursesByProvider
+    getCoursesByProvider,
+    getCoursesByProviderId
 } from '../controllers/courses.controllers.js';
 import { requestLogger } from '../middlewares/ReqLog.middlewares.js';
 import { verifyJWT } from '../middlewares/Auth.middlewares.js';
@@ -201,6 +202,84 @@ courseRouter.get('/', requestLogger,verifyJWT , authorizeRoles('school' , 'stude
  */
 courseRouter.get('/search', requestLogger,authorizeRoles('school' , 'student'), coursesCache, searchCourses);
 
+
+/**
+ * @swagger
+ * /api/v1/courses/provider:
+ *   get:
+ *     summary: Get courses for the authenticated training provider
+ *     description: Retrieve paginated courses created by the authenticated provider (school). Requires provider (school) role and authentication.
+ *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 10
+ *         description: Number of courses per page (max 50)
+ *         example: 10
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: ["draft", "pending_approval", "approved", "rejected", "archived"]
+ *         description: Filter by course status
+ *         example: "approved"
+ *     responses:
+ *       200:
+ *         description: Provider courses retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     courses:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Course'
+ *                     pagination:
+ *                       $ref: '#/components/schemas/PaginationInfo'
+ *                 message:
+ *                   type: string
+ *                   example: "Provider courses retrieved successfully"
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+courseRouter.get(
+  '/provider',
+  requestLogger,
+  verifyJWT,
+  coursesCache,
+  getCoursesByProvider
+);
+
+
+
 /**
  * @swagger
  * /api/v1/courses/provider/{providerId}:
@@ -274,7 +353,7 @@ courseRouter.get('/search', requestLogger,authorizeRoles('school' , 'student'), 
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-courseRouter.get('/provider', requestLogger, verifyJWT , authorizeRoles('school','student'), getCoursesByProvider);
+courseRouter.get('/provider/:providerId', requestLogger, verifyJWT , authorizeRoles('school','student'), getCoursesByProviderId);
 
 /**
  * @swagger
