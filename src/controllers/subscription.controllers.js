@@ -298,14 +298,17 @@ const createSubscription = asyncHandler(async (req, res) => {
             return res.json(badRequestResponse("Subscription plan is not active", "PLAN_INACTIVE"));
         }
 
-        // Check if user already has an active subscription
+        // ✅ FIX: Uncomment and improve the check to prevent multiple subscriptions
         const existingSubscription = await Subscription.findOne({
             userId,
             status: { $in: ['active', 'pending'] }
         });
 
         if (existingSubscription) {
-            return res.json(badRequestResponse("User already has an active subscription", "ACTIVE_SUBSCRIPTION_EXISTS"));
+            return res.json(badRequestResponse(
+                `User already has an ${existingSubscription.status} subscription. Cancel or complete it before creating a new one.`,
+                "ACTIVE_SUBSCRIPTION_EXISTS"
+            ));
         }
 
         // Calculate billing dates
