@@ -294,7 +294,7 @@ const loginUser = asyncHandler(async (req, res) => {
       .cookie("refreshToken", refreshToken, cookieOptions)
       .json(
         successResponse(
-          { user: loggedInUser, accessToken, refreshToken},
+          { user: loggedInUser, accessToken , refreshToken},
           "User logged in successfully"
         )
       );
@@ -472,59 +472,60 @@ const addPicture = asyncHandler(async (req, res) => {
 // Refresh Access token
 const refreshAccessToken = asyncHandler(async (req, res) => {
     
-    let incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+    const refreshToken = req.body.refreshToken || req.cookies.refreshToken;
 
-    if (!incomingRefreshToken) {
-        throw unauthorized("Unauthorized request - No refresh token provided")
+    if (!refreshToken) {
+        throw unauthorized("Unauthorized request - No refresh token provided");
     }
 
-    // Clean the token - remove any cookie attributes if present
-    if (typeof incomingRefreshToken === 'string') {
-        incomingRefreshToken = incomingRefreshToken.split(';')[0].trim();
-    }
+    // // Clean the token - remove any cookie attributes if present
+    // if (typeof refreshToken === 'string') {
+    //     refreshToken = refreshToken.split(';')[0].trim();
+    // }
     
 
     try {
         
         const decodedToken = jwt.verify(
-            incomingRefreshToken,
+            refreshToken,
             process.env.REFRESH_TOKEN_SECRET
-        )
+        );
         
-    
-        const user = await User.findById(decodedToken?._id)
+        const user = await User.findById(decodedToken?._id);
     
         if (!user) {
             console.error("User not found for token");
-            throw unauthorized("Invalid refresh token - User not found")
+            throw unauthorized("Invalid refresh token - User not found");
         }
         
-    
-        if (incomingRefreshToken !== user?.refreshToken) {
-            throw unauthorized("Refresh token is expired or used")
+        if (refreshToken !== user?.refreshToken) {
+            throw unauthorized("Refresh token is expired or used");
         }
     
         const options = {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production"
-        }
+        };
         
-        const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user._id)    
+        // ✅ FIX: Use different variable names to avoid redeclaration conflict
+        const { accessToken: newAccessToken, refreshToken: newRefreshToken } = await generateAccessAndRefreshTokens(user._id);
+        
         return res
-        .status(200)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
-        .json(
-            successResponse(
-                {accessToken},
-                "Access token refreshed"
-            )
-        )
+            .status(200)
+            .cookie("accessToken", newAccessToken, options)
+            .cookie("refreshToken", newRefreshToken, options)
+            .json(
+                successResponse(
+                  { refreshToken:newRefreshToken },
+                    { accessToken: newAccessToken },  // ✅ FIX: Use the new access token
+                    "Access token refreshed"
+                )
+            );
     } catch (error) {
         // console.error("Error in refreshAccessToken:", error.message);
-        throw unauthorized("Invalid reffresh token provided")
+        throw unauthorized("Invalid refresh token provided");  // ✅ FIX: Corrected typo "reffresh" to "refresh"
     }
-})
+});
 
 // Get all students for admin panel (fixed: only populate if kyc exists, and handle errors gracefully)
 const getAllStudents = asyncHandler(async (req, res) => {
