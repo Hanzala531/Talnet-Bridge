@@ -296,6 +296,96 @@ studentRouter.get('/my', requestLogger, verifyJWT, authorizeRoles('student'), ge
 
 /**
  * @swagger
+ * /api/v1/students/profile/update:
+ *   put:
+ *     summary: Update current student's profile
+ *     description: Update personal information, bio, skills, and profile picture for the authenticated student.
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *                 example: "Ahmed Ali"
+ *               profilePicture:
+ *                 type: string
+ *                 format: url
+ *                 example: "https://example.com/profile.jpg"
+ *               bio:
+ *                 type: string
+ *                 example: "Passionate about web development"
+ *               location:
+ *                 type: string
+ *                 example: "Karachi, Pakistan"
+ *               website:
+ *                 type: string
+ *                 format: url
+ *                 example: "https://ahmed-portfolio.com"
+ *               skills:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["JavaScript", "React"]
+ *               gsceResult:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/GSCEResult'
+ *               isPublic:
+ *                 type: boolean
+ *                 example: true
+ *               isOpenToWork:
+ *                 type: boolean
+ *                 example: true
+ *               isContactPublic:
+ *                 type: boolean
+ *                 example: false
+ *               isProgressPublic:
+ *                 type: boolean
+ *                 example: true
+ *               communicationPreferences:
+ *                 type: object
+ *                 example: { webAppNotifications: true }
+ *     responses:
+ *       200:
+ *         description: Student profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Student profile updated successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Student'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+studentRouter.put(
+  '/profile/update',
+  requestLogger,
+  verifyJWT,
+  authorizeRoles('student'),
+  updateStudentProfile
+);
+
+/**
+ * @swagger
  * /api/v1/students/profile/completion:
  *   get:
  *     summary: Get current student's profile completion percentage
