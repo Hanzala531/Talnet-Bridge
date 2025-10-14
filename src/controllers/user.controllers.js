@@ -29,6 +29,17 @@ import { sendWelcomeEmail } from "../services/welcomeEmail.service.js";
 import { Student } from "../models/student models/students.models.js"; // Add this import for Student model
 import { TrainingInstitute } from "../models/index.js";
 
+
+
+// Format number to human-readable string (e.g., 1.2K, 3.5M)
+function formatRevenue(num) {
+  if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+  if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+  if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+  return num.toFixed(2);
+}
+
+
 /**
  * Generate access and refresh tokens for a user
  * 
@@ -642,11 +653,11 @@ const adminAnalytics = asyncHandler(async (req, res) => {
     currentMonth.setDate(1); // Start of current month
    
     return res.json(successResponse({
-      totalUsers,
-      totalStudents,
-      totalEmployers,
-      totalSchools,
-      totalRevenue,
+  totalUsers,
+  totalStudents,
+  totalEmployers,
+  totalSchools,
+  totalRevenue: formatRevenue(totalRevenue), 
     }, "Admin analytics fetched successfully"));
   } catch (error) {
     throw internalServer("Failed to fetch admin analytics");
