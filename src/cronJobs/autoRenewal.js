@@ -67,20 +67,25 @@ const autoRenewalJob = () => {
                         
                         // Update subscription
                         subscription.billing.endDate = newEndDate;
-                        subscription.billing.nextBillingDate = newNextBilling;
+                        subscription.billing.nextBillingDate = newEndDate;
                         subscription.billing.lastBillingDate = now;
                         
-                        // Add payment record
-                        subscription.payments.push({
-                            amount: plan.price,
-                            currency: plan.currency || 'usd',
-                            paymentDate: now,
-                            paymentMethod: 'stripe',
-                            transactionId: paymentIntent.id,
-                            status: 'completed'
-                        });
-                        
-                        await subscription.save();
+                        const alreadyExists = subscription.payments.some(
+                          p => p.transactionId === paymentIntent.id
+                        );
+
+                        if (!alreadyExists) {
+                          // Add payment record
+                          subscription.payments.push({
+                              amount: plan.price,
+                              currency: plan.currency || 'usd',
+                              paymentDate: now,
+                              paymentMethod: 'stripe',
+                              transactionId: paymentIntent.id,
+                              status: 'completed'
+                          });
+                          await subscription.save();
+                        }
                         
                         console.log(`✅ Successfully renewed subscription ${subscription._id}`);
                         console.log(`   - New end date: ${newEndDate}`);
@@ -184,13 +189,14 @@ const autoRenewalJob = () => {
 // Manual test function for development
 export const testAutoRenewal = async () => {
     console.log('🧪 Testing auto-renewal manually...');
-    
+    let successCount = 0;
+    let failureCount = 0;
+
     try {
         const now = new Date();
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
-        
-        // Find subscriptions due for renewal
+
         const subscriptions = await Subscription.find({
             'billing.autoRenew': true,
             'billing.nextBillingDate': { $lte: tomorrow },
@@ -198,27 +204,71 @@ export const testAutoRenewal = async () => {
             'billing.stripeCustomerId': { $exists: true },
             'billing.stripePaymentMethodId': { $exists: true }
         }).populate('planId');
-        
-        console.log(`📋 Found ${subscriptions.length} subscriptions for renewal`);
-        
-        // Process each subscription (same logic as cron job)
+
         for (const subscription of subscriptions) {
             const plan = subscription.planId;
-            console.log(`📄 Subscription ${subscription._id}:`);
-            console.log(`   - Plan: ${plan?.name || 'Unknown'}`);
-            console.log(`   - Price: $${plan?.price || 0}`);
-            console.log(`   - Next billing: ${subscription.billing?.nextBillingDate}`);
-            console.log(`   - Auto renew: ${subscription.billing?.autoRenew}`);
-            console.log(`   - Status: ${subscription.status}`);
-            console.log(`   - Has Stripe customer: ${!!subscription.billing?.stripeCustomerId}`);
-            console.log(`   - Has payment method: ${!!subscription.billing?.stripePaymentMethodId}`);
+            if (!plan || plan.price <= 0) continue;
+
+            try {
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: Math.round(plan.price * 100),
+                    currency: plan.currency || 'usd',
+                    customer: subscription.billing.stripeCustomerId,
+                    payment_method: subscription.billing.stripePaymentMethodId,
+                    off_session: true,
+                    confirm: true,
+                    metadata: {
+                        subscriptionId: subscription._id.toString(),
+                        renewalDate: now.toISOString(),
+                        planId: plan._id.toString(),
+                        userId: subscription.userId.toString()
+                    }
+                });
+
+                if (paymentIntent.status === 'succeeded') {
+                    const currentNextBilling = new Date(subscription.billing.nextBillingDate);
+                    const newNextBilling = new Date(currentNextBilling);
+                    newNextBilling.setMonth(newNextBilling.getMonth() + 1);
+                    const newEndDate = new Date(newNextBilling);
+
+                    subscription.billing.endDate = newEndDate;
+                    subscription.billing.nextBillingDate = newNextBilling;
+                    subscription.billing.lastBillingDate = now;
+
+
+                    successCount++;
+                } else {
+                    subscription.status = 'expired';
+                    subscription.billing.autoRenew = false;
+                    subscription.payments.push({
+                        amount: plan.price,
+                        currency: plan.currency || 'usd',
+                        paymentDate: now,
+                        paymentMethod: 'stripe',
+                        transactionId: paymentIntent.id,
+                        status: 'failed'
+                    });
+                    await subscription.save();
+                    failureCount++;
+                }
+            } catch (paymentError) {
+                subscription.status = 'expired';
+                subscription.billing.autoRenew = false;
+                subscription.payments.push({
+                    amount: plan.price,
+                    currency: plan.currency || 'usd',
+                    paymentDate: now,
+                    paymentMethod: 'stripe',
+                    transactionId: null,
+                    status: 'failed'
+                });
+                await subscription.save();
+                failureCount++;
+            }
         }
-        
-        console.log('🏁 Manual test completed');
-        return { success: true, processed: subscriptions.length };
-        
+
+        return { success: true, renewedSubscriptions: successCount, failedSubscriptions: failureCount };
     } catch (error) {
-        console.error('🚨 Manual test error:', error);
         return { success: false, error: error.message };
     }
 };
