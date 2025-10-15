@@ -16,28 +16,42 @@ const handleStripeWebhook = async (req, res) => {
         const userId = paymentIntent.metadata.userId;
 
         if (subscriptionId && userId) {
-          console.log('🔍 Webhook - Processing payment_intent.succeeded');
-          console.log('🔍 PaymentIntent ID:', paymentIntent.id);
-          console.log('🔍 Payment Method:', paymentIntent.payment_method);
-          console.log('🔍 Subscription ID:', subscriptionId);
-
           const subscription = await Subscription.findById(subscriptionId);
           if (subscription) {
+            // ✅ Prevent duplicate payment records
+            const alreadyExists = subscription.payments.some(
+              p => p.transactionId === paymentIntent.id
+            );
+
+            if (!alreadyExists) {
+              // Add payment record only if not already present
+              const paymentRecord = {
+                amount: paymentIntent.amount / 100,
+                currency: paymentIntent.currency,
+                paymentDate: new Date(),
+                paymentMethod: 'card',
+                transactionId: paymentIntent.id,
+                status: 'completed'
+              };
+              subscription.payments.push(paymentRecord);
+
+              // ✅ Update nextBillingDate for monthly plans
+              const plan = await SubscriptionPlan.findById(subscription.planId);
+              if (plan && plan.billingCycle === 'monthly') {
+  const currentNextBilling = subscription.billing.nextBillingDate
+    ? new Date(subscription.billing.nextBillingDate)
+    : new Date();
+  currentNextBilling.setMonth(currentNextBilling.getMonth() + 1);
+  subscription.billing.nextBillingDate = currentNextBilling;
+  subscription.billing.endDate = currentNextBilling;
+}
+              console.log('✅ Webhook - Added payment record:', paymentRecord);
+            } else {
+              console.log('⚠️ Payment record already exists for this transactionId, skipping duplicate.');
+            }
+
             // ✅ Update subscription status
             subscription.status = 'active';
-
-            // ✅ Add payment record (same as confirmPayment)
-            const paymentRecord = {
-              amount: paymentIntent.amount / 100,
-              currency: paymentIntent.currency,
-              paymentDate: new Date(),
-              paymentMethod: 'card',
-              transactionId: paymentIntent.id,
-              status: 'completed'
-            };
-            
-            subscription.payments.push(paymentRecord);
-            console.log('✅ Webhook - Added payment record:', paymentRecord);
 
             // ✅ Store payment method ID for renewals
             if (paymentIntent.payment_method) {
