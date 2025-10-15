@@ -652,7 +652,7 @@ const updateCompanyDetails = asyncHandler(async (req, res) => {
         }
         
         // Validate companySize if provided
-        const validSizes = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
+        // const validSizes = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
         if (updates.companySize && !validSizes.includes(updates.companySize)) {
             return res.json(badRequestResponse(`Company size must be one of: ${validSizes.join(", ")}`));
         }
